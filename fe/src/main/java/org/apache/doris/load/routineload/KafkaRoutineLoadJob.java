@@ -397,7 +397,7 @@ public class KafkaRoutineLoadJob extends RoutineLoadJob {
         }
 
         out.writeInt(customKafkaProperties.size());
-        for(Map.Entry<String, String> property : customKafkaProperties.entrySet()) {
+        for (Map.Entry<String, String> property : customKafkaProperties.entrySet()) {
             Text.writeString(out, property.getKey());
             Text.writeString(out, property.getValue());
         }
@@ -415,7 +415,7 @@ public class KafkaRoutineLoadJob extends RoutineLoadJob {
 
         if (Catalog.getCurrentCatalogJournalVersion() >= FeMetaVersion.VERSION_51) {
             int count = in.readInt();
-            for(int i = 0 ;i < count ;i ++) {
+            for (int i = 0 ;i < count ;i ++) {
                 this.customKafkaProperties.put(Text.readString(in), Text.readString(in));
             }
         }
