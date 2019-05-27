@@ -350,7 +350,7 @@ public class KafkaRoutineLoadJob extends RoutineLoadJob {
         if (!stmt.getKafkaPartitionOffsets().isEmpty()) {
             setCustomKafkaPartitions(stmt.getKafkaPartitionOffsets());
         }
-        if(!stmt.getCustomKafkaProperties().isEmpty()) {
+        if (!stmt.getCustomKafkaProperties().isEmpty()) {
             setCustomKafkaProperties(stmt.getCustomKafkaProperties());
         }
     }
