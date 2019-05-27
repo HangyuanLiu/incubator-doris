@@ -389,6 +389,12 @@ public class KafkaRoutineLoadJob extends RoutineLoadJob {
     }
 
     @Override
+    protected String customPropertiesJsonToString() {
+        Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+        return gson.toJson(customKafkaProperties);
+    }
+
+    @Override
     public void write(DataOutput out) throws IOException {
         super.write(out);
         Text.writeString(out, brokerList);

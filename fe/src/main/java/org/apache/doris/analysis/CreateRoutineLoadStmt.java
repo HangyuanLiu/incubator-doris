@@ -211,7 +211,10 @@ public class CreateRoutineLoadStmt extends DdlStmt {
     public Map<String, String> getCustomKafkaProperties() {
         return customKafkaProperties;
     }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 309f204d46e00352409e818a337df80f3ba1963a
     @Override
     public void analyze(Analyzer analyzer) throws UserException {
         super.analyze(analyzer);
@@ -401,15 +404,16 @@ public class CreateRoutineLoadStmt extends DdlStmt {
                 }
             }
         }
-
         // check custom kafka property
         for (Map.Entry<String, String> dataSourceProperty : dataSourceProperties.entrySet()) {
             if (dataSourceProperty.getKey().startsWith("property.")) {
-                String propertyValueArr[] = dataSourceProperty.getKey().split("\\.");
+                String propertyKey = dataSourceProperty.getKey();
+                String propertyValue = dataSourceProperty.getValue();
+                String propertyValueArr[] = propertyKey.split("\\.");
                 if (propertyValueArr.length < 2) {
                     throw new AnalysisException("kafka property value could not be a empty string");
                 }
-                customKafkaProperties.put(dataSourceProperty.getKey(), dataSourceProperty.getValue());
+                customKafkaProperties.put(propertyKey.substring(propertyKey.indexOf(".") + 1), propertyValue);
             }
             //can be extended in the future which other prefix
         }
