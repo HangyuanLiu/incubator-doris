@@ -302,7 +302,6 @@ Status UnionNode::get_next(RuntimeState* state, RowBatch* row_batch, bool* eos) 
     } else if (has_more_const(state)) {
         RETURN_IF_ERROR(get_next_const(state, row_batch));
     }
-
     int num_rows_added = row_batch->num_rows() - num_rows_before;
     DCHECK_GE(num_rows_added, 0);
     if (_limit != -1 && _num_rows_returned + num_rows_added > _limit) {
