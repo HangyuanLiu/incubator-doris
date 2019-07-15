@@ -238,6 +238,7 @@ public enum PrimitiveType {
         builder.put(VARCHAR, DECIMALV2);
         builder.put(VARCHAR, VARCHAR);
         builder.put(VARCHAR, HLL);
+        builder.put(VARCHAR, TIME);
         // Decimal
         builder.put(DECIMAL, BOOLEAN);
         builder.put(DECIMAL, TINYINT);
@@ -266,6 +267,10 @@ public enum PrimitiveType {
         // HLL
         builder.put(HLL, HLL);
         builder.put(HLL, VARCHAR);
+
+        //TIME
+        builder.put(TIME, TIME);
+        builder.put(TIME, VARCHAR);
 
         implicitCastMap = builder.build();
     }
@@ -481,6 +486,7 @@ public enum PrimitiveType {
         compatibilityMatrix[DECIMALV2.ordinal()][DECIMAL.ordinal()] = DECIMALV2;
         
         compatibilityMatrix[HLL.ordinal()][HLL.ordinal()] = HLL;
+        compatibilityMatrix[TIME.ordinal()][TIME.ordinal()] = TIME;
     }
 
     private static PrimitiveType[][] schemaChangeCompatibilityMatrix;
