@@ -113,6 +113,13 @@ Status ResultWriter::add_one_row(TupleRow* row) {
             buf_ret = _row_buffer->push_string(buf, pos - buf - 1);
             break;
         }
+        case TYPE_TIME: {
+            char buf[64];
+            const DateTimeValue* time_val = (const DateTimeValue*)(item);
+            char* pos = time_val->to_string(buf);
+            buf_ret = _row_buffer->push_string(buf, pos - buf - 1);
+            break;
+        }
 
         case TYPE_VARCHAR:
         case TYPE_HLL:
