@@ -462,6 +462,8 @@ public abstract class Type {
                 return Type.DATE;
             case DATETIME:
                 return Type.DATETIME;
+            case TIME:
+                return Type.TIME;
             case DECIMAL:
                 return Type.DECIMAL;
             case DECIMALV2:
