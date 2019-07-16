@@ -147,6 +147,7 @@ void Tuple::materialize_exprs(
     TupleRow* row, const TupleDescriptor& desc,
     const std::vector<ExprContext*>& materialize_expr_ctxs, MemPool* pool,
     std::vector<StringValue*>* non_null_var_len_values, int* total_var_len) {
+    std::cout<<"materialize_exprs"<<std::endl;
     if (collect_string_vals) {
         non_null_var_len_values->clear();
         *total_var_len = 0;
@@ -155,6 +156,7 @@ void Tuple::materialize_exprs(
     // Evaluate the output_slot_exprs and place the results in the tuples.
     int mat_expr_index = 0;
     for (int i = 0; i < desc.slots().size(); ++i) {
+        std::cout<<"desc slot for"<<std::endl;
         SlotDescriptor* slot_desc = desc.slots()[i];
         if (!slot_desc->is_materialized()) {
             continue;
@@ -173,15 +175,17 @@ void Tuple::materialize_exprs(
         }
         void* src = materialize_expr_ctxs[mat_expr_index]->get_value(row);
         if (src != NULL) {
+            std::cout<<"src is not null"<<std::endl;
             void* dst = get_slot(slot_desc->tuple_offset());
             RawValue::write(src, dst, slot_desc->type(), pool);
-            if (collect_string_vals) {
+            //if (collect_string_vals) {
                 if (slot_desc->type().is_string_type()) {
                     StringValue* string_val = reinterpret_cast<StringValue*>(dst);
+                    std::cout<<"String Value : " << string_val->to_string() << std::endl;
                     non_null_var_len_values->push_back(string_val);
                     *total_var_len += string_val->len;
                 }
-            }
+            //}
         } else {
             set_null(slot_desc->null_indicator_offset());
         }
