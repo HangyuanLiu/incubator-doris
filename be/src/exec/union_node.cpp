@@ -276,6 +276,7 @@ Status UnionNode::get_next_const(RuntimeState* state, RowBatch* row_batch) {
 }
 
 Status UnionNode::get_next(RuntimeState* state, RowBatch* row_batch, bool* eos) {
+    std::cout<<"UnionNode"<<std::endl;
     SCOPED_TIMER(_runtime_profile->total_time_counter());
     RETURN_IF_ERROR(exec_debug_action(TExecNodePhase::GETNEXT));
     RETURN_IF_CANCELLED(state);
@@ -296,13 +297,16 @@ Status UnionNode::get_next(RuntimeState* state, RowBatch* row_batch, bool* eos) 
     int num_rows_before = row_batch->num_rows();
 
     if (has_more_passthrough()) {
+        std::cout<<"UnionNode1"<<std::endl;
         RETURN_IF_ERROR(get_next_pass_through(state, row_batch));
     } else if (has_more_materialized()) {
+        std::cout<<"UnionNode2"<<std::endl;
         RETURN_IF_ERROR(get_next_materialized(state, row_batch));
     } else if (has_more_const(state)) {
+        std::cout<<"UnionNode3"<<std::endl;
         RETURN_IF_ERROR(get_next_const(state, row_batch));
     }
-
+    std::cout<<"UnionNode4"<<std::endl;
     int num_rows_added = row_batch->num_rows() - num_rows_before;
     DCHECK_GE(num_rows_added, 0);
     if (_limit != -1 && _num_rows_returned + num_rows_added > _limit) {
