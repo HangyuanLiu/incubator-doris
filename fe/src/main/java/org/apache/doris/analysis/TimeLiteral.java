@@ -43,7 +43,7 @@ public class TimeLiteral extends LiteralExpr {
     //fixme public -> private
     public TimeLiteral() {
         super();
-                this.type = Type.TIME;
+        this.type = Type.TIME;
     }
 
     public TimeLiteral(Type type, boolean isMax) throws AnalysisException {
