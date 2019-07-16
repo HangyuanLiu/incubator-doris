@@ -374,6 +374,8 @@ void* ExprContext::get_value(Expr* e, TupleRow* row) {
             return NULL;
         }
         std::cout << "time val" << std::endl;
+        _result.datetime_val = DateTimeValue::datetime_max_value();
+        _result.datetime_val.debug_string();
         return &_result.datetime_val;
     }
     case TYPE_DECIMAL: {
