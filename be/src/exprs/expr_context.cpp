@@ -367,6 +367,15 @@ void* ExprContext::get_value(Expr* e, TupleRow* row) {
         _result.datetime_val = DateTimeValue::from_datetime_val(v);
         return &_result.datetime_val;
     }
+    case TYPE_TIME: {
+        doris_udf::TimeVal v = e->get_time_val(this, row);
+        if (v.is_null) {
+            std::cout << "time val null" << std::endl;
+            return NULL;
+        }
+        std::cout << "time val" << std::endl;
+        return &_result.datetime_val;
+    }
     case TYPE_DECIMAL: {
         DecimalVal v = e->get_decimal_val(this, row);
         if (v.is_null) {
@@ -462,6 +471,10 @@ DecimalVal ExprContext::get_decimal_val(TupleRow* row) {
 
 DecimalV2Val ExprContext::get_decimalv2_val(TupleRow* row) {
     return _root->get_decimalv2_val(this, row);
+}
+
+TimeVal ExprContext::get_time_val(TupleRow* row) {
+    return _root->get_time_val(this, row);
 }
 
 Status ExprContext::get_const_value(RuntimeState* state, Expr& expr,
