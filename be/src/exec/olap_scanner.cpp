@@ -435,6 +435,15 @@ void OlapScanner::_convert_row_to_tuple(Tuple* tuple) {
             }
             break;
         }
+        case TYPE_TIME: {
+            std::cout<<"olap scanner !" << std::endl;
+            DateTimeValue *slot = tuple->get_datetime_slot(slot_desc->tuple_offset());
+            uint64_t value = *reinterpret_cast<uint64_t*>(ptr);
+            if (!slot->from_olap_datetime(value)) {
+                tuple->set_null(slot_desc->null_indicator_offset());
+            }
+            break;
+        }
         default: {
             void *slot = tuple->get_slot(slot_desc->tuple_offset());
             memory_copy(slot, ptr, len);
