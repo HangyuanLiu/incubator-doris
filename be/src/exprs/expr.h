@@ -121,6 +121,7 @@ public:
     virtual StringVal get_string_val(ExprContext* context, TupleRow*);
     // TODO(zc)
     // virtual ArrayVal GetArrayVal(ExprContext* context, TupleRow*);
+    virtual TimeVal get_time_val(ExprContext* context, TupleRow*);
     virtual DateTimeVal get_datetime_val(ExprContext* context, TupleRow*);
     virtual DecimalVal get_decimal_val(ExprContext* context, TupleRow*);
     virtual DecimalV2Val get_decimalv2_val(ExprContext* context, TupleRow*);

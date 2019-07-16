@@ -554,6 +554,10 @@ struct DoubleVal : public AnyVal {
     }
 };
 
+struct TimeVal : public AnyVal {
+
+};
+
 // This object has a compatible storage format with boost::ptime.
 struct DateTimeVal : public AnyVal {
     // MySQL packet time
@@ -791,6 +795,7 @@ using doris_udf::StringVal;
 using doris_udf::DecimalVal;
 using doris_udf::DecimalV2Val;
 using doris_udf::DateTimeVal;
+using doris_udf::TimeVal;
 using doris_udf::HllVal;
 using doris_udf::FunctionContext;
 
