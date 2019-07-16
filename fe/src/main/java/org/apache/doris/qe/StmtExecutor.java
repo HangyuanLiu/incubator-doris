@@ -558,6 +558,7 @@ public class StmtExecutor {
             batch = coord.getNext();
             if (batch.getBatch() != null) {
                 for (ByteBuffer row : batch.getBatch().getRows()) {
+                    System.out.println(row.toString());
                     channel.sendOnePacket(row);
                 }            
                 context.updateReturnRows(batch.getBatch().getRows().size());    

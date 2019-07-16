@@ -518,6 +518,7 @@ private:
     static DoubleVal get_double_val(Expr* expr, ExprContext* context, TupleRow* row);
     static StringVal get_string_val(Expr* expr, ExprContext* context, TupleRow* row);
     static DateTimeVal get_datetime_val(Expr* expr, ExprContext* context, TupleRow* row);
+    static TimeVal get_time_val(Expr* expr, ExprContext* context, TupleRow* row);
     static DecimalVal get_decimal_val(Expr* expr, ExprContext* context, TupleRow* row);
     static DecimalV2Val get_decimalv2_val(Expr* expr, ExprContext* context, TupleRow* row);
 

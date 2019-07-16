@@ -67,7 +67,8 @@ PrimitiveType thrift_to_type(TPrimitiveType::type ttype) {
 
     case TPrimitiveType::DATETIME:
         return TYPE_DATETIME;
-    case TPrimitiveType::DATETIME:
+
+    case TPrimitiveType::TIME:
         return TYPE_TIME;
 
     case TPrimitiveType::VARCHAR:

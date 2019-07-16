@@ -60,6 +60,7 @@ public class FEFunctions {
             System.out.println("timediff");
             return new TimeLiteral();
         } catch (Exception e) {
+            System.out.println("timediff exception");
             e.printStackTrace();
             throw new AnalysisException(e.getLocalizedMessage());
         }

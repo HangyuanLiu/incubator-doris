@@ -74,6 +74,7 @@ public class TimeLiteral extends LiteralExpr {
     }
 
     public static TimeLiteral createMinValue(Type type) {
+        System.out.println("createMinValue");
         TimeLiteral dateLiteral = new TimeLiteral();
         dateLiteral.type = type;
         if (type == Type.DATE) {
@@ -86,6 +87,7 @@ public class TimeLiteral extends LiteralExpr {
     }
 
     private void init(String s, Type type) throws AnalysisException {
+        System.out.println("init");
         Preconditions.checkArgument(type.isDateType());
         date = TimeUtils.parseDate(s, type);
         if (type.isScalarType(PrimitiveType.DATE)) {
@@ -116,6 +118,7 @@ public class TimeLiteral extends LiteralExpr {
 
     @Override
     public Object getRealValue() {
+        System.out.println("getRealValue");
         return TimeUtils.dateTransform(date.getTime(), type);
     }
 
@@ -152,7 +155,9 @@ public class TimeLiteral extends LiteralExpr {
 
     @Override
     public String getStringValue() {
-        return TimeUtils.format(date, type);
+        System.out.println("getStringValue");
+        return new String("2019-08-02");
+        //return TimeUtils.format(date, type);
     }
 
     @Override
@@ -168,10 +173,11 @@ public class TimeLiteral extends LiteralExpr {
     @Override
     protected void toThrift(TExprNode msg) {
         msg.node_type = TExprNodeType.TIME_LITERAL;
-        msg.time_literal = new TTimeLiteral("20190801");
+        msg.time_literal = new TTimeLiteral("2019-08-01");
     }
 
     public Date getValue() {
+        System.out.println("getValue");
         return date;
     }
 
