@@ -857,8 +857,7 @@ TimeVal ScalarFnCall::get_time_val(ExprContext* context, TupleRow* row) {
 
     DCHECK(context != NULL);
     if (_scalar_fn_wrapper == NULL) {
-        //return interpret_eval<DateTimeVal>(context, row);
-        std::cout<<"scalar fn call fail"<<std::endl;
+        return interpret_eval<TimeVal>(context, row);
     }
     TimeWrapper fn = reinterpret_cast<TimeWrapper>(_scalar_fn_wrapper);
     return fn(context, row);

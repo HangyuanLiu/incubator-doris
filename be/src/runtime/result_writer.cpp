@@ -105,17 +105,11 @@ Status ResultWriter::add_one_row(TupleRow* row) {
             break;
 
         case TYPE_DATE:
-        case TYPE_DATETIME: {
-            char buf[64];
-            const DateTimeValue* time_val = (const DateTimeValue*)(item);
-            // TODO(zhaochun), this function has core risk
-            char* pos = time_val->to_string(buf);
-            buf_ret = _row_buffer->push_string(buf, pos - buf - 1);
-            break;
-        }
+        case TYPE_DATETIME:
         case TYPE_TIME: {
             char buf[64];
             const DateTimeValue* time_val = (const DateTimeValue*)(item);
+            // TODO(zhaochun), this function has core risk
             char* pos = time_val->to_string(buf);
             buf_ret = _row_buffer->push_string(buf, pos - buf - 1);
             break;

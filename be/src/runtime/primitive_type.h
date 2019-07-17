@@ -55,7 +55,7 @@ enum PrimitiveType {
     TYPE_HLL, /* 19 */
     TYPE_DECIMALV2,  /* 20 */
 
-    TYPE_TIME
+    TYPE_TIME, /* 21 */
 };
 
 inline bool is_enumeration_type(PrimitiveType type) {

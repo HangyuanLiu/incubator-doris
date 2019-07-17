@@ -370,20 +370,14 @@ void* ExprContext::get_value(Expr* e, TupleRow* row) {
     case TYPE_TIME: {
         doris_udf::TimeVal v = e->get_time_val(this, row);
         if (v.is_null) {
-            std::cout << "time val null" << std::endl;
             return NULL;
         }
-        std::cout << "time val" << v.time <<std::endl;
 
-        int second = v.time % 60;
-        int minute = v.time / 60 % 60;
-        int hour = v.time / 60 / 60;
-
-        std::cout << "from time int64 " << hour * 10000 + minute * 100 + second <<std::endl;
+        int64_t second = v.time % 60;
+        int64_t minute = v.time / 60 % 60;
+        int64_t hour = v.time / 60 / 60;
 
         _result.datetime_val.from_time_int64(hour * 10000 + minute * 100 + second);
-        //_result.datetime_val.cast_to_time();
-        _result.datetime_val.debug_string();
         return &_result.datetime_val;
     }
     case TYPE_DECIMAL: {

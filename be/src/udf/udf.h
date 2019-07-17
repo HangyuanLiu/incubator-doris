@@ -565,6 +565,21 @@ struct TimeVal : public AnyVal {
         result.is_null = true;
         return result;
     }
+
+    bool operator==(const TimeVal& other) const {
+        if (is_null && other.is_null) {
+            return true;
+        }
+
+        if (is_null || other.is_null) {
+            return false;
+        }
+
+        return time == other.time;
+    }
+    bool operator!=(const TimeVal& other) const {
+        return !(*this == other);
+    }
 };
 
 // This object has a compatible storage format with boost::ptime.
