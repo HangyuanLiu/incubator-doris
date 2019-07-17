@@ -88,8 +88,7 @@ Literal::Literal(const TExprNode& node) :
             node.date_literal.value.c_str(), node.date_literal.value.size());
         break;
     case TYPE_TIME:
-        _value.datetime_val.from_date_str(
-            node.time_literal.value.c_str(), node.time_literal.value.size());
+        _value.datetime_val.from_time_int64(node.time_literal.value);
         break;
     case TYPE_CHAR:
     case TYPE_VARCHAR:

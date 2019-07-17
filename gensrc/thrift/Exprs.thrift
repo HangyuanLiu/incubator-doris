@@ -85,7 +85,7 @@ struct TDateLiteral {
 }
 
 struct TTimeLiteral {
-  1: required string value
+  1: required i64 value
 }
 
 struct TFloatLiteral {
