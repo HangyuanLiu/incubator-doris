@@ -36,14 +36,14 @@ import java.nio.ByteBuffer;
 
 public class TimeLiteral extends LiteralExpr {
     private static final Logger LOG = LogManager.getLogger(TimeLiteral.class);
-    private long time;
+    private int time;
 
     private TimeLiteral() {
         super();
         this.type = Type.TIME;
     }
 
-    public TimeLiteral(long time) {
+    public TimeLiteral(int time) {
         super();
         this.time = time;
         analysisDone();
@@ -135,12 +135,12 @@ public class TimeLiteral extends LiteralExpr {
     @Override
     public void write(DataOutput out) throws IOException {
         super.write(out);
-        out.writeLong(time);
+        out.writeInt(time);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
         super.readFields(in);
-        time = in.readLong();
+        time = in.readInt();
     }
 }
