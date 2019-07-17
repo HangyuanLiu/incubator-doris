@@ -511,17 +511,15 @@ DateTimeVal SlotRef::get_datetime_val(ExprContext* context, TupleRow* row) {
 }
 
 TimeVal SlotRef::get_time_val(ExprContext* context, TupleRow* row) {
-    std::cout<<"get_time_val"<<std::endl;
-    DCHECK(_type.is_date_type());
+    std::cout<<"get_time_val[slotref]"<<std::endl;
     Tuple *t = row->get_tuple(_tuple_idx);
     if (t == NULL || t->is_null(_null_indicator_offset)) {
         return TimeVal();
     }
     DateTimeValue *tv = reinterpret_cast<DateTimeValue *>(t->get_slot(_slot_offset));
-    DateTimeVal result;
-    std::cout<<"get_time_val"<<std::endl;
-    //tv->to_datetime_val(&result);
-    return TimeVal();
+    TimeVal tm_val;
+    tv->to_time_val(&tm_val);
+    return tm_val;
 }
 
 DecimalVal SlotRef::get_decimal_val(ExprContext* context, TupleRow* row) {

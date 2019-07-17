@@ -178,14 +178,14 @@ void Tuple::materialize_exprs(
             std::cout<<"src is not null"<<std::endl;
             void* dst = get_slot(slot_desc->tuple_offset());
             RawValue::write(src, dst, slot_desc->type(), pool);
-            //if (collect_string_vals) {
+            if (collect_string_vals) {
                 if (slot_desc->type().is_string_type()) {
                     StringValue* string_val = reinterpret_cast<StringValue*>(dst);
                     std::cout<<"String Value : " << string_val->to_string() << std::endl;
                     non_null_var_len_values->push_back(string_val);
                     *total_var_len += string_val->len;
                 }
-            //}
+            }
         } else {
             set_null(slot_desc->null_indicator_offset());
         }

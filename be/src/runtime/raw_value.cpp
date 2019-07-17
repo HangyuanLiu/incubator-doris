@@ -274,19 +274,6 @@ void RawValue::write(const void* value, void* dst, const TypeDescriptor& type, M
             *reinterpret_cast<const DateTimeValue*>(value);
         break;
 
-        /*
-    case TYPE_TIME: {
-        const StringValue *src = reinterpret_cast<const StringValue *>(value);
-        StringValue *dest = reinterpret_cast<StringValue *>(dst);
-        std::cout << "src->len : " << src->len << std::endl;
-        dest->len = src->len - 11;
-        dest->ptr = reinterpret_cast<char *>(pool->allocate(dest->len));
-        memcpy(dest->ptr, src->ptr + 11, dest->len);
-        std::cout << "dest->len : " << dest->len << std::endl;
-        break;
-    }
-    */
-
     case TYPE_DECIMAL:
         *reinterpret_cast<DecimalValue*>(dst) =
                 *reinterpret_cast<const DecimalValue*>(value);
