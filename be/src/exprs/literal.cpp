@@ -177,6 +177,12 @@ DateTimeVal Literal::get_datetime_val(ExprContext* context, TupleRow* row) {
     return dt_val;
 }
 
+TimeVal Literal::get_time_val(ExprContext* context, TupleRow* row) {
+    TimeVal tm_val;
+    _value.datetime_val.to_time_val(&tm_val);
+    return tm_val;
+}
+
 StringVal Literal::get_string_val(ExprContext* context, TupleRow* row) {
     DCHECK(_type.is_string_type()) << _type;
     StringVal str_val;

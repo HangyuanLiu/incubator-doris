@@ -555,6 +555,7 @@ struct DoubleVal : public AnyVal {
 };
 
 struct TimeVal : public AnyVal {
+    int64_t time;
 
 };
 
