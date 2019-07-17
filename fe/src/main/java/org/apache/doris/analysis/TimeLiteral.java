@@ -173,7 +173,7 @@ public class TimeLiteral extends LiteralExpr {
     @Override
     protected void toThrift(TExprNode msg) {
         msg.node_type = TExprNodeType.TIME_LITERAL;
-        msg.time_literal = new TTimeLiteral("2019-08-01");
+        msg.time_literal = new TTimeLiteral(10);
     }
 
     public Date getValue() {
