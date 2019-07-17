@@ -78,7 +78,6 @@ public class DescriptorTable {
      * computed.
      */
     public TupleDescriptor copyTupleDescriptor(TupleId srcId, String debugName) {
-        System.out.println("copyTupleDescriptor");
         TupleDescriptor d = new TupleDescriptor(tupleIdGenerator_.getNextId(), debugName);
         tupleDescs.put(d.getId(), d);
         // create copies of slots

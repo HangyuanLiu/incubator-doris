@@ -152,6 +152,7 @@ public class TupleDescriptor {
         for (int i = 0; i <= PrimitiveType.getMaxSlotSize(); ++i) {
             slotsBySize.add(new ArrayList<SlotDescriptor>());
         }
+
         // populate slotsBySize; also compute avgSerializedSize
         numNullableSlots = 0;
         for (SlotDescriptor d : slots) {

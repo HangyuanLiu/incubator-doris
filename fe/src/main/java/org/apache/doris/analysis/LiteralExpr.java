@@ -43,7 +43,6 @@ public abstract class LiteralExpr extends Expr {
     }
 
     public static LiteralExpr create(String value, Type type) throws AnalysisException {
-        System.out.println("LiteralExpr");
         Preconditions.checkArgument(type != Type.INVALID);
         LiteralExpr literalExpr = null;
         switch (type.getPrimitiveType()) {

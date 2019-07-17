@@ -883,10 +883,10 @@ public abstract class Type {
                 return DOUBLE;
             case DATE:
             case DATETIME:
+            case TIME:
             case CHAR:
             case VARCHAR:
             case HLL:
-            case TIME:
                 return VARCHAR;
             case DECIMAL:
                 return DECIMAL;

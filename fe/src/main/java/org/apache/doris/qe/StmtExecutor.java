@@ -289,7 +289,6 @@ public class StmtExecutor {
             throw e;
         } catch (AnalysisException e) {
             // analysis exception only print message, not print the stack
-            e.printStackTrace();
             LOG.warn("execute Exception. ", e);
             context.getState().setError(e.getMessage());
             context.getState().setErrType(QueryState.ErrType.ANALYSIS_ERR);
@@ -558,7 +557,6 @@ public class StmtExecutor {
             batch = coord.getNext();
             if (batch.getBatch() != null) {
                 for (ByteBuffer row : batch.getBatch().getRows()) {
-                    System.out.println(row.toString());
                     channel.sendOnePacket(row);
                 }            
                 context.updateReturnRows(batch.getBatch().getRows().size());    

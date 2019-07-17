@@ -69,7 +69,6 @@ public class TimeLiteral extends LiteralExpr {
         return time;
     }
 
-    // Date column and Datetime column's hash value is not same.
     @Override
     public ByteBuffer getHashValue(PrimitiveType type) {
         String value = "";
@@ -91,8 +90,11 @@ public class TimeLiteral extends LiteralExpr {
         if (expr == MaxLiteral.MAX_VALUE) {
             return -1;
         }
-        // date time will not overflow when doing addition and subtraction
-        return Long.signum(getLongValue() - expr.getLongValue());
+        if (time == expr.getLongValue()) {
+            return 0;
+        } else {
+            return time > expr.getLongValue() ? 1 : -1;
+        }
     }
 
     @Override
