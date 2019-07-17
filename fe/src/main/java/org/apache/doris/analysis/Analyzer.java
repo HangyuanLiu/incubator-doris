@@ -536,7 +536,6 @@ public class Analyzer {
      * @throws AnalysisException
      */
     public SlotDescriptor registerColumnRef(TableName tblName, String colName) throws AnalysisException {
-        System.out.println("registerColumnRed : xxx");
         TupleDescriptor d;
         TableName newTblName = tblName;
         if (newTblName == null) {

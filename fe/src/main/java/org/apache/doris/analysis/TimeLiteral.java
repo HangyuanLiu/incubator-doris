@@ -19,7 +19,6 @@ package org.apache.doris.analysis;
 
 import org.apache.doris.catalog.PrimitiveType;
 import org.apache.doris.catalog.Type;
-import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.util.TimeUtils;
 import org.apache.doris.thrift.TTimeLiteral;
 import org.apache.doris.thrift.TExprNode;
@@ -37,15 +36,14 @@ import java.nio.ByteBuffer;
 
 public class TimeLiteral extends LiteralExpr {
     private static final Logger LOG = LogManager.getLogger(TimeLiteral.class);
-    private long time;
+    private int time;
 
-    //fixme public -> private
-    public TimeLiteral() {
+    private TimeLiteral() {
         super();
         this.type = Type.TIME;
     }
 
-    public TimeLiteral(long time) {
+    public TimeLiteral(int time) {
         super();
         this.time = time;
         analysisDone();
@@ -63,16 +61,14 @@ public class TimeLiteral extends LiteralExpr {
 
     @Override
     public boolean isMinValue() {
-        return  false;
+        return this.time == TimeUtils.MIN_TIME;
     }
 
     @Override
     public Object getRealValue() {
-        System.out.println("getRealValue");
-        return null;
+        return time;
     }
 
-    // Date column and Datetime column's hash value is not same.
     @Override
     public ByteBuffer getHashValue(PrimitiveType type) {
         String value = "";
@@ -94,8 +90,11 @@ public class TimeLiteral extends LiteralExpr {
         if (expr == MaxLiteral.MAX_VALUE) {
             return -1;
         }
-        // date time will not overflow when doing addition and subtraction
-        return Long.signum(getLongValue() - expr.getLongValue());
+        if (time == expr.getLongValue()) {
+            return 0;
+        } else {
+            return time > expr.getLongValue() ? 1 : -1;
+        }
     }
 
     @Override
@@ -105,20 +104,17 @@ public class TimeLiteral extends LiteralExpr {
 
     @Override
     public String getStringValue() {
-        System.out.println("getStringValue");
-        //return new String("2019-08-02");
-        //return TimeUtils.format(date, type);
-        return "";
+        return String.valueOf(time);
     }
 
     @Override
     public long getLongValue() {
-        return 0;
+        return time;
     }
 
     @Override
     public double getDoubleValue() {
-        return 0;
+        return time;
     }
 
     @Override
@@ -128,10 +124,8 @@ public class TimeLiteral extends LiteralExpr {
     }
 
     @Override
-    protected Expr uncheckedCastTo(Type targetType) throws AnalysisException {
-        if (targetType.isDateType()) {
-            return this;
-        } else if (targetType.isStringType()) {
+    protected Expr uncheckedCastTo(Type targetType) {
+        if (targetType.isStringType()) {
             return new StringLiteral(getStringValue());
         }
         Preconditions.checkState(false);
@@ -141,18 +135,12 @@ public class TimeLiteral extends LiteralExpr {
     @Override
     public void write(DataOutput out) throws IOException {
         super.write(out);
-        out.writeLong(time);
+        out.writeInt(time);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
         super.readFields(in);
-        time = in.readLong();
-    }
-
-    public static TimeLiteral read(DataInput in) throws IOException {
-        TimeLiteral literal = new TimeLiteral();
-        literal.readFields(in);
-        return literal;
+        time = in.readInt();
     }
 }
