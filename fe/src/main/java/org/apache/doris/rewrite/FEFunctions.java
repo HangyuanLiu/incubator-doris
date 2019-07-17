@@ -25,7 +25,6 @@ import org.apache.doris.analysis.LargeIntLiteral;
 import org.apache.doris.analysis.LiteralExpr;
 import org.apache.doris.analysis.StringLiteral;
 import org.apache.doris.analysis.TimeLiteral;
-import org.apache.doris.analysis.TimestampArithmeticExpr;
 import org.apache.doris.catalog.Type;
 import org.apache.doris.common.AnalysisException;
 
