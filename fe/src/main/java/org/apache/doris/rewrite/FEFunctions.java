@@ -25,12 +25,14 @@ import org.apache.doris.analysis.LargeIntLiteral;
 import org.apache.doris.analysis.LiteralExpr;
 import org.apache.doris.analysis.StringLiteral;
 import org.apache.doris.analysis.TimeLiteral;
+import org.apache.doris.analysis.TimestampArithmeticExpr;
 import org.apache.doris.catalog.Type;
 import org.apache.doris.common.AnalysisException;
 
 import com.google.common.base.Preconditions;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
+import org.apache.doris.common.util.TimeUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joda.time.format.DateTimeFormatter;
@@ -56,7 +58,13 @@ public class FEFunctions {
      */
     @FEFunction(name = "timediff", argTypes = { "DATETIME", "DATETIME" }, returnType = "TIME")
     public static TimeLiteral timeDiff(LiteralExpr first, LiteralExpr second) throws AnalysisException {
-        return new TimeLiteral(getTime(first) - getTime(second));
+        long timediff = getTime(first) - getTime(second);
+        if(timediff < TimeUtils.MIN_TIME) {
+            timediff = TimeUtils.MIN_TIME;
+        } else if(timediff > TimeUtils.MAX_TIME) {
+            timediff = TimeUtils.MAX_TIME;
+        }
+        return new TimeLiteral((int) timediff);
     }
 
     @FEFunction(name = "datediff", argTypes = { "DATETIME", "DATETIME" }, returnType = "INT")
