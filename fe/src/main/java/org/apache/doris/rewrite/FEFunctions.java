@@ -56,9 +56,12 @@ public class FEFunctions {
      */
     @FEFunction(name = "timediff", argTypes = { "DATETIME", "DATETIME" }, returnType = "TIME")
     public static TimeLiteral timeDiff(LiteralExpr first, LiteralExpr second) throws AnalysisException {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         try {
             System.out.println("timediff");
-            return new TimeLiteral();
+            long diff = sdf.parse(first.getStringValue()).getTime() - sdf.parse(second.getStringValue()).getTime();
+
+            return new TimeLiteral(diff);
         } catch (Exception e) {
             System.out.println("timediff exception");
             e.printStackTrace();

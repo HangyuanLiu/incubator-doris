@@ -34,11 +34,10 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Date;
 
 public class TimeLiteral extends LiteralExpr {
     private static final Logger LOG = LogManager.getLogger(TimeLiteral.class);
-    private Date date;
+    private long time;
 
     //fixme public -> private
     public TimeLiteral() {
@@ -46,26 +45,15 @@ public class TimeLiteral extends LiteralExpr {
         this.type = Type.TIME;
     }
 
-    public TimeLiteral(Type type, boolean isMax) throws AnalysisException {
+    public TimeLiteral(long time) {
         super();
-        this.type = type;
-        if (type == Type.DATE) {
-            date = isMax ? TimeUtils.MAX_DATE : TimeUtils.MIN_DATE;
-        } else {
-            date = isMax ? TimeUtils.MAX_DATETIME : TimeUtils.MIN_DATETIME;
-        }
-        analysisDone();
-    }
-
-    public TimeLiteral(String s, Type type) throws AnalysisException {
-        super();
-        init(s, type);
+        this.time = time;
         analysisDone();
     }
 
     protected TimeLiteral(TimeLiteral other) {
         super(other);
-        date = other.date;
+        time = other.time;
     }
 
     @Override
@@ -73,59 +61,21 @@ public class TimeLiteral extends LiteralExpr {
         return new TimeLiteral(this);
     }
 
-    public static TimeLiteral createMinValue(Type type) {
-        System.out.println("createMinValue");
-        TimeLiteral dateLiteral = new TimeLiteral();
-        dateLiteral.type = type;
-        if (type == Type.DATE) {
-            dateLiteral.date = TimeUtils.MIN_DATE;
-        } else {
-            dateLiteral.date = TimeUtils.MIN_DATETIME;
-        }
-
-        return dateLiteral;
-    }
-
-    private void init(String s, Type type) throws AnalysisException {
-        System.out.println("init");
-        Preconditions.checkArgument(type.isDateType());
-        date = TimeUtils.parseDate(s, type);
-        if (type.isScalarType(PrimitiveType.DATE)) {
-            if (date.compareTo(TimeUtils.MAX_DATE) > 0 || date.compareTo(TimeUtils.MIN_DATE) < 0) {
-                throw new AnalysisException("Date type column should range from [" + TimeUtils.MIN_DATE + "] to ["
-                        + TimeUtils.MAX_DATE + "]");
-            }
-        } else {
-            if (date.compareTo(TimeUtils.MAX_DATETIME) > 0 || date.compareTo(TimeUtils.MIN_DATETIME) < 0) {
-                throw new AnalysisException("Datetime type column should range from [" + TimeUtils.MIN_DATETIME
-                        + "] to [" + TimeUtils.MAX_DATETIME + "]");
-            }
-        }
-        this.type = type;
-    }
-
     @Override
     public boolean isMinValue() {
-        switch (type.getPrimitiveType()) {
-            case DATE:
-                return this.date.compareTo(TimeUtils.MIN_DATE) == 0;
-            case DATETIME:
-                return this.date.compareTo(TimeUtils.MIN_DATETIME) == 0;
-            default:
-                return false;
-        }
+        return  false;
     }
 
     @Override
     public Object getRealValue() {
         System.out.println("getRealValue");
-        return TimeUtils.dateTransform(date.getTime(), type);
+        return null;
     }
 
     // Date column and Datetime column's hash value is not same.
     @Override
     public ByteBuffer getHashValue(PrimitiveType type) {
-        String value = TimeUtils.format(date, type);
+        String value = "";
         ByteBuffer buffer;
         try {
             buffer = ByteBuffer.wrap(value.getBytes("UTF-8"));
@@ -156,29 +106,25 @@ public class TimeLiteral extends LiteralExpr {
     @Override
     public String getStringValue() {
         System.out.println("getStringValue");
-        return new String("2019-08-02");
+        //return new String("2019-08-02");
         //return TimeUtils.format(date, type);
+        return "";
     }
 
     @Override
     public long getLongValue() {
-        return date.getTime();
+        return 0;
     }
 
     @Override
     public double getDoubleValue() {
-        return date.getTime();
+        return 0;
     }
 
     @Override
     protected void toThrift(TExprNode msg) {
         msg.node_type = TExprNodeType.TIME_LITERAL;
-        msg.time_literal = new TTimeLiteral(10);
-    }
-
-    public Date getValue() {
-        System.out.println("getValue");
-        return date;
+        msg.time_literal = new TTimeLiteral(time);
     }
 
     @Override
@@ -195,13 +141,13 @@ public class TimeLiteral extends LiteralExpr {
     @Override
     public void write(DataOutput out) throws IOException {
         super.write(out);
-        out.writeLong(date.getTime());
+        out.writeLong(time);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
         super.readFields(in);
-        date = new Date(in.readLong());
+        time = in.readLong();
     }
 
     public static TimeLiteral read(DataInput in) throws IOException {
