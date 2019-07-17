@@ -557,6 +557,14 @@ struct DoubleVal : public AnyVal {
 struct TimeVal : public AnyVal {
     int64_t time;
 
+    TimeVal() : time(0) { }
+    TimeVal(int time) : time(time) { }
+
+    static TimeVal null() {
+        TimeVal result;
+        result.is_null = true;
+        return result;
+    }
 };
 
 // This object has a compatible storage format with boost::ptime.

@@ -374,7 +374,14 @@ void* ExprContext::get_value(Expr* e, TupleRow* row) {
             return NULL;
         }
         std::cout << "time val" << v.time <<std::endl;
-        _result.datetime_val.from_time_int64(10);
+
+        int second = v.time % 60;
+        int minute = v.time / 60 % 60;
+        int hour = v.time / 60 / 60;
+
+        std::cout << "from time int64 " << hour * 10000 + minute * 100 + second <<std::endl;
+
+        _result.datetime_val.from_time_int64(hour * 10000 + minute * 100 + second);
         //_result.datetime_val.cast_to_time();
         _result.datetime_val.debug_string();
         return &_result.datetime_val;
