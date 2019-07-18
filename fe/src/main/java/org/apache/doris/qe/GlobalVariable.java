@@ -19,7 +19,7 @@ package org.apache.doris.qe;
 
 import org.apache.doris.common.Version;
 
-import java.util.Calendar;
+import java.time.ZoneId;
 
 // You can place your global variable in this class with public and VariableMgr.VarAttr annotation.
 // You can get this variable from MySQL client with statement `SELECT @@variable_name`,
@@ -50,7 +50,7 @@ public final class GlobalVariable {
 
     // A string to be executed by the server for each client that connects
     @VariableMgr.VarAttr(name = "system_time_zone", flag = VariableMgr.READ_ONLY)
-    private static String systemTimeZone = Calendar.getInstance().getTimeZone().getDisplayName();
+    private static String systemTimeZone = ZoneId.systemDefault().toString();
 
     // The amount of memory allocated for caching query results
     @VariableMgr.VarAttr(name = "query_cache_size")
