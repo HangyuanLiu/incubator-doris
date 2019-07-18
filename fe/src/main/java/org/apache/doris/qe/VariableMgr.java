@@ -212,7 +212,7 @@ public class VariableMgr {
             try {
                 ZoneId.of(value);
             } catch (DateTimeException ex) {
-                ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getVariable());
+                ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue());
             }
         }
     }
