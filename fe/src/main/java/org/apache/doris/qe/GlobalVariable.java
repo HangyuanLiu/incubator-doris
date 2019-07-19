@@ -50,7 +50,7 @@ public final class GlobalVariable {
 
     // A string to be executed by the server for each client that connects
     @VariableMgr.VarAttr(name = "system_time_zone", flag = VariableMgr.READ_ONLY)
-    private static String systemTimeZone = ZoneId.systemDefault().toString();
+    private static String systemTimeZone = ZoneId.systemDefault().normalized().toString();
 
     // The amount of memory allocated for caching query results
     @VariableMgr.VarAttr(name = "query_cache_size")
