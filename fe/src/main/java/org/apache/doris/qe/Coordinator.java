@@ -191,7 +191,7 @@ public class Coordinator {
         this.descTable = analyzer.getDescTbl().toThrift();
         this.returnedAllResults = false;
         this.queryOptions = context.getSessionVariable().toThrift();
-        this.queryGlobals.setNow_string(ZonedDateTime.now(ZoneId.of(context.getSessionVariable().getTimeZone())).format(DATE_FORMAT));
+        this.queryGlobals.setNow_string(ZonedDateTime.now(ZoneId.of("UTC")).format(DATE_FORMAT));
         this.queryGlobals.setTime_zone(ZonedDateTime.now(ZoneId.of(context.getSessionVariable().getTimeZone())).getOffset().toString());
         this.tResourceInfo = new TResourceInfo(context.getQualifiedUser(),
                 context.getSessionVariable().getResourceGroup());
@@ -212,7 +212,7 @@ public class Coordinator {
         this.fragments = fragments;
         this.scanNodes = scanNodes;
         this.queryOptions = new TQueryOptions();
-        this.queryGlobals.setNow_string(ZonedDateTime.now(ZoneId.of(VariableMgr.newSessionVariable().getTimeZone())).format(DATE_FORMAT));
+        this.queryGlobals.setNow_string(ZonedDateTime.now(ZoneId.of("UTC")).format(DATE_FORMAT));
         this.tResourceInfo = new TResourceInfo("", "");
         this.needReport = true;
         this.clusterName = cluster;
