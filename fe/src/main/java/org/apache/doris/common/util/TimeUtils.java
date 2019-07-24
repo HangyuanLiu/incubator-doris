@@ -110,7 +110,7 @@ public class TimeUtils {
 
     public static synchronized String longToTimeString(long timeStamp) {
         String timeZone = ConnectContext.get().getSessionVariable().getTimeZone();
-        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone(ZoneId.of(timeZone)));
+        DATETIME_FORMAT.setTimeZone(TimeZone.getTimeZone(ZoneId.of(timeZone)));
         return longToTimeString(timeStamp, DATETIME_FORMAT);
     }
     
