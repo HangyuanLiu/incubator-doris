@@ -44,6 +44,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.time.DateTimeException;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -203,6 +205,18 @@ public class VariableMgr {
         }
     }
 
+    // Check if the time zone_value is valid
+    private static void checkTimeZoneValid(SetVar setVar) throws DdlException{
+        if (setVar.getValue() != null) {
+            String value = setVar.getValue().getStringValue();
+            try {
+                ZoneId.of(value);
+            } catch (DateTimeException ex) {
+                ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
+            }
+        }
+    }
+
     // Get from show name to field
     public static void setVar(SessionVariable sessionVariable, SetVar setVar) throws DdlException {
         VarContext ctx = ctxByVarName.get(setVar.getVariable());
@@ -211,6 +225,10 @@ public class VariableMgr {
         }
         // Check variable attribute and setVar
         checkUpdate(setVar, ctx.getFlag());
+        // Check variable time_zone value is valid
+        if (setVar.getVariable().toLowerCase().equals("time_zone")) {
+            checkTimeZoneValid(setVar);
+        }
 
         // To modify to default value.
         VarAttr attr = ctx.getField().getAnnotation(VarAttr.class);
