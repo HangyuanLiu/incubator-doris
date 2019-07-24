@@ -157,7 +157,7 @@ public class SessionVariable implements Serializable, Writable {
 
     // The current time zone
     @VariableMgr.VarAttr(name = TIME_ZONE)
-    private String timeZone = ZoneId.systemDefault().toString();
+    private String timeZone = ZoneId.systemDefault().normalized().toString();
 
     // The current time zone
     @VariableMgr.VarAttr(name = SQL_SAFE_UPDATES)
