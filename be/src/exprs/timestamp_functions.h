@@ -172,6 +172,8 @@ public:
     // Issue a warning for a bad format string.
     static void report_bad_format(const StringVal* format);
 
+    static void convert_tz();
+
 };
 
 // Functions to load and access the timestamp database.

@@ -244,6 +244,7 @@ DateTimeVal TimestampFunctions::curtime(FunctionContext* context) {
 }
 
 DateTimeVal TimestampFunctions::utc_timestamp(FunctionContext* context) {
+    /*
     TimeInterval interval;
     // TODO(liuhy): we only support Beijing Timezone, so minus 28800
     interval.second = -28800;
@@ -253,6 +254,10 @@ DateTimeVal TimestampFunctions::utc_timestamp(FunctionContext* context) {
     DateTimeVal return_val;
     dtv.to_datetime_val(&return_val);
     return return_val;
+     */
+    DateTimeValue dtv = *(context->impl()->state()->now());
+    DateTimeVal return_val;
+    dtv.to_datetime_val(&return_val);
 }
 
 DateTimeVal TimestampFunctions::to_date(
@@ -508,7 +513,7 @@ void* TimestampFunctions::from_utc(Expr* e, TupleRow* row) {
     //     return NULL;
     // }
 
-    // boost::local_time::time_zone_ptr timezone = TimezoneDatabase::find_timezone(tz->debug_string());
+     boost::local_time::time_zone_ptr timezone = TimezoneDatabase::find_timezone(tz->debug_string());
 
     // This should raise some sort of error or at least null. Hive just ignores it.
     // if (timezone == NULL) {
@@ -553,6 +558,20 @@ void* TimestampFunctions::to_utc(Expr* e, TupleRow* row) {
     //                    timezone, boost::local_time::local_date_time::NOT_DATE_TIME_ON_ERROR);
     // e->_result.timestamp_val = DateTimeValue(lt.utc_time());
     // return &e->_result.timestamp_val;
+}
+
+void TimestampFunctions::convert_tz(){
+    boost::local_time::time_zone_ptr timezone = TimezoneDatabase::find_timezone("Asia/Shanghai");
+    if (timezone == NULL) {
+        LOG(ERROR) << "Unknown timezone '" << timezone << "'" << std::endl;
+    }
+
+    std::string ts("2002-01-20 23:59:59.000");
+    boost::local_time::local_date_time lt(boost::posix_time::time_from_string(ts), timezone);
+    boost::posix_time::ptime t2(lt.utc_time());
+
+    std::cout << t2.date() << std::endl;
+    std::cout << t2.time_of_day() << std::endl;
 }
 
 TimezoneDatabase::TimezoneDatabase() {
