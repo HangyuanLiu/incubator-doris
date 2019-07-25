@@ -103,6 +103,45 @@ IntVal TimestampFunctions::to_unix(
     return IntVal(tv.unix_timestamp());
 }
 
+
+DateTimeVal TimestampFunctions::convert_tz(FunctionContext* ctx, const DateTimeVal& ts_val,
+        const StringVal& from_tz, const StringVal& to_tz) {
+
+    boost::local_time::time_zone_ptr from_time_zone =
+            TimezoneDatabase::find_timezone(std::string((char*)from_tz.ptr, from_tz.len));
+    if (from_time_zone == NULL) {
+        LOG(ERROR) << "Unknown timezone '" << std::string((char*)from_tz.ptr, from_tz.len) << "'" << std::endl;
+    }
+    const DateTimeValue& ts_value = DateTimeValue::from_datetime_val(ts_val);
+    char buf[64];
+    char* to = ts_value.to_string(buf);
+    boost::local_time::local_date_time lt(boost::posix_time::time_from_string(std::string(buf, to - buf)), from_time_zone);
+
+
+    boost::local_time::time_zone_ptr to_time_zone =
+            TimezoneDatabase::find_timezone(std::string((char*)to_tz.ptr, to_tz.len));
+    if (to_time_zone == NULL) {
+        LOG(ERROR) << "Unknown timezone '" << std::string((char*)to_tz.ptr, to_tz.len) << "'" << std::endl;
+    }
+    boost::local_time::local_date_time lt2(boost::posix_time::ptime(lt.utc_time()), to_time_zone);
+
+    boost::posix_time::ptime ret_ptime = lt2.local_time();
+
+    DateTimeValue dtv;
+    dtv.from_olap_datetime(
+            ret_ptime.date().year() * 10000000000 +
+            ret_ptime.date().month() * 100000000 +
+            ret_ptime.date().day() * 1000000 +
+            ret_ptime.time_of_day().hours() * 10000 +
+            ret_ptime.time_of_day().minutes() * 100 +
+            ret_ptime.time_of_day().seconds()
+            );
+    DateTimeVal return_val;
+    dtv.to_datetime_val(&return_val);
+    return return_val;
+}
+
+
 // TODO: accept Java data/time format strings:
 // http://docs.oracle.com/javase/1.4.2/docs/api/java/text/SimpleDateFormat.html
 // Convert them to boost format strings.
@@ -560,19 +599,7 @@ void* TimestampFunctions::to_utc(Expr* e, TupleRow* row) {
     // return &e->_result.timestamp_val;
 }
 
-void TimestampFunctions::convert_tz(){
-    boost::local_time::time_zone_ptr timezone = TimezoneDatabase::find_timezone("Asia/Shanghai");
-    if (timezone == NULL) {
-        LOG(ERROR) << "Unknown timezone '" << timezone << "'" << std::endl;
-    }
 
-    std::string ts("2002-01-20 23:59:59.000");
-    boost::local_time::local_date_time lt(boost::posix_time::time_from_string(ts), timezone);
-    boost::posix_time::ptime t2(lt.utc_time());
-
-    std::cout << t2.date() << std::endl;
-    std::cout << t2.time_of_day() << std::endl;
-}
 
 TimezoneDatabase::TimezoneDatabase() {
     // Create a temporary file and write the timezone information.  The boost

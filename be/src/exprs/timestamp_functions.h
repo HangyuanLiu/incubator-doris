@@ -172,8 +172,10 @@ public:
     // Issue a warning for a bad format string.
     static void report_bad_format(const StringVal* format);
 
-    static void convert_tz();
-
+    static doris_udf::DateTimeVal TimestampFunctions::convert_tz(
+            doris_udf::FunctionContext* ctx,
+            const doris_udf::DateTimeVal& ts_val,
+            const doris_udf::StringVal& from_tz, const doris_udf::StringVal& to_tz);
 };
 
 // Functions to load and access the timestamp database.
@@ -181,6 +183,10 @@ class TimezoneDatabase {
 public:
     TimezoneDatabase();
     ~TimezoneDatabase();
+
+    static void init() {
+        TimezoneDatabase();
+    }
 
     static boost::local_time::time_zone_ptr find_timezone(const std::string& tz);
 
