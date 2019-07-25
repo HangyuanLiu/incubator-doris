@@ -46,10 +46,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.DateTimeException;
 import java.time.ZoneId;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -70,6 +67,8 @@ public class VariableMgr {
     // Variables with this flag can not be seen with `SHOW VARIABLES` statement.
     public static final int INVISIBLE = 16;
 
+    public static final Map<String, String> timeZoneAliasMap = new HashMap<>(ZoneId.SHORT_IDS);
+
     // Map variable name to variable context which have enough information to change variable value.
     private static ImmutableMap<String, VarContext> ctxByVarName;
 
@@ -85,6 +84,8 @@ public class VariableMgr {
     static {
         // Session value
         globalSessionVariable = new SessionVariable();
+        // set CST to +08:00 instead of America/Chicago
+        timeZoneAliasMap.put("CST", "+08:00");
         ImmutableSortedMap.Builder<String, VarContext> builder =
                 ImmutableSortedMap.orderedBy(String.CASE_INSENSITIVE_ORDER);
         for (Field field : SessionVariable.class.getDeclaredFields()) {
@@ -210,7 +211,7 @@ public class VariableMgr {
         if (setVar.getValue() != null) {
             String value = setVar.getValue().getStringValue();
             try {
-                ZoneId.of(value);
+                ZoneId.of(value, timeZoneAliasMap);
             } catch (DateTimeException ex) {
                 ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
             }
