@@ -83,10 +83,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TException;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -191,8 +190,8 @@ public class Coordinator {
         this.descTable = analyzer.getDescTbl().toThrift();
         this.returnedAllResults = false;
         this.queryOptions = context.getSessionVariable().toThrift();
-        this.queryGlobals.setNow_string(ZonedDateTime.now(ZoneId.of(context.getSessionVariable().getTimeZone())).format(DATE_FORMAT));
-        this.queryGlobals.setTime_zone(ZonedDateTime.now(ZoneId.of(context.getSessionVariable().getTimeZone())).getOffset().toString());
+        this.queryGlobals.setNow_string(String.valueOf(new Date().getTime()));
+        this.queryGlobals.setTime_zone(context.getSessionVariable().getTimeZone());
         this.tResourceInfo = new TResourceInfo(context.getQualifiedUser(),
                 context.getSessionVariable().getResourceGroup());
         this.needReport = context.getSessionVariable().isReportSucc();
@@ -212,7 +211,7 @@ public class Coordinator {
         this.fragments = fragments;
         this.scanNodes = scanNodes;
         this.queryOptions = new TQueryOptions();
-        this.queryGlobals.setNow_string(ZonedDateTime.now(ZoneId.of(VariableMgr.newSessionVariable().getTimeZone())).format(DATE_FORMAT));
+        this.queryGlobals.setNow_string(String.valueOf(new Date().getTime()));
         this.tResourceInfo = new TResourceInfo("", "");
         this.needReport = true;
         this.clusterName = cluster;
