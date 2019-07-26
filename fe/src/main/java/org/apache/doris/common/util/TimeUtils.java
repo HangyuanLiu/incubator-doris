@@ -24,6 +24,7 @@ import org.apache.doris.common.AnalysisException;
 import com.google.common.base.Preconditions;
 
 import org.apache.doris.qe.ConnectContext;
+import org.apache.doris.qe.VariableMgr;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -110,7 +111,7 @@ public class TimeUtils {
 
     public static synchronized String longToTimeString(long timeStamp) {
         String timeZone = ConnectContext.get().getSessionVariable().getTimeZone();
-        DATETIME_FORMAT.setTimeZone(TimeZone.getTimeZone(ZoneId.of(timeZone)));
+        DATETIME_FORMAT.setTimeZone(TimeZone.getTimeZone(ZoneId.of(timeZone, VariableMgr.timeZoneAliasMap)));
         return longToTimeString(timeStamp, DATETIME_FORMAT);
     }
     
