@@ -41,20 +41,73 @@ std::vector<std::string> TimezoneDatabase::_s_tz_region_list;
 void TimestampFunctions::init() {
 }
 
+class TimestampValue {
+public:
+    time_t val;
+
+    TimestampValue(time_t timestamp) {
+        val = timestamp;
+    }
+    TimestampValue(DateTimeValue tv, std::string timezone) {
+        boost::local_time::time_zone_ptr local_time_zone =
+                TimezoneDatabase::find_timezone(timezone);
+        std::stringstream ss;
+        ss << tv;
+        boost::posix_time::ptime pt = boost::posix_time::time_from_string(ss.str());
+        boost::local_time::local_date_time lt(pt.date(), pt.time_of_day(), local_time_zone, boost::local_time::local_date_time::NOT_DATE_TIME_ON_ERROR);
+        boost::posix_time::ptime ret_ptime = lt.utc_time();
+
+        boost::posix_time::ptime t(boost::gregorian::date(1970, 1, 1));
+        boost::posix_time::time_duration dur = ret_ptime - t;
+
+        val = dur.total_seconds();
+    }
+    DateTimeValue local_time(std::string timezone) {
+        boost::local_time::time_zone_ptr local_time_zone =
+                TimezoneDatabase::find_timezone(timezone);
+        boost::posix_time::ptime p = boost::posix_time::from_time_t(val);
+        boost::local_time::local_date_time lt(p, local_time_zone);
+        boost::posix_time::ptime ret_ptime = lt.local_time();
+
+        DateTimeValue t;
+        t.set_type(TIME_DATETIME);
+        t.from_olap_datetime(
+                ret_ptime.date().year() * 10000000000 +
+                ret_ptime.date().month() * 100000000 +
+                ret_ptime.date().day() * 1000000 +
+                ret_ptime.time_of_day().hours() * 10000 +
+                ret_ptime.time_of_day().minutes() * 100 +
+                ret_ptime.time_of_day().seconds()
+        );
+        return t;
+    }
+
+    std::string local_time_string(std::string timezone) {
+        boost::local_time::time_zone_ptr local_time_zone =
+                TimezoneDatabase::find_timezone(timezone);
+        boost::posix_time::ptime p = boost::posix_time::from_time_t(val);
+        boost::local_time::local_date_time lt(p, local_time_zone);
+        boost::posix_time::ptime ret_ptime = lt.local_time();
+
+        std::stringstream ss;
+        ss <<  ret_ptime.date().year() << "-" <<
+               ret_ptime.date().month() << "-" <<
+               ret_ptime.date().day() << " " <<
+               ret_ptime.time_of_day().hours() << ":" <<
+               ret_ptime.time_of_day().minutes() << ":" <<
+               ret_ptime.time_of_day().seconds();
+        return ss.str();
+    }
+};
+
 StringVal TimestampFunctions::from_unix(
         FunctionContext* context, const IntVal& unix_time) {
     if (unix_time.is_null) {
         return StringVal::null();
     }
-    DateTimeValue t;
-    if (!t.from_unixtime(unix_time.val)) {
-        return StringVal::null();
-    }
-    // default fmt means return DATE_TIME
-    t.set_type(TIME_DATETIME);
-    char buf[64];
-    t.to_string(buf);
-    return AnyValUtil::from_string_temp(context, buf);
+    TimestampValue timestamp(unix_time.val);
+    return AnyValUtil::from_string_temp(context,
+            timestamp.local_time_string(context->impl()->state()->timezone()));
 }
 
 StringVal TimestampFunctions::from_unix(
@@ -62,11 +115,9 @@ StringVal TimestampFunctions::from_unix(
     if (unix_time.is_null || fmt.is_null) {
         return StringVal::null();
     }
-    DateTimeValue t;
-    if (!t.from_unixtime(unix_time.val)) {
-        return StringVal::null();
-    }
 
+    TimestampValue timestamp(unix_time.val);
+    DateTimeValue t = timestamp.local_time(context->impl()->state()->timezone());
     if (!check_format(fmt, t)) {
         return StringVal::null();
     }
@@ -77,8 +128,7 @@ StringVal TimestampFunctions::from_unix(
 }
 
 IntVal TimestampFunctions::to_unix(FunctionContext* context) {
-    //return IntVal(context->impl()->state()->now()->unix_timestamp());
-    return IntVal(context->impt()->state()->now());
+    return IntVal(context->impl()->state()->now()->unix_timestamp());
 }
 
 IntVal TimestampFunctions::to_unix(
@@ -86,13 +136,14 @@ IntVal TimestampFunctions::to_unix(
     if (string_val.is_null || fmt.is_null) {
         return IntVal::null();
     }
-    // const DateTimeVal& tv_val = ToTimestamp(context, string_val, fmt);
-    DateTimeValue tv_val;
-    if (!tv_val.from_date_format_str(
+    DateTimeValue tv;
+    if (!tv.from_date_format_str(
             (const char*)fmt.ptr, fmt.len, (const char*)string_val.ptr, string_val.len)) {
         return IntVal::null();
     }
-    return IntVal(tv_val.unix_timestamp());
+
+    TimestampValue timestamp(tv, context->impl()->state()->timezone());
+    return timestamp.val;
 }
 
 IntVal TimestampFunctions::to_unix(
@@ -101,7 +152,9 @@ IntVal TimestampFunctions::to_unix(
         return IntVal::null();
     }
     const DateTimeValue& tv = DateTimeValue::from_datetime_val(ts_val);
-    return IntVal(tv.unix_timestamp());
+
+    TimestampValue timestamp(tv, context->impl()->state()->timezone());
+    return timestamp.val;
 }
 
 

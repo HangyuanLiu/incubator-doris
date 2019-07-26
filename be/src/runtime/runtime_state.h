@@ -139,6 +139,9 @@ public:
     const DateTimeValue* now() const {
         return _now.get();
     }
+    const std::string timezone() const {
+        return "Asia/Shanghai";
+    }
     const std::string& user() const {
         return _user;
     }
