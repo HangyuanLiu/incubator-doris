@@ -98,6 +98,53 @@ public:
                ret_ptime.time_of_day().seconds();
         return ss.str();
     }
+
+
+
+    void to_datetime_val(doris_udf::DateTimeVal* tv) const {
+
+        boost::posix_time::ptime p = boost::posix_time::from_time_t(val);
+        int _year = p.date().year();
+        int _month = p.date().month();
+        int _day = p.date().day();
+
+        int _hour =  p.time_of_day().hours();
+        int _minute = p.time_of_day().minutes();
+        int _second = p.time_of_day().seconds();
+        int _microsecond = p.time_of_day().total_microseconds();
+
+        int64_t ymd = ((_year * 13 + _month) << 5) | _day;
+        int64_t hms = (_hour << 12) | (_minute << 6) | _second;
+        tv->packed_time = (((ymd << 17) | hms) << 24) + _microsecond;
+
+        tv->type = TIME_DATETIME;
+    }
+
+    void to_datetime_val(doris_udf::DateTimeVal* tv, std::string timezone) const {
+        boost::local_time::time_zone_ptr local_time_zone =
+                TimezoneDatabase::find_timezone(timezone);
+        boost::posix_time::ptime pt = boost::posix_time::from_time_t(val);
+        boost::local_time::local_date_time lt(pt, local_time_zone);
+        boost::posix_time::ptime p = lt.local_time();
+
+
+        int _year = p.date().year();
+        int _month = p.date().month();
+        int _day = p.date().day();
+
+        int _hour =  p.time_of_day().hours();
+        int _minute = p.time_of_day().minutes();
+        int _second = p.time_of_day().seconds();
+        int _microsecond = p.time_of_day().total_microseconds();
+
+        int64_t ymd = ((_year * 13 + _month) << 5) | _day;
+        int64_t hms = (_hour << 12) | (_minute << 6) | _second;
+        tv->packed_time = (((ymd << 17) | hms) << 24) + _microsecond;
+
+        tv->type = TIME_DATETIME;
+    }
+
+
 };
 
 StringVal TimestampFunctions::from_unix(
@@ -157,6 +204,38 @@ IntVal TimestampFunctions::to_unix(
     return timestamp.val;
 }
 
+DateTimeVal TimestampFunctions::utc_timestamp(FunctionContext* context) {
+    /*
+    TimeInterval interval;
+    // TODO(liuhy): we only support Beijing Timezone, so minus 28800
+    interval.second = -28800;
+    DateTimeValue dtv = *(context->impl()->state()->now());
+    dtv.date_add_interval(interval, SECOND);
+
+    DateTimeVal return_val;
+    dtv.to_datetime_val(&return_val);
+    return return_val;
+     */
+
+    DateTimeVal return_val;
+    TimestampValue t(context->impl()->state()->timestamp());
+    t.to_datetime_val(&return_val);
+}
+
+DateTimeVal TimestampFunctions::now(FunctionContext* context) {
+    TimestampValue t(context->impl()->state()->timestamp());
+    DateTimeVal return_val;
+    t.to_datetime_val(&return_val, context->impl()->state()->timezone());
+    return return_val;
+}
+
+DateTimeVal TimestampFunctions::curtime(FunctionContext* context) {
+    DateTimeValue now = *context->impl()->state()->now();
+    now.cast_to_time();
+    DateTimeVal return_val;
+    now.to_datetime_val(&return_val);
+    return return_val;
+}
 
 DateTimeVal TimestampFunctions::convert_tz(FunctionContext* ctx, const DateTimeVal& ts_val,
         const StringVal& from_tz, const StringVal& to_tz) {
@@ -198,6 +277,8 @@ DateTimeVal TimestampFunctions::convert_tz(FunctionContext* ctx, const DateTimeV
     dtv.to_datetime_val(&return_val);
     return return_val;
 }
+
+
 
 
 // TODO: accept Java data/time format strings:
@@ -325,37 +406,9 @@ IntVal TimestampFunctions::second(
     return IntVal(ts_value.second());
 }
 
-DateTimeVal TimestampFunctions::now(FunctionContext* context) {
-    const DateTimeValue* now = context->impl()->state()->now();
-    DateTimeVal return_val;
-    now->to_datetime_val(&return_val);
-    return return_val;
-}
 
-DateTimeVal TimestampFunctions::curtime(FunctionContext* context) {
-    DateTimeValue now = *context->impl()->state()->now();
-    now.cast_to_time();
-    DateTimeVal return_val;
-    now.to_datetime_val(&return_val);
-    return return_val;
-}
 
-DateTimeVal TimestampFunctions::utc_timestamp(FunctionContext* context) {
-    /*
-    TimeInterval interval;
-    // TODO(liuhy): we only support Beijing Timezone, so minus 28800
-    interval.second = -28800;
-    DateTimeValue dtv = *(context->impl()->state()->now());
-    dtv.date_add_interval(interval, SECOND);
-    
-    DateTimeVal return_val;
-    dtv.to_datetime_val(&return_val);
-    return return_val;
-     */
-    DateTimeValue dtv = *(context->impl()->state()->now());
-    DateTimeVal return_val;
-    dtv.to_datetime_val(&return_val);
-}
+
 
 DateTimeVal TimestampFunctions::to_date(
         FunctionContext* ctx, const DateTimeVal& ts_val) {
