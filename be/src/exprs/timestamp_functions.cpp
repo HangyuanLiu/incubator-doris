@@ -77,7 +77,8 @@ StringVal TimestampFunctions::from_unix(
 }
 
 IntVal TimestampFunctions::to_unix(FunctionContext* context) {
-    return IntVal(context->impl()->state()->now()->unix_timestamp());
+    //return IntVal(context->impl()->state()->now()->unix_timestamp());
+    return IntVal(context->impt()->state()->now());
 }
 
 IntVal TimestampFunctions::to_unix(
@@ -115,8 +116,12 @@ DateTimeVal TimestampFunctions::convert_tz(FunctionContext* ctx, const DateTimeV
     const DateTimeValue& ts_value = DateTimeValue::from_datetime_val(ts_val);
     char buf[64];
     char* to = ts_value.to_string(buf);
-    boost::local_time::local_date_time lt(boost::posix_time::time_from_string(std::string(buf, to - buf)), from_time_zone);
-
+    std::cout << std::string(buf, to - buf -1) << std::endl;
+    
+    boost::posix_time::ptime p = boost::posix_time::time_from_string(std::string(buf, to - buf -1));
+    boost::local_time::local_date_time lt(p.date(), p.time_of_day(),
+                                            from_time_zone, boost::local_time::local_date_time::NOT_DATE_TIME_ON_ERROR);
+    //boost::local_time::local_date_time lt(boost::posix_time::time_from_string(std::string(buf, to - buf -1)), from_time_zone);
 
     boost::local_time::time_zone_ptr to_time_zone =
             TimezoneDatabase::find_timezone(std::string((char*)to_tz.ptr, to_tz.len));
@@ -552,7 +557,7 @@ void* TimestampFunctions::from_utc(Expr* e, TupleRow* row) {
     //     return NULL;
     // }
 
-     boost::local_time::time_zone_ptr timezone = TimezoneDatabase::find_timezone(tz->debug_string());
+     //boost::local_time::time_zone_ptr timezone = TimezoneDatabase::find_timezone(tz->debug_string());
 
     // This should raise some sort of error or at least null. Hive just ignores it.
     // if (timezone == NULL) {

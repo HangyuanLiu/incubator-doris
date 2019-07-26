@@ -172,8 +172,7 @@ public:
     // Issue a warning for a bad format string.
     static void report_bad_format(const StringVal* format);
 
-    static doris_udf::DateTimeVal TimestampFunctions::convert_tz(
-            doris_udf::FunctionContext* ctx,
+    static doris_udf::DateTimeVal convert_tz(doris_udf::FunctionContext* ctx,
             const doris_udf::DateTimeVal& ts_val,
             const doris_udf::StringVal& from_tz, const doris_udf::StringVal& to_tz);
 };
