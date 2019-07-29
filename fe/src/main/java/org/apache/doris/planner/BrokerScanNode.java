@@ -106,6 +106,8 @@ public class BrokerScanNode extends ScanNode {
     private long bytesPerInstance;
 
     // Parameters need to process
+    private long loadJobId = -1; // -1 means this scan node is not for a load job
+    private long txnId = -1;
     private Table targetTable;
     private BrokerDesc brokerDesc;
     private List<BrokerFileGroup> fileGroups;
@@ -187,10 +189,14 @@ public class BrokerScanNode extends ScanNode {
         this.fileGroups = fileGroups;
     }
 
-    public void setLoadInfo(Table targetTable,
+    public void setLoadInfo(long loadJobId,
+                            long txnId,
+                            Table targetTable,
                             BrokerDesc brokerDesc,
                             List<BrokerFileGroup> fileGroups,
                             boolean strictMode) {
+        this.loadJobId = loadJobId;
+        this.txnId = txnId;
         this.targetTable = targetTable;
         this.brokerDesc = brokerDesc;
         this.fileGroups = fileGroups;
@@ -466,7 +472,6 @@ public class BrokerScanNode extends ScanNode {
         // Generate on broker scan range
         TBrokerScanRange brokerScanRange = new TBrokerScanRange();
         brokerScanRange.setParams(params);
-        // TODO(zc):
         int numBroker = Math.min(3, numBe);
         for (int i = 0; i < numBroker; ++i) {
             FsBroker broker = null;
@@ -564,8 +569,11 @@ public class BrokerScanNode extends ScanNode {
         if (fileFormat != null && fileFormat.toLowerCase().equals("parquet")) {
             return TFileFormatType.FORMAT_PARQUET;
         }
+
         String lowerCasePath = path.toLowerCase();
-        if (lowerCasePath.endsWith(".gz")) {
+        if (lowerCasePath.endsWith(".parquet") || lowerCasePath.endsWith(".parq")) {
+            return TFileFormatType.FORMAT_PARQUET;
+        } else if (lowerCasePath.endsWith(".gz")) {
             return TFileFormatType.FORMAT_CSV_GZ;
         } else if (lowerCasePath.endsWith(".bz2")) {
             return TFileFormatType.FORMAT_CSV_BZ2;
@@ -674,6 +682,12 @@ public class BrokerScanNode extends ScanNode {
                 LOG.debug("Scan range is {}", locations);
             }
         }
+
+        if (loadJobId != -1) {
+            LOG.info("broker load job {} with txn {} has {} scan range: {}",
+                    loadJobId, txnId, locationsList.size(),
+                    locationsList.stream().map(loc -> loc.locations.get(0).backend_id).toArray());
+        }
     }
 
     @Override
@@ -711,4 +725,5 @@ public class BrokerScanNode extends ScanNode {
         }
         return output.toString();
     }
+
 }

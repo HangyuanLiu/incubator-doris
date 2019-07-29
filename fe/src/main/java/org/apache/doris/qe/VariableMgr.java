@@ -27,6 +27,7 @@ import org.apache.doris.common.DdlException;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
 import org.apache.doris.common.PatternMatcher;
+import org.apache.doris.common.util.TimeUtils;
 import org.apache.doris.persist.EditLog;
 
 import com.google.common.collect.ImmutableMap;
@@ -70,7 +71,7 @@ public class VariableMgr {
     public static final int READ_ONLY = 8;
     // Variables with this flag can not be seen with `SHOW VARIABLES` statement.
     public static final int INVISIBLE = 16;
-
+    // A map of zone overrides to enable the short time-zone names to be used.
     public static final Map<String, String> timeZoneAliasMap = new HashMap<>(ZoneId.SHORT_IDS);
 
     // Map variable name to variable context which have enough information to change variable value.
@@ -233,6 +234,7 @@ public class VariableMgr {
         // Check variable time_zone value is valid
         if (setVar.getVariable().toLowerCase().equals("time_zone")) {
             checkTimeZoneValid(setVar);
+            TimeUtils.setTimeZoneVariable(setVar.getValue().getStringValue());
         }
 
         // To modify to default value.

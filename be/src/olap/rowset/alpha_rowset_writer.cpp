@@ -102,9 +102,7 @@ OLAPStatus AlphaRowsetWriter::add_row(const char* row, Schema* schema) {
 
 OLAPStatus AlphaRowsetWriter::add_rowset(RowsetSharedPtr rowset) {
     _need_column_data_writer = false;
-    // this api is for LinkedSchemaChange
-    // use create hard link to copy rowset for performance
-    // this is feasible because LinkedSchemaChange is done on the same disk
+    // this api is for clone
     AlphaRowsetSharedPtr alpha_rowset = std::dynamic_pointer_cast<AlphaRowset>(rowset);
     for (auto& segment_group : alpha_rowset->_segment_groups) {
         RETURN_NOT_OK(_init());
@@ -115,14 +113,11 @@ OLAPStatus AlphaRowsetWriter::add_rowset(RowsetSharedPtr rowset) {
         _cur_segment_group->add_zone_maps(segment_group->get_zone_maps());
         RETURN_NOT_OK(flush());
         _num_rows_written += segment_group->num_rows();
-        // Add log to trace rowset validation failure problem
-        // This log will be deleted in the future
-        LOG(INFO) << "add rowset's segment group:" << segment_group->rowset_path_prefix()
-                << ", num_rows:" << segment_group->num_rows();
     }
-    // Add log to trace rowset validation failure problem
-    // This log will be deleted in the future
-    LOG(INFO) << "clone add_rowset:" << _num_rows_written << ", rowset path:" << alpha_rowset->rowset_path();
+    // process delete predicate
+    if (rowset->rowset_meta()->has_delete_predicate()) {
+        _current_rowset_meta->set_delete_predicate(rowset->rowset_meta()->delete_predicate());
+    }
     return OLAP_SUCCESS;
 }
 
@@ -245,7 +240,7 @@ Version AlphaRowsetWriter::version() {
     return _rowset_writer_context.version;
 }
 
-int32_t AlphaRowsetWriter::num_rows() {
+int64_t AlphaRowsetWriter::num_rows() {
     return _num_rows_written;
 }
 
@@ -324,16 +319,9 @@ bool AlphaRowsetWriter::_validate_rowset() {
         num_rows += segment_group->num_rows();
     }
     if (num_rows != _current_rowset_meta->num_rows()) {
-        // Add log to trace rowset validation failure problem
-        // This log will be deleted in the future
-        std::stringstream ss;
-        for (auto& segment_group : _segment_groups) {
-            ss << segment_group->rowset_path_prefix() << ",";
-        }
         LOG(WARNING) << "num_rows between rowset and segment_groups do not match. "
                      << "num_rows of segment_groups:" << num_rows
-                     << ", num_rows of rowset:" << _current_rowset_meta->num_rows()
-                     << ", own segment group path:" << ss.str();
+                     << ", num_rows of rowset:" << _current_rowset_meta->num_rows();
 
         return false;
     }
