@@ -43,7 +43,7 @@ void TimestampFunctions::init() {
 
 class TimestampValue {
 public:
-    time_t val;
+    int64_t val;
 
     TimestampValue(time_t timestamp) {
         val = timestamp;
@@ -56,95 +56,83 @@ public:
         boost::posix_time::ptime pt = boost::posix_time::time_from_string(ss.str());
         boost::local_time::local_date_time lt(pt.date(), pt.time_of_day(), local_time_zone, boost::local_time::local_date_time::NOT_DATE_TIME_ON_ERROR);
         boost::posix_time::ptime ret_ptime = lt.utc_time();
+        std::cout << ret_ptime.date().year()  << "," <<
+                ret_ptime.date().month() << "," <<
+                ret_ptime.date().day()   << "," <<
+                ret_ptime.time_of_day().hours()  <<"," <<
+                ret_ptime.time_of_day().minutes() <<"," <<
+                ret_ptime.time_of_day().seconds() << std::endl;
 
         boost::posix_time::ptime t(boost::gregorian::date(1970, 1, 1));
         boost::posix_time::time_duration dur = ret_ptime - t;
 
         val = dur.total_seconds();
     }
-    DateTimeValue local_time(std::string timezone) {
-        boost::local_time::time_zone_ptr local_time_zone =
-                TimezoneDatabase::find_timezone(timezone);
-        boost::posix_time::ptime p = boost::posix_time::from_time_t(val);
-        boost::local_time::local_date_time lt(p, local_time_zone);
+
+    void to_datetime_value(DateTimeValue& dt_val, std::string timezone) {
+        boost::local_time::time_zone_ptr local_time_zone = TimezoneDatabase::find_timezone(timezone);
+        boost::local_time::local_date_time lt(boost::posix_time::from_time_t(val), local_time_zone);
         boost::posix_time::ptime ret_ptime = lt.local_time();
 
-        DateTimeValue t;
-        t.set_type(TIME_DATETIME);
-        t.from_olap_datetime(
+        dt_val.set_type(TIME_DATETIME);
+        dt_val.from_olap_datetime(
                 ret_ptime.date().year() * 10000000000 +
                 ret_ptime.date().month() * 100000000 +
                 ret_ptime.date().day() * 1000000 +
                 ret_ptime.time_of_day().hours() * 10000 +
                 ret_ptime.time_of_day().minutes() * 100 +
-                ret_ptime.time_of_day().seconds()
-        );
-        return t;
+                ret_ptime.time_of_day().seconds());
     }
 
-    std::string local_time_string(std::string timezone) {
-        boost::local_time::time_zone_ptr local_time_zone =
-                TimezoneDatabase::find_timezone(timezone);
-        boost::posix_time::ptime p = boost::posix_time::from_time_t(val);
-        boost::local_time::local_date_time lt(p, local_time_zone);
+    std::string to_datetime_string(std::string timezone) {
+        boost::local_time::time_zone_ptr local_time_zone = TimezoneDatabase::find_timezone(timezone);
+        boost::local_time::local_date_time lt(boost::posix_time::from_time_t(val), local_time_zone);
         boost::posix_time::ptime ret_ptime = lt.local_time();
 
         std::stringstream ss;
-        ss <<  ret_ptime.date().year() << "-" <<
-               ret_ptime.date().month() << "-" <<
-               ret_ptime.date().day() << " " <<
-               ret_ptime.time_of_day().hours() << ":" <<
-               ret_ptime.time_of_day().minutes() << ":" <<
-               ret_ptime.time_of_day().seconds();
+        ss  << std::setw(4) << std::setfill('0') << ret_ptime.date().year() << "-"
+            << std::setw(2) << std::setfill('0') << ret_ptime.date().month().as_number() << "-"
+            << std::setw(2) << std::setfill('0') << ret_ptime.date().day() << " "
+            << std::setw(2) << std::setfill('0') << ret_ptime.time_of_day().hours() << ":" 
+            << std::setw(2) << std::setfill('0') << ret_ptime.time_of_day().minutes() << ":"
+            << std::setw(2) << std::setfill('0') << ret_ptime.time_of_day().seconds();
         return ss.str();
     }
 
-
-
     void to_datetime_val(doris_udf::DateTimeVal* tv) const {
-
-        boost::posix_time::ptime p = boost::posix_time::from_time_t(val);
+        boost::posix_time::ptime p = boost::posix_time::from_time_t(val / 1000);
         int _year = p.date().year();
         int _month = p.date().month();
         int _day = p.date().day();
-
         int _hour =  p.time_of_day().hours();
         int _minute = p.time_of_day().minutes();
         int _second = p.time_of_day().seconds();
-        int _microsecond = p.time_of_day().total_microseconds();
+        int _microsecond = 0;
 
         int64_t ymd = ((_year * 13 + _month) << 5) | _day;
         int64_t hms = (_hour << 12) | (_minute << 6) | _second;
         tv->packed_time = (((ymd << 17) | hms) << 24) + _microsecond;
-
         tv->type = TIME_DATETIME;
     }
 
     void to_datetime_val(doris_udf::DateTimeVal* tv, std::string timezone) const {
-        boost::local_time::time_zone_ptr local_time_zone =
-                TimezoneDatabase::find_timezone(timezone);
-        boost::posix_time::ptime pt = boost::posix_time::from_time_t(val);
-        boost::local_time::local_date_time lt(pt, local_time_zone);
+        boost::local_time::time_zone_ptr local_time_zone = TimezoneDatabase::find_timezone(timezone);
+        boost::local_time::local_date_time lt(boost::posix_time::from_time_t(val / 1000), local_time_zone);
         boost::posix_time::ptime p = lt.local_time();
-
 
         int _year = p.date().year();
         int _month = p.date().month();
         int _day = p.date().day();
-
         int _hour =  p.time_of_day().hours();
         int _minute = p.time_of_day().minutes();
         int _second = p.time_of_day().seconds();
-        int _microsecond = p.time_of_day().total_microseconds();
+        int _microsecond = 0;
 
         int64_t ymd = ((_year * 13 + _month) << 5) | _day;
         int64_t hms = (_hour << 12) | (_minute << 6) | _second;
         tv->packed_time = (((ymd << 17) | hms) << 24) + _microsecond;
-
         tv->type = TIME_DATETIME;
     }
-
-
 };
 
 StringVal TimestampFunctions::from_unix(
@@ -154,7 +142,7 @@ StringVal TimestampFunctions::from_unix(
     }
     TimestampValue timestamp(unix_time.val);
     return AnyValUtil::from_string_temp(context,
-            timestamp.local_time_string(context->impl()->state()->timezone()));
+            timestamp.to_datetime_string(context->impl()->state()->timezone()));
 }
 
 StringVal TimestampFunctions::from_unix(
@@ -164,7 +152,8 @@ StringVal TimestampFunctions::from_unix(
     }
 
     TimestampValue timestamp(unix_time.val);
-    DateTimeValue t = timestamp.local_time(context->impl()->state()->timezone());
+    DateTimeValue t;
+    timestamp.to_datetime_value(t, context->impl()->state()->timezone());
     if (!check_format(fmt, t)) {
         return StringVal::null();
     }
@@ -175,7 +164,7 @@ StringVal TimestampFunctions::from_unix(
 }
 
 IntVal TimestampFunctions::to_unix(FunctionContext* context) {
-    return IntVal(context->impl()->state()->now()->unix_timestamp());
+    return IntVal(context->impl()->state()->timestamp() / 1000);
 }
 
 IntVal TimestampFunctions::to_unix(
@@ -205,21 +194,10 @@ IntVal TimestampFunctions::to_unix(
 }
 
 DateTimeVal TimestampFunctions::utc_timestamp(FunctionContext* context) {
-    /*
-    TimeInterval interval;
-    // TODO(liuhy): we only support Beijing Timezone, so minus 28800
-    interval.second = -28800;
-    DateTimeValue dtv = *(context->impl()->state()->now());
-    dtv.date_add_interval(interval, SECOND);
-
-    DateTimeVal return_val;
-    dtv.to_datetime_val(&return_val);
-    return return_val;
-     */
-
-    DateTimeVal return_val;
     TimestampValue t(context->impl()->state()->timestamp());
+    DateTimeVal return_val;
     t.to_datetime_val(&return_val);
+    return return_val;
 }
 
 DateTimeVal TimestampFunctions::now(FunctionContext* context) {

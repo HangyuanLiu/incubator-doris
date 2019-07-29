@@ -249,7 +249,7 @@ public class FEFunctions {
         instance.setTimeInMillis(timestamp);
         return new IntLiteral(instance.get(Calendar.DAY_OF_MONTH), Type.INT);
     }
-
+    /*
     @FEFunction(name = "unix_timestamp", argTypes = { "DATETIME" }, returnType = "INT")
     public static IntLiteral unix_timestamp(LiteralExpr arg) throws AnalysisException {
         long timestamp = getTime(arg);
@@ -276,6 +276,7 @@ public class FEFunctions {
         //currently, doris BE only support "yyyy-MM-dd HH:mm:ss" and "yyyy-MM-dd" format
         return new StringLiteral(DateFormatUtils.format(date, fmtLiteral.getStringValue()));
     }
+    */
 
     private static long getTime(LiteralExpr expr) throws AnalysisException {
         try {
