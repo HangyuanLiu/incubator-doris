@@ -107,10 +107,10 @@ RuntimeState::RuntimeState(const TQueryGlobals& query_globals)
       _per_fragment_instance_idx(0) {
     _query_options.batch_size = DEFAULT_BATCH_SIZE;
     _now.reset(new DateTimeValue());
-    _now->from_date_str(query_globals.now().c_str(), query_globals.now().size());
-    _timestamp = atol(query_globals.now().c_str());
-    if (query_globals.has_timezone()) {
-        _timezone = query_globals.timezone();
+    _now->from_date_str(query_globals.now_string.c_str(), query_globals.now_string.size());
+    _timestamp = atol(query_globals.now_string.c_str());
+    if (query_globals.__isset.time_zone) {
+        _timezone = query_globals.time_zone;
     } else {
         _timezone = "Asia/Shanghai";
     }
@@ -167,12 +167,18 @@ RuntimeState::~RuntimeState() {
 
 Status RuntimeState::init(
     const TUniqueId& fragment_instance_id, const TQueryOptions& query_options,
-    const std::string& now, ExecEnv* exec_env) {
+    const TQueryGlobals&  query_globals, ExecEnv* exec_env) {
     _fragment_instance_id = fragment_instance_id;
     _query_options = query_options;
+
     _now.reset(new DateTimeValue());
-    _now->from_date_str(now.c_str(), now.size());
-    _timestamp = atol(now.c_str());
+    _now->from_date_str(query_globals.now_string.c_str(), query_globals.now_string.size());
+     _timestamp = atol(query_globals.now_string.c_str());
+    if (query_globals.__isset.time_zone) {
+        _timezone = query_globals.time_zone;
+    } else {
+        _timezone = "Asia/Shanghai";
+    }
     _exec_env = exec_env;
 
     if (!query_options.disable_codegen) {
