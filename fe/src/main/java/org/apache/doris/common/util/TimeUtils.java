@@ -70,7 +70,7 @@ public class TimeUtils {
     public static int MAX_TIME;
 
     static {
-        TIME_ZONE = new SimpleTimeZone(8 * 3600 * 1000, "");
+        TIME_ZONE = SimpleTimeZone.getDefault();
         
         DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
         DATE_FORMAT.setTimeZone(TIME_ZONE);
@@ -203,6 +203,8 @@ public class TimeUtils {
 
     public static long timeStringToLong(String timeStr) {
         Date d;
+        String timeZone = ConnectContext.get().getSessionVariable().getTimeZone();
+        DATETIME_FORMAT.setTimeZone(TimeZone.getTimeZone(ZoneId.of(timeZone, VariableMgr.timeZoneAliasMap)));
         try {
             d = DATETIME_FORMAT.parse(timeStr);
         } catch (ParseException e) {
