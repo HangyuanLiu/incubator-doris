@@ -218,6 +218,9 @@ visible_functions = [
         '_ZN5doris18TimestampFunctions10month_nameEPN9doris_udf'
         '15FunctionContextERKNS1_11DateTimeValE'],
 
+    [['convert_tz'], 'DATETIME', ['DATETIME', 'VARCHAR', 'VARCHAR'],
+            '_ZN5doris18TimestampFunctions10convert_tzEPN9doris_udf15FunctionContextERKNS1_11DateTimeValERKNS1_9StringValES9_'],
+
     # Math builtin functions
     [['pi'], 'DOUBLE', [],
         '_ZN5doris13MathFunctions2piEPN9doris_udf15FunctionContextE'],

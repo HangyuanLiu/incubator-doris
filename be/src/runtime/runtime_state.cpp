@@ -50,7 +50,7 @@ namespace doris {
 RuntimeState::RuntimeState(
         const TUniqueId& fragment_instance_id,
         const TQueryOptions& query_options,
-        const std::string& now, ExecEnv* exec_env) :
+        const TQueryGlobals& query_globals, ExecEnv* exec_env) :
             _obj_pool(new ObjectPool()),
             _data_stream_recvrs_pool(new ObjectPool()),
             _unreported_error_idx(0),
@@ -68,14 +68,14 @@ RuntimeState::RuntimeState(
             _error_log_file_path(""),
             _error_log_file(nullptr),
             _instance_buffer_reservation(new ReservationTracker) {
-    Status status = init(fragment_instance_id, query_options, now, exec_env);
+    Status status = init(fragment_instance_id, query_options, query_globals, exec_env);
     DCHECK(status.ok());
 }
 
 RuntimeState::RuntimeState(
         const TExecPlanFragmentParams& fragment_params,
         const TQueryOptions& query_options,
-        const std::string& now, ExecEnv* exec_env) :
+        const TQueryGlobals& query_globals, ExecEnv* exec_env) :
             _obj_pool(new ObjectPool()),
             _data_stream_recvrs_pool(new ObjectPool()),
             _unreported_error_idx(0),
@@ -95,11 +95,11 @@ RuntimeState::RuntimeState(
             _error_log_file_path(""),
             _error_log_file(nullptr),
             _instance_buffer_reservation(new ReservationTracker) {
-    Status status = init(fragment_params.params.fragment_instance_id, query_options, now, exec_env);
+    Status status = init(fragment_params.params.fragment_instance_id, query_options, query_globals, exec_env);
     DCHECK(status.ok());
 }
 
-RuntimeState::RuntimeState(const std::string& now)
+RuntimeState::RuntimeState(const TQueryGlobals& query_globals)
     : _obj_pool(new ObjectPool()),
       _data_stream_recvrs_pool(new ObjectPool()),
       _unreported_error_idx(0),
@@ -107,7 +107,13 @@ RuntimeState::RuntimeState(const std::string& now)
       _per_fragment_instance_idx(0) {
     _query_options.batch_size = DEFAULT_BATCH_SIZE;
     _now.reset(new DateTimeValue());
-    _now->from_date_str(now.c_str(), now.size());
+    _now->from_date_str(query_globals.now().c_str(), query_globals.now().size());
+    _timestamp = atol(query_globals.now().c_str());
+    if (query_globals.has_timezone()) {
+        _timezone = query_globals.timezone();
+    } else {
+        _timezone = "Asia/Shanghai";
+    }
 }
 
 RuntimeState::~RuntimeState() {
@@ -166,6 +172,7 @@ Status RuntimeState::init(
     _query_options = query_options;
     _now.reset(new DateTimeValue());
     _now->from_date_str(now.c_str(), now.size());
+    _timestamp = atol(now.c_str());
     _exec_env = exec_env;
 
     if (!query_options.disable_codegen) {

@@ -44,8 +44,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.time.DateTimeException;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
@@ -68,6 +71,8 @@ public class VariableMgr {
     // Variables with this flag can not be seen with `SHOW VARIABLES` statement.
     public static final int INVISIBLE = 16;
 
+    public static final Map<String, String> timeZoneAliasMap = new HashMap<>(ZoneId.SHORT_IDS);
+
     // Map variable name to variable context which have enough information to change variable value.
     private static ImmutableMap<String, VarContext> ctxByVarName;
 
@@ -83,6 +88,8 @@ public class VariableMgr {
     static {
         // Session value
         globalSessionVariable = new SessionVariable();
+        // set CST to +08:00 instead of America/Chicago
+        timeZoneAliasMap.put("CST", "+08:00");
         ImmutableSortedMap.Builder<String, VarContext> builder =
                 ImmutableSortedMap.orderedBy(String.CASE_INSENSITIVE_ORDER);
         for (Field field : SessionVariable.class.getDeclaredFields()) {
@@ -203,6 +210,18 @@ public class VariableMgr {
         }
     }
 
+    // Check if the time zone_value is valid
+    private static void checkTimeZoneValid(SetVar setVar) throws DdlException{
+        if (setVar.getValue() != null) {
+            String value = setVar.getValue().getStringValue();
+            try {
+                ZoneId.of(value, timeZoneAliasMap);
+            } catch (DateTimeException ex) {
+                ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
+            }
+        }
+    }
+
     // Get from show name to field
     public static void setVar(SessionVariable sessionVariable, SetVar setVar) throws DdlException {
         VarContext ctx = ctxByVarName.get(setVar.getVariable());
@@ -211,6 +230,10 @@ public class VariableMgr {
         }
         // Check variable attribute and setVar
         checkUpdate(setVar, ctx.getFlag());
+        // Check variable time_zone value is valid
+        if (setVar.getVariable().toLowerCase().equals("time_zone")) {
+            checkTimeZoneValid(setVar);
+        }
 
         // To modify to default value.
         VarAttr attr = ctx.getField().getAnnotation(VarAttr.class);

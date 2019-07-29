@@ -268,6 +268,7 @@ void init_daemon(int argc, char** argv, const std::vector<StorePath>& paths) {
     HllHashFunctions::init();
     ESFunctions::init();
     GeoFunctions::init();
+    TimezoneDatabase::init();
 
     pthread_t tc_malloc_pid;
     pthread_create(&tc_malloc_pid, NULL, tcmalloc_gc_thread, NULL);
