@@ -70,7 +70,7 @@ public class VariableMgr {
     public static final int READ_ONLY = 8;
     // Variables with this flag can not be seen with `SHOW VARIABLES` statement.
     public static final int INVISIBLE = 16;
-
+    // A map of zone overrides to enable the short time-zone names to be used.
     public static final Map<String, String> timeZoneAliasMap = new HashMap<>(ZoneId.SHORT_IDS);
 
     // Map variable name to variable context which have enough information to change variable value.
