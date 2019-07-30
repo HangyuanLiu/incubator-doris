@@ -23,7 +23,7 @@ import org.apache.doris.common.AnalysisException;
 
 import com.google.common.base.Preconditions;
 
-import org.apache.doris.qe.ConnectContext;
+//import org.apache.doris.qe.SessionVariable;
 import org.apache.doris.qe.VariableMgr;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -87,16 +87,18 @@ public class TimeUtils {
         TIME_FORMAT.setTimeZone(TIME_ZONE);
 
         //timezone format
-        TIME_ZONE_VARIABLE = TimeZone.getTimeZone(
-                ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
+        //TIME_ZONE_VARIABLE = TimeZone.getTimeZone(
+        //        ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
+        System.out.println("TimeUtils : " + VariableMgr.getGlobalSessionVariable().getTimeZone());
+        TIME_ZONE_VARIABLE = null;
         DATE_FORMAT_VARIABLE = new SimpleDateFormat("yyyy-MM-dd");
-        DATE_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
+        //DATE_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
 
         DATETIME_FORMAT_VARIABLE = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        DATETIME_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
+        //DATETIME_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
 
         TIME_FORMAT_VARIABLE = new SimpleDateFormat("HH");
-        TIME_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
+        //TIME_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
 
         try {
             MIN_DATE = DATE_FORMAT.parse("1900-01-01");
@@ -113,6 +115,9 @@ public class TimeUtils {
 
     public static boolean setTimeZoneVariable(String timezone) {
         TIME_ZONE_VARIABLE = TimeZone.getTimeZone(ZoneId.of(timezone, VariableMgr.timeZoneAliasMap));
+        DATE_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
+        DATETIME_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
+        TIME_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
         return true;
     }
 
@@ -136,6 +141,10 @@ public class TimeUtils {
     }
 
     public static synchronized String longToTimeString(long timeStamp) {
+        System.out.println("longToTimeString");
+        if (TIME_ZONE_VARIABLE == null) {
+            setTimeZoneVariable(VariableMgr.getGlobalSessionVariable().getTimeZone());
+        }
         return longToTimeString(timeStamp, DATETIME_FORMAT_VARIABLE);
     }
     
