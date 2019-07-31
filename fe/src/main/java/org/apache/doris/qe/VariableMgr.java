@@ -27,7 +27,6 @@ import org.apache.doris.common.DdlException;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
 import org.apache.doris.common.PatternMatcher;
-import org.apache.doris.common.util.TimeUtils;
 import org.apache.doris.persist.EditLog;
 
 import com.google.common.collect.ImmutableMap;
