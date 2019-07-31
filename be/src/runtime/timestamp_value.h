@@ -62,7 +62,7 @@ public:
         boost::local_time::time_zone_ptr local_time_zone =
                 TimezoneDatabase::find_timezone(timezone);
 
-        std::stringstream ss << tv;
+        std::stringstream ss;
         ss << tv;
         boost::posix_time::ptime pt = boost::posix_time::time_from_string(ss.str());
         boost::local_time::local_date_time lt(pt.date(), pt.time_of_day(), local_time_zone,

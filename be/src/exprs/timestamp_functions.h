@@ -176,9 +176,6 @@ public:
             const doris_udf::DateTimeVal& ts_val,
             const doris_udf::StringVal& from_tz, const doris_udf::StringVal& to_tz);
 };
-
-
-
 }
 
 #endif

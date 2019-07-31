@@ -111,6 +111,9 @@ RuntimeState::RuntimeState(const TQueryGlobals& query_globals)
     _now->from_date_str(query_globals.now_string.c_str(), query_globals.now_string.size());
     _timestamp = atol(query_globals.now_string.c_str());
     if (query_globals.__isset.time_zone) {
+        if(TimezoneDatabase::find_timezone(query_globals.time_zone) == NULL) {
+            _timezone = "Asia/Shanghai";
+        }
         _timezone = query_globals.time_zone;
     } else {
         _timezone = "Asia/Shanghai";
