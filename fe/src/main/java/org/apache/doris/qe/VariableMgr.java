@@ -54,6 +54,8 @@ import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 // Variable manager, merge session variable and global variable
 public class VariableMgr {
@@ -215,10 +217,14 @@ public class VariableMgr {
         if (setVar.getValue() != null) {
             String value = setVar.getValue().getStringValue();
             try {
-                if (value.indexOf("/") == value.length() && !value.equals("CST")) {
+                ZoneId.of(value, timeZoneAliasMap);
+
+                Pattern p = Pattern.compile("^\\-\\d{2}\\:\\d{2}$");
+                Matcher m = p.matcher(value);
+                if (!value.contains("/") && !value.equals("CST") && !m.matches()) {
                     ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
                 }
-                ZoneId.of(value, timeZoneAliasMap);
+                System.out.println("TimeZone : " + value);
             } catch (DateTimeException ex) {
                 ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
             }
