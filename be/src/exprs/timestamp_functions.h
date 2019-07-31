@@ -77,7 +77,7 @@ public:
 
     // Date/time functions.
     static doris_udf::DateTimeVal now(doris_udf::FunctionContext* context);
-    static doris_udf::DateTimeVal curtime(doris_udf::FunctionContext* context);
+    static doris_udf::DoubleVal curtime(doris_udf::FunctionContext* context);
     static doris_udf::DateTimeVal utc_timestamp(doris_udf::FunctionContext* context);
     static doris_udf::DateTimeVal to_date(
         doris_udf::FunctionContext* ctx, const doris_udf::DateTimeVal& ts_val);

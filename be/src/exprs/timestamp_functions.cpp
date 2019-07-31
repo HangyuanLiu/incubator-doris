@@ -533,9 +533,9 @@ DateTimeVal TimestampFunctions::now(FunctionContext* context) {
     return return_val;
 }
 
-DateTimeVal TimestampFunctions::curtime(FunctionContext* context) {
+DoubleVal TimestampFunctions::curtime(FunctionContext* context) {
     TimestampValue ts(context->impl()->state()->timestamp());
-    DateTimeVal return_val;
+    DoubleVal return_val;
     ts.to_time_val(&return_val, context->impl()->state()->timezone());
     return return_val;
 }

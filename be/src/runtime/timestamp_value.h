@@ -139,23 +139,16 @@ public:
         tv->type = TIME_DATETIME;
     }
 
-    void to_time_val(doris_udf::DateTimeVal *tv, std::string timezone) const {
+    void to_time_val(doris_udf::DoubleVal *tv, std::string timezone) const {
         boost::local_time::time_zone_ptr local_time_zone = TimezoneDatabase::find_timezone(timezone);
         boost::local_time::local_date_time lt(boost::posix_time::from_time_t(val / 1000), local_time_zone);
         boost::posix_time::ptime p = lt.local_time();
 
-        int _year = 0;
-        int _month = 0;
-        int _day = 0;
         int64_t _hour = p.time_of_day().hours();
         int64_t _minute = p.time_of_day().minutes();
         int64_t _second = p.time_of_day().seconds();
-        int _microsecond = 0;
 
-        int64_t ymd = ((_year * 13 + _month) << 5) | _day;
-        int64_t hms = (_hour << 12) | (_minute << 6) | _second;
-        tv->packed_time = (((ymd << 17) | hms) << 24) + _microsecond;
-        tv->type = TIME_TIME;
+        tv->val = _hour * 3600 + _minute * 60 + _second;
     }
 
 public:
