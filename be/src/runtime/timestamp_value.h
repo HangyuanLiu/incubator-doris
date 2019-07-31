@@ -32,6 +32,26 @@
 
 namespace doris {
 
+// Functions to load and access the timestamp database.
+class TimezoneDatabase {
+public:
+    TimezoneDatabase();
+
+    ~TimezoneDatabase();
+
+    static void init() {
+        TimezoneDatabase();
+    }
+
+    static boost::local_time::time_zone_ptr find_timezone(const std::string &tz);
+
+private:
+    static const char *_s_timezone_database_str;
+    static boost::local_time::tz_database _s_tz_database;
+    static std::vector<std::string> _s_tz_region_list;
+};
+
+
 class TimestampValue {
 public:
     int64_t val;
@@ -129,24 +149,7 @@ public:
     }
 };
 
-// Functions to load and access the timestamp database.
-class TimezoneDatabase {
-public:
-    TimezoneDatabase();
 
-    ~TimezoneDatabase();
-
-    static void init() {
-        TimezoneDatabase();
-    }
-
-    static boost::local_time::time_zone_ptr find_timezone(const std::string &tz);
-
-private:
-    static const char *_s_timezone_database_str;
-    static boost::local_time::tz_database _s_tz_database;
-    static std::vector<std::string> _s_tz_region_list;
-};
 
 }
 
