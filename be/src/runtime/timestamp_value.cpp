@@ -14,6 +14,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+#include "runtime/timestamp_value.h"
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
@@ -21,7 +22,7 @@
 #include <boost/date_time/local_time/local_time.hpp>
 #include <boost/thread/thread.hpp>
 #include "runtime/string_value.h"
-#include "runtime/timestamp_value.h"
+
 
 
 namespace doris {

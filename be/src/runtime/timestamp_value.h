@@ -54,8 +54,6 @@ private:
 
 class TimestampValue {
 public:
-    int64_t val;
-
     TimestampValue(time_t timestamp) {
         val = timestamp;
     }
@@ -63,38 +61,32 @@ public:
     TimestampValue(DateTimeValue tv, std::string timezone) {
         boost::local_time::time_zone_ptr local_time_zone =
                 TimezoneDatabase::find_timezone(timezone);
-        std::stringstream ss;
+
+        std::stringstream ss << tv;
         ss << tv;
         boost::posix_time::ptime pt = boost::posix_time::time_from_string(ss.str());
         boost::local_time::local_date_time lt(pt.date(), pt.time_of_day(), local_time_zone,
                                               boost::local_time::local_date_time::NOT_DATE_TIME_ON_ERROR);
-        boost::posix_time::ptime ret_ptime = lt.utc_time();
-        std::cout << ret_ptime.date().year() << "," <<
-                  ret_ptime.date().month() << "," <<
-                  ret_ptime.date().day() << "," <<
-                  ret_ptime.time_of_day().hours() << "," <<
-                  ret_ptime.time_of_day().minutes() << "," <<
-                  ret_ptime.time_of_day().seconds() << std::endl;
 
-        boost::posix_time::ptime t(boost::gregorian::date(1970, 1, 1));
-        boost::posix_time::time_duration dur = ret_ptime - t;
-
+        boost::posix_time::ptime utc_ptime = lt.utc_time();
+        boost::posix_time::ptime utc_start(boost::gregorian::date(1970, 1, 1));
+        boost::posix_time::time_duration dur = utc_ptime - utc_start;
         val = dur.total_seconds();
     }
 
     void to_datetime_value(DateTimeValue &dt_val, std::string timezone) {
         boost::local_time::time_zone_ptr local_time_zone = TimezoneDatabase::find_timezone(timezone);
         boost::local_time::local_date_time lt(boost::posix_time::from_time_t(val), local_time_zone);
-        boost::posix_time::ptime ret_ptime = lt.local_time();
+        boost::posix_time::ptime locat_ptime = lt.local_time();
 
         dt_val.set_type(TIME_DATETIME);
         dt_val.from_olap_datetime(
-                ret_ptime.date().year() * 10000000000 +
-                ret_ptime.date().month() * 100000000 +
-                ret_ptime.date().day() * 1000000 +
-                ret_ptime.time_of_day().hours() * 10000 +
-                ret_ptime.time_of_day().minutes() * 100 +
-                ret_ptime.time_of_day().seconds());
+                locat_ptime.date().year() * 10000000000 +
+                locat_ptime.date().month() * 100000000 +
+                locat_ptime.date().day() * 1000000 +
+                locat_ptime.time_of_day().hours() * 10000 +
+                locat_ptime.time_of_day().minutes() * 100 +
+                locat_ptime.time_of_day().seconds());
     }
 
     std::string to_datetime_string(std::string timezone) {
@@ -117,9 +109,9 @@ public:
         int _year = p.date().year();
         int _month = p.date().month();
         int _day = p.date().day();
-        int _hour = p.time_of_day().hours();
-        int _minute = p.time_of_day().minutes();
-        int _second = p.time_of_day().seconds();
+        int64_t _hour = p.time_of_day().hours();
+        int64_t _minute = p.time_of_day().minutes();
+        int64_t _second = p.time_of_day().seconds();
         int _microsecond = 0;
 
         int64_t ymd = ((_year * 13 + _month) << 5) | _day;
@@ -136,21 +128,39 @@ public:
         int _year = p.date().year();
         int _month = p.date().month();
         int _day = p.date().day();
-        int _hour = p.time_of_day().hours();
-        int _minute = p.time_of_day().minutes();
-        int _second = p.time_of_day().seconds();
+        int64_t _hour = p.time_of_day().hours();
+        int64_t _minute = p.time_of_day().minutes();
+        int64_t _second = p.time_of_day().seconds();
         int _microsecond = 0;
-
 
         int64_t ymd = ((_year * 13 + _month) << 5) | _day;
         int64_t hms = (_hour << 12) | (_minute << 6) | _second;
         tv->packed_time = (((ymd << 17) | hms) << 24) + _microsecond;
         tv->type = TIME_DATETIME;
     }
+
+    void to_time_val(doris_udf::DateTimeVal *tv, std::string timezone) const {
+        boost::local_time::time_zone_ptr local_time_zone = TimezoneDatabase::find_timezone(timezone);
+        boost::local_time::local_date_time lt(boost::posix_time::from_time_t(val / 1000), local_time_zone);
+        boost::posix_time::ptime p = lt.local_time();
+
+        int _year = 0;
+        int _month = 0;
+        int _day = 0;
+        int64_t _hour = p.time_of_day().hours();
+        int64_t _minute = p.time_of_day().minutes();
+        int64_t _second = p.time_of_day().seconds();
+        int _microsecond = 0;
+
+        int64_t ymd = ((_year * 13 + _month) << 5) | _day;
+        int64_t hms = (_hour << 12) | (_minute << 6) | _second;
+        tv->packed_time = (((ymd << 17) | hms) << 24) + _microsecond;
+        tv->type = TIME_TIME;
+    }
+
+public:
+    int64_t val;
 };
 
-
-
 }
-
 #endif //DORIS_BE_RUNTIME_TIMESTAMP_VALUE_H
