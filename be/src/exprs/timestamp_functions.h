@@ -177,23 +177,7 @@ public:
             const doris_udf::StringVal& from_tz, const doris_udf::StringVal& to_tz);
 };
 
-// Functions to load and access the timestamp database.
-class TimezoneDatabase {
-public:
-    TimezoneDatabase();
-    ~TimezoneDatabase();
 
-    static void init() {
-        TimezoneDatabase();
-    }
-
-    static boost::local_time::time_zone_ptr find_timezone(const std::string& tz);
-
-private:
-    static const char* _s_timezone_database_str;
-    static boost::local_time::tz_database _s_tz_database;
-    static std::vector<std::string> _s_tz_region_list;
-};
 
 }
 
