@@ -27,7 +27,6 @@ import org.apache.doris.common.DdlException;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
 import org.apache.doris.common.PatternMatcher;
-import org.apache.doris.common.util.TimeUtils;
 import org.apache.doris.persist.EditLog;
 
 import com.google.common.collect.ImmutableMap;
@@ -55,6 +54,8 @@ import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 // Variable manager, merge session variable and global variable
 public class VariableMgr {
@@ -217,6 +218,13 @@ public class VariableMgr {
             String value = setVar.getValue().getStringValue();
             try {
                 ZoneId.of(value, timeZoneAliasMap);
+
+                Pattern p = Pattern.compile("^\\-\\d{2}\\:\\d{2}$");
+                Matcher m = p.matcher(value);
+                if (!value.contains("/") && !value.equals("CST") && !m.matches()) {
+                    ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
+                }
+                System.out.println("TimeZone : " + value);
             } catch (DateTimeException ex) {
                 ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
             }
@@ -234,7 +242,6 @@ public class VariableMgr {
         // Check variable time_zone value is valid
         if (setVar.getVariable().toLowerCase().equals("time_zone")) {
             checkTimeZoneValid(setVar);
-            TimeUtils.setTimeZoneVariable(setVar.getValue().getStringValue());
         }
 
         // To modify to default value.

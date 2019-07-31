@@ -84,7 +84,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TException;
 
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -104,8 +103,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Coordinator {
     private static final Logger LOG = LogManager.getLogger(Coordinator.class);
-
-    private static final DateTimeFormatter DATE_FORMAT =  DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private static String localIP = FrontendOptions.getLocalHostAddress();
 
@@ -193,7 +190,11 @@ public class Coordinator {
         this.returnedAllResults = false;
         this.queryOptions = context.getSessionVariable().toThrift();
         this.queryGlobals.setNow_string(String.valueOf(new Date().getTime()));
-        this.queryGlobals.setTime_zone(context.getSessionVariable().getTimeZone());
+        if (context.getSessionVariable().getTimeZone().equals("CST")) {
+            this.queryGlobals.setTime_zone("Asia/Shanghai");
+        } else {
+            this.queryGlobals.setTime_zone(context.getSessionVariable().getTimeZone());
+        }
         this.tResourceInfo = new TResourceInfo(context.getQualifiedUser(),
                 context.getSessionVariable().getResourceGroup());
         this.needReport = context.getSessionVariable().isReportSucc();
