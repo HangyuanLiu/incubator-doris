@@ -590,7 +590,7 @@ public class Repository implements Writable {
                     }
                     SimpleDateFormat sessionTimeZone = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
                     sessionTimeZone.setTimeZone(TimeZone.getTimeZone(ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap)));
-                    tmp.add(TimeUtils.longToTimeString(Integer.valueOf(pureFileName.first), sessionTimeZone));
+                    tmp.add(TimeUtils.longToTimeString(Integer.valueOf(disjoinPrefix(PREFIX_JOB_INFO, pureFileName.first)), sessionTimeZone));
                 }
                 info.add(Joiner.on("\n").join(tmp));
                 info.add(tmp.isEmpty() ? "ERROR: no snapshot" : "OK");
