@@ -33,6 +33,7 @@
 #include "runtime/exec_env.h"
 #include "runtime/initial_reservations.h"
 #include "runtime/runtime_state.h"
+#include "runtime/timestamp_value.h"
 #include "runtime/load_path_mgr.h"
 #include "util/cpu_info.h"
 #include "util/mem_info.h"
@@ -110,6 +111,9 @@ RuntimeState::RuntimeState(const TQueryGlobals& query_globals)
     _now->from_date_str(query_globals.now_string.c_str(), query_globals.now_string.size());
     _timestamp = atol(query_globals.now_string.c_str());
     if (query_globals.__isset.time_zone) {
+        if(TimezoneDatabase::find_timezone(query_globals.time_zone) == NULL) {
+            _timezone = "Asia/Shanghai";
+        }
         _timezone = query_globals.time_zone;
     } else {
         _timezone = "Asia/Shanghai";
@@ -175,6 +179,11 @@ Status RuntimeState::init(
     _now->from_date_str(query_globals.now_string.c_str(), query_globals.now_string.size());
      _timestamp = atol(query_globals.now_string.c_str());
     if (query_globals.__isset.time_zone) {
+        if(TimezoneDatabase::find_timezone(query_globals.time_zone) == NULL) {
+            std::stringstream error_msg;
+            error_msg <<"Unknow Timezone : " << query_globals.time_zone;
+            return Status::InternalError("Unknow Timezone : " + error_msg.str());
+        }
         _timezone = query_globals.time_zone;
     } else {
         _timezone = "Asia/Shanghai";

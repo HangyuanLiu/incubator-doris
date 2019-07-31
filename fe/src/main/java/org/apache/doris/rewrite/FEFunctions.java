@@ -30,8 +30,11 @@ import org.apache.doris.common.AnalysisException;
 import com.google.common.base.Preconditions;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.apache.commons.lang.time.DateUtils;
+import org.apache.doris.qe.ConnectContext;
+import org.apache.doris.qe.VariableMgr;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.DateTimeFormatterBuilder;
 
@@ -39,9 +42,11 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * compute functions in FE.
@@ -254,11 +259,20 @@ public class FEFunctions {
         instance.setTimeInMillis(timestamp);
         return new IntLiteral(instance.get(Calendar.DAY_OF_MONTH), Type.INT);
     }
-    /*
+
     @FEFunction(name = "unix_timestamp", argTypes = { "DATETIME" }, returnType = "INT")
     public static IntLiteral unix_timestamp(LiteralExpr arg) throws AnalysisException {
-        long timestamp = getTime(arg);
-        return new IntLiteral(timestamp / 1000, Type.INT);
+        try {
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            TimeZone timeZone = TimeZone.getTimeZone(
+                    ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
+            format.setTimeZone(timeZone);
+
+            long timestamp = format.parse(arg.getStringValue()).getTime();
+            return new IntLiteral(timestamp / 1000, Type.INT);
+        } catch (ParseException e) {
+            throw new AnalysisException(e.getLocalizedMessage());
+        }
     }
 
     @FEFunction(name = "from_unixtime", argTypes = { "INT" }, returnType = "VARCHAR")
@@ -281,7 +295,6 @@ public class FEFunctions {
         //currently, doris BE only support "yyyy-MM-dd HH:mm:ss" and "yyyy-MM-dd" format
         return new StringLiteral(DateFormatUtils.format(date, fmtLiteral.getStringValue()));
     }
-    */
 
     private static long getTime(LiteralExpr expr) throws AnalysisException {
         try {
@@ -497,8 +510,11 @@ public class FEFunctions {
                 formatterBuilder.appendLiteral(character);
             }
         }
+
+        String timezone = ConnectContext.get().getSessionVariable().getTimeZone();
         DateTimeFormatter formatter = formatterBuilder.toFormatter();
-        return formatter.withLocale(Locale.US).print(date.getTime());
+        return formatter.withZone(DateTimeZone.forID(timezone)).withLocale(Locale.US).print(date.getTime());
+        //return formatter.withLocale(Locale.US).print(date.getTime());
     }
 
     /**

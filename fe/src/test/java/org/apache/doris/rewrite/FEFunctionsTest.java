@@ -44,7 +44,7 @@ public class FEFunctionsTest {
 
     @Rule
     public ExpectedException expectedEx = ExpectedException.none();
-
+    
     @Test
     public void unixtimestampTest() {
         try {
@@ -54,7 +54,7 @@ public class FEFunctionsTest {
             e.printStackTrace();
         }
     }
-
+    
     @Test
     public void dateDiffTest() throws AnalysisException {
         IntLiteral actualResult = FEFunctions.dateDiff(new DateLiteral("2010-11-30 23:59:59", Type.DATETIME), new DateLiteral("2010-12-31", Type.DATE));
@@ -99,7 +99,7 @@ public class FEFunctionsTest {
         expectedResult = new DateLiteral("2018-08-07", Type.DATE);
         Assert.assertEquals(expectedResult, actualResult);
     }
-
+    
     @Test
     public void fromUnixTimeTest() throws AnalysisException {
         StringLiteral actualResult = FEFunctions.fromUnixTime(new IntLiteral(100000));

@@ -77,7 +77,7 @@ public:
 
     // Date/time functions.
     static doris_udf::DateTimeVal now(doris_udf::FunctionContext* context);
-    static doris_udf::DateTimeVal curtime(doris_udf::FunctionContext* context);
+    static doris_udf::DoubleVal curtime(doris_udf::FunctionContext* context);
     static doris_udf::DateTimeVal utc_timestamp(doris_udf::FunctionContext* context);
     static doris_udf::DateTimeVal to_date(
         doris_udf::FunctionContext* ctx, const doris_udf::DateTimeVal& ts_val);
@@ -176,25 +176,6 @@ public:
             const doris_udf::DateTimeVal& ts_val,
             const doris_udf::StringVal& from_tz, const doris_udf::StringVal& to_tz);
 };
-
-// Functions to load and access the timestamp database.
-class TimezoneDatabase {
-public:
-    TimezoneDatabase();
-    ~TimezoneDatabase();
-
-    static void init() {
-        TimezoneDatabase();
-    }
-
-    static boost::local_time::time_zone_ptr find_timezone(const std::string& tz);
-
-private:
-    static const char* _s_timezone_database_str;
-    static boost::local_time::tz_database _s_tz_database;
-    static std::vector<std::string> _s_tz_region_list;
-};
-
 }
 
 #endif

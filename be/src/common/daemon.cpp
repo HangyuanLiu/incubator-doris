@@ -33,6 +33,7 @@
 #include "runtime/exec_env.h"
 #include "runtime/mem_tracker.h"
 #include "runtime/user_function_cache.h"
+#include "runtime/timestamp_value.h"
 #include "exprs/operators.h"
 #include "exprs/is_null_predicate.h"
 #include "exprs/like_predicate.h"
