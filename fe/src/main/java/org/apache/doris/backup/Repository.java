@@ -25,6 +25,8 @@ import org.apache.doris.common.Pair;
 import org.apache.doris.common.io.Text;
 import org.apache.doris.common.io.Writable;
 import org.apache.doris.common.util.TimeUtils;
+import org.apache.doris.qe.ConnectContext;
+import org.apache.doris.qe.VariableMgr;
 import org.apache.doris.system.Backend;
 
 import com.google.common.base.Joiner;
@@ -47,7 +49,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.TimeZone;
 
 /*
  * Repository represents a remote storage for backup to or restore from
@@ -458,7 +462,7 @@ public class Repository implements Writable {
             return PREFIX_JOB_INFO;
         } else {
             return PREFIX_JOB_INFO
-                    + TimeUtils.longToTimeString(createTime, new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss"));
+                    + String.valueOf(createTime);
         }
     }
 
@@ -584,7 +588,9 @@ public class Repository implements Writable {
                         tmp.add("Invalid: " + file.getName());
                         continue;
                     }
-                    tmp.add(disjoinPrefix(PREFIX_JOB_INFO, pureFileName.first));
+                    SimpleDateFormat sessionTimeZone = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+                    sessionTimeZone.setTimeZone(TimeZone.getTimeZone(ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap)));
+                    tmp.add(TimeUtils.longToTimeString(Integer.valueOf(pureFileName.first), sessionTimeZone));
                 }
                 info.add(Joiner.on("\n").join(tmp));
                 info.add(tmp.isEmpty() ? "ERROR: no snapshot" : "OK");
