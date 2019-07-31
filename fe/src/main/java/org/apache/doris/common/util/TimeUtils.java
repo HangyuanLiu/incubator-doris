@@ -24,6 +24,7 @@ import org.apache.doris.common.AnalysisException;
 import com.google.common.base.Preconditions;
 
 //import org.apache.doris.qe.SessionVariable;
+import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.qe.VariableMgr;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -114,8 +115,10 @@ public class TimeUtils {
     }
 
     public static synchronized String longToTimeString(long timeStamp) {
+        System.out.println("global : " + VariableMgr.getGlobalSessionVariable().getTimeZone());
+        System.out.println("session : " + ConnectContext.get().getSessionVariable().getTimeZone());
         TimeZone timeZone = TimeZone.getTimeZone(
-                ZoneId.of(VariableMgr.getGlobalSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
+                ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
         SimpleDateFormat dateFormatTimeZone = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         dateFormatTimeZone.setTimeZone(timeZone);
         return longToTimeString(timeStamp, dateFormatTimeZone);
