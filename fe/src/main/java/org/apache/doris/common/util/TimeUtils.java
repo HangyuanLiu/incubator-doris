@@ -50,11 +50,6 @@ public class TimeUtils {
     private static final SimpleDateFormat DATE_FORMAT;
     private static final SimpleDateFormat DATETIME_FORMAT;
     private static final SimpleDateFormat TIME_FORMAT;
-
-    private static TimeZone TIME_ZONE_VARIABLE;
-    private static SimpleDateFormat DATE_FORMAT_VARIABLE;
-    private static SimpleDateFormat DATETIME_FORMAT_VARIABLE;
-    private static SimpleDateFormat TIME_FORMAT_VARIABLE;
     
     private static final Pattern DATETIME_FORMAT_REG =
             Pattern.compile("^((\\d{2}(([02468][048])|([13579][26]))[\\-\\/\\s]?((((0?[13578])|(1[02]))[\\-\\/\\s]?"
@@ -86,20 +81,6 @@ public class TimeUtils {
         TIME_FORMAT = new SimpleDateFormat("HH");
         TIME_FORMAT.setTimeZone(TIME_ZONE);
 
-        //timezone format
-        //TIME_ZONE_VARIABLE = TimeZone.getTimeZone(
-        //        ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
-        System.out.println("TimeUtils : " + VariableMgr.getGlobalSessionVariable().getTimeZone());
-        TIME_ZONE_VARIABLE = null;
-        DATE_FORMAT_VARIABLE = new SimpleDateFormat("yyyy-MM-dd");
-        //DATE_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
-
-        DATETIME_FORMAT_VARIABLE = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        //DATETIME_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
-
-        TIME_FORMAT_VARIABLE = new SimpleDateFormat("HH");
-        //TIME_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
-
         try {
             MIN_DATE = DATE_FORMAT.parse("1900-01-01");
             MAX_DATE = DATE_FORMAT.parse("9999-12-31");
@@ -111,14 +92,6 @@ public class TimeUtils {
             LOG.error("invalid date format", e);
             System.exit(-1);
         }
-    }
-
-    public static boolean setTimeZoneVariable(String timezone) {
-        TIME_ZONE_VARIABLE = TimeZone.getTimeZone(ZoneId.of(timezone, VariableMgr.timeZoneAliasMap));
-        DATE_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
-        DATETIME_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
-        TIME_FORMAT_VARIABLE.setTimeZone(TIME_ZONE_VARIABLE);
-        return true;
     }
 
     public static long getStartTime() {
@@ -141,16 +114,21 @@ public class TimeUtils {
     }
 
     public static synchronized String longToTimeString(long timeStamp) {
-        System.out.println("longToTimeString");
-        if (TIME_ZONE_VARIABLE == null) {
-            setTimeZoneVariable(VariableMgr.getGlobalSessionVariable().getTimeZone());
-        }
-        return longToTimeString(timeStamp, DATETIME_FORMAT_VARIABLE);
+        TimeZone timeZone = TimeZone.getTimeZone(
+                ZoneId.of(VariableMgr.getGlobalSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
+        SimpleDateFormat dateFormatTimeZone = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        dateFormatTimeZone.setTimeZone(timeZone);
+        return longToTimeString(timeStamp, dateFormatTimeZone);
     }
     
     public static synchronized Date getTimeAsDate(String timeString) {
         try {
-            Date date = TIME_FORMAT_VARIABLE.parse(timeString);
+            TimeZone timeZone = TimeZone.getTimeZone(
+                    ZoneId.of(VariableMgr.getGlobalSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
+            SimpleDateFormat dateFormatTimeZone = new SimpleDateFormat("HH");
+            dateFormatTimeZone.setTimeZone(timeZone);
+
+            Date date = dateFormatTimeZone.parse(timeString);
             return date;
         } catch (ParseException e) {
             LOG.warn("invalid time format: {}", timeString);
