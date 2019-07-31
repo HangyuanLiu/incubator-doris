@@ -215,7 +215,7 @@ public class VariableMgr {
         if (setVar.getValue() != null) {
             String value = setVar.getValue().getStringValue();
             try {
-                if (value.indexOf("/") != value.length() && value.equals("CST")) {
+                if (value.indexOf("/") == value.length() && !value.equals("CST")) {
                     ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
                 }
                 ZoneId.of(value, timeZoneAliasMap);
