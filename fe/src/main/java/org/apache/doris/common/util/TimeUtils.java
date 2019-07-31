@@ -115,8 +115,6 @@ public class TimeUtils {
     }
 
     public static synchronized String longToTimeString(long timeStamp) {
-        System.out.println("global : " + VariableMgr.getGlobalSessionVariable().getTimeZone());
-        System.out.println("session : " + ConnectContext.get().getSessionVariable().getTimeZone());
         TimeZone timeZone = TimeZone.getTimeZone(
                 ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
         SimpleDateFormat dateFormatTimeZone = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -127,7 +125,7 @@ public class TimeUtils {
     public static synchronized Date getTimeAsDate(String timeString) {
         try {
             TimeZone timeZone = TimeZone.getTimeZone(
-                    ZoneId.of(VariableMgr.getGlobalSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
+                    ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
             SimpleDateFormat dateFormatTimeZone = new SimpleDateFormat("HH");
             dateFormatTimeZone.setTimeZone(timeZone);
 

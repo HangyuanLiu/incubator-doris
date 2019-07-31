@@ -265,7 +265,7 @@ public class FEFunctions {
         try {
             SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             TimeZone timeZone = TimeZone.getTimeZone(
-                    ZoneId.of(VariableMgr.getGlobalSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
+                    ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
             format.setTimeZone(timeZone);
 
             long timestamp = format.parse(arg.getStringValue()).getTime();
