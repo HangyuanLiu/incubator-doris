@@ -96,7 +96,7 @@ public class FEFunctions {
 
     @FEFunction(name = "date_format", argTypes = { "DATETIME", "VARCHAR" }, returnType = "VARCHAR")
     public static StringLiteral dateFormat(LiteralExpr date, StringLiteral fmtLiteral) throws AnalysisException {
-        String result = dateFormat(new Date(getTime(date)), fmtLiteral.getStringValue());
+        String result = dateFormat(new Date(getTime(date)), fmtLiteral.getStringValue(), false);
         return new StringLiteral(result);
     }
 
@@ -287,7 +287,7 @@ public class FEFunctions {
             throw new AnalysisException("unixtime should larger than zero");
         }
         Date date = new Date(unixTime.getLongValue() * 1000);
-        return new StringLiteral(dateFormat(date, fmtLiteral.getStringValue()));
+        return new StringLiteral(dateFormat(date, fmtLiteral.getStringValue(), true));
     }
 
     private static long getTime(LiteralExpr expr) throws AnalysisException {
@@ -316,7 +316,7 @@ public class FEFunctions {
         return firstDay;
     }
 
-    private  static String dateFormat(Date date,  String pattern) {
+    private  static String dateFormat(Date date, String pattern, boolean isTimezone) {
         DateTimeFormatterBuilder formatterBuilder = new DateTimeFormatterBuilder();
         Calendar calendar = Calendar.getInstance();
         boolean escaped = false;
@@ -505,9 +505,13 @@ public class FEFunctions {
             }
         }
 
-        String timezone = ConnectContext.get().getSessionVariable().getTimeZone();
         DateTimeFormatter formatter = formatterBuilder.toFormatter();
-        return formatter.withZone(DateTimeZone.forID(timezone)).withLocale(Locale.US).print(date.getTime());
+        if (isTimezone) {
+            String timezone = ConnectContext.get().getSessionVariable().getTimeZone();
+            return formatter.withZone(DateTimeZone.forID(timezone)).withLocale(Locale.US).print(date.getTime());
+        } else {
+            return formatter.withLocale(Locale.US).print(date.getTime());
+        }
     }
 
     /**
