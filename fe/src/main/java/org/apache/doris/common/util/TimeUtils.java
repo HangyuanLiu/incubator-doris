@@ -209,13 +209,21 @@ public class TimeUtils {
         return dateTransform(time, type.getPrimitiveType());
     }
 
-    public static long timeStringToLong(String timeStr) {
+    public static long timeStringToLong(String timeStr, SimpleDateFormat dateFormat) {
         Date d;
         try {
-            d = DATETIME_FORMAT.parse(timeStr);
+            d = dateFormat.parse(timeStr);
         } catch (ParseException e) {
             return -1;
         }
         return d.getTime();
+    }
+
+    public static long timeStringToLong(String timeStr) {
+        TimeZone timeZone = TimeZone.getTimeZone(
+                ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
+        SimpleDateFormat dateFormatTimeZone = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        dateFormatTimeZone.setTimeZone(timeZone);
+        return timeStringToLong(timeStr, dateFormatTimeZone);
     }
 }

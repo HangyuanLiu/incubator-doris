@@ -321,7 +321,11 @@ public class Repository implements Writable {
         try {
             Status st = download(remoteInfoFilePath, localInfoFile.getPath());
             if (!st.ok()) {
-                return st;
+                remoteInfoFilePath = assembleJobInfoFilePath(label, -1) + TimeUtils.timeStringToLong(backupTimestamp);
+                st = download(remoteInfoFilePath, localInfoFile.getPath());
+                if (!st.ok()) {
+                    return st;
+                }
             }
 
             BackupJobInfo jobInfo = BackupJobInfo.fromFile(localInfoFile.getAbsolutePath());
