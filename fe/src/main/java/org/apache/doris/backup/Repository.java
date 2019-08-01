@@ -325,7 +325,7 @@ public class Repository implements Writable {
                         ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
                 SimpleDateFormat dateFormatTimeZone = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
                 dateFormatTimeZone.setTimeZone(timeZone);
-                remoteInfoFilePath = assembleJobInfoFilePath(label, -1) + TimeUtils.timeStringToLong(backupTimestamp, dateFormatTimeZone);
+                remoteInfoFilePath = assembleJobInfoFilePath(label, -1) + TimeUtils.timeStringToLong(backupTimestamp, dateFormatTimeZone)/1000L;
                 st = download(remoteInfoFilePath, localInfoFile.getPath());
                 if (!st.ok()) {
                     return st;
