@@ -50,3 +50,7 @@ Doris 内部存在多个时区相关参数
 
 * 标准时区格式，如"Asia/Shanghai"、"America/Los_Angeles"
 
+* 不支持缩写失去格式，如"MET"、"CTT"。因为缩写时区在不同场景下存在歧义，不建议使用。
+
+* 为了兼容Doris，支持CST缩写时区，内部会将CST转移为"Asia/Shanghai"的中国标准时区
+

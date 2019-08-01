@@ -73,34 +73,9 @@ boost::local_time::time_zone_ptr TimezoneDatabase::find_timezone(const std::stri
     if (tz.find_first_of('/') != std::string::npos) {
         return _s_tz_database.time_zone_from_region(tz);
     }
-
-    boost::local_time::time_zone_ptr nyc_1( new boost::local_time::posix_time_zone("TMP+08:00:00"));
-    return nyc_1;
-    /*
-    for (std::vector<std::string>::const_iterator iter = _s_tz_region_list.begin();
-         iter != _s_tz_region_list.end(); ++iter) {
-        boost::local_time::time_zone_ptr tzp = _s_tz_database.time_zone_from_region(*iter);
-        DCHECK(tzp != NULL);
-
-        if (tzp->dst_zone_abbrev() == tz) {
-            return tzp;
-        }
-
-        if (tzp->std_zone_abbrev() == tz) {
-            return tzp;
-        }
-
-        if (tzp->dst_zone_name() == tz) {
-            return tzp;
-        }
-
-        if (tzp->std_zone_name() == tz) {
-            return tzp;
-        }
-    }
-
-    return boost::local_time::time_zone_ptr();
-     */
+    std::cout<<"timezone : " << tz << std::endl;
+    boost::local_time::time_zone_ptr tzp(new boost::local_time::posix_time_zone(std::string("TMP") + tz));
+    return tzp;
 }
 
 }
