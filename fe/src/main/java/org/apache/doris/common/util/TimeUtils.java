@@ -124,12 +124,7 @@ public class TimeUtils {
     
     public static synchronized Date getTimeAsDate(String timeString) {
         try {
-            TimeZone timeZone = TimeZone.getTimeZone(
-                    ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
-            SimpleDateFormat dateFormatTimeZone = new SimpleDateFormat("HH");
-            dateFormatTimeZone.setTimeZone(timeZone);
-
-            Date date = dateFormatTimeZone.parse(timeString);
+            Date date = TIME_FORMAT.parse(timeString);
             return date;
         } catch (ParseException e) {
             LOG.warn("invalid time format: {}", timeString);

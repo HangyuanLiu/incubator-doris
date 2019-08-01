@@ -54,6 +54,8 @@ import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 // Variable manager, merge session variable and global variable
 public class VariableMgr {
@@ -211,16 +213,29 @@ public class VariableMgr {
     }
 
     // Check if the time zone_value is valid
-    private static void checkTimeZoneValid(SetVar setVar) throws DdlException{
-        if (setVar.getValue() != null) {
-            String value = setVar.getValue().getStringValue();
-            try {
-                ZoneId.of(value, timeZoneAliasMap);
-            } catch (DateTimeException ex) {
-                ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
-            }
-        }
-    }
+     private static void checkTimeZoneValid(SetVar setVar) throws DdlException {
+         if (setVar.getValue() != null) {
+             String value = setVar.getValue().getStringValue();
+             try {
+                 Pattern p = Pattern.compile("^[+-]{1}\\d{2}\\:\\d{2}$");
+                 Matcher m = p.matcher(value);
+                 if (!value.contains("/") && !value.equals("CST") && !m.matches()) {
+                     ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
+                 }
+                 if (m.matches()) {
+                     int tz = Integer.parseInt(value.substring(1, 3)) * 100 + Integer.parseInt(value.substring(4, 6));
+                     if (value.charAt(0) == '-' && tz > 1200) {
+                         ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
+                     } else if (value.charAt(0) == '+' && tz > 1400) {
+                         ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
+                     }
+                 }
+                 ZoneId.of(value, timeZoneAliasMap);
+             } catch (DateTimeException ex) {
+                 ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
+             }
+         }
+     }
 
     // Get from show name to field
     public static void setVar(SessionVariable sessionVariable, SetVar setVar) throws DdlException {
@@ -232,12 +247,15 @@ public class VariableMgr {
         checkUpdate(setVar, ctx.getFlag());
         // Check variable time_zone value is valid
         if (setVar.getVariable().toLowerCase().equals("time_zone")) {
-            checkTimeZoneValid(setVar);
+            if (!setVar.getValue().getStringValue().equalsIgnoreCase("SYSTEM")) {
+                checkTimeZoneValid(setVar);
+            }
         }
 
         // To modify to default value.
         VarAttr attr = ctx.getField().getAnnotation(VarAttr.class);
         String value;
+
         // If value is null, this is `set variable = DEFAULT`
         if (setVar.getValue() != null) {
             value = setVar.getValue().getStringValue();

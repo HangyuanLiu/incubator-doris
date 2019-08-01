@@ -51,16 +51,19 @@ private:
     static std::vector<std::string> _s_tz_region_list;
 };
 
-
 class TimestampValue {
 public:
+    TimestampValue() { }
+
     TimestampValue(time_t timestamp) {
         val = timestamp;
     }
 
-    TimestampValue(DateTimeValue tv, std::string timezone) {
-        boost::local_time::time_zone_ptr local_time_zone =
-                TimezoneDatabase::find_timezone(timezone);
+    bool from_date_time_value(DateTimeValue tv, std::string timezone) {
+        boost::local_time::time_zone_ptr local_time_zone = TimezoneDatabase::find_timezone(timezone);
+        if (local_time_zone == nullptr) {
+            return false;
+        }
 
         std::stringstream ss;
         ss << tv;
@@ -71,11 +74,15 @@ public:
         boost::posix_time::ptime utc_ptime = lt.utc_time();
         boost::posix_time::ptime utc_start(boost::gregorian::date(1970, 1, 1));
         boost::posix_time::time_duration dur = utc_ptime - utc_start;
-        val = dur.total_seconds();
+        val = dur.total_milliseconds();
+        return true;
     }
 
-    void to_datetime_value(DateTimeValue &dt_val, std::string timezone) {
+    bool to_datetime_value(DateTimeValue &dt_val, std::string timezone) {
         boost::local_time::time_zone_ptr local_time_zone = TimezoneDatabase::find_timezone(timezone);
+        if (local_time_zone == nullptr) {
+            return false;
+        }
         boost::local_time::local_date_time lt(boost::posix_time::from_time_t(val), local_time_zone);
         boost::posix_time::ptime locat_ptime = lt.local_time();
 
@@ -87,10 +94,14 @@ public:
                 locat_ptime.time_of_day().hours() * 10000 +
                 locat_ptime.time_of_day().minutes() * 100 +
                 locat_ptime.time_of_day().seconds());
+        return true;
     }
 
     std::string to_datetime_string(std::string timezone) {
         boost::local_time::time_zone_ptr local_time_zone = TimezoneDatabase::find_timezone(timezone);
+        if (local_time_zone == nullptr) {
+            return "";
+        }
         boost::local_time::local_date_time lt(boost::posix_time::from_time_t(val), local_time_zone);
         boost::posix_time::ptime ret_ptime = lt.local_time();
 
@@ -120,8 +131,11 @@ public:
         tv->type = TIME_DATETIME;
     }
 
-    void to_datetime_val(doris_udf::DateTimeVal *tv, std::string timezone) const {
+    bool to_datetime_val(doris_udf::DateTimeVal *tv, std::string timezone) const {
         boost::local_time::time_zone_ptr local_time_zone = TimezoneDatabase::find_timezone(timezone);
+        if (local_time_zone == nullptr) {
+            return false;
+        }
         boost::local_time::local_date_time lt(boost::posix_time::from_time_t(val / 1000), local_time_zone);
         boost::posix_time::ptime p = lt.local_time();
 
@@ -137,10 +151,14 @@ public:
         int64_t hms = (_hour << 12) | (_minute << 6) | _second;
         tv->packed_time = (((ymd << 17) | hms) << 24) + _microsecond;
         tv->type = TIME_DATETIME;
+        return true;
     }
 
-    void to_time_val(doris_udf::DoubleVal *tv, std::string timezone) const {
+    bool to_time_val(doris_udf::DoubleVal *tv, std::string timezone) const {
         boost::local_time::time_zone_ptr local_time_zone = TimezoneDatabase::find_timezone(timezone);
+        if (local_time_zone == nullptr) {
+            return false;
+        }
         boost::local_time::local_date_time lt(boost::posix_time::from_time_t(val / 1000), local_time_zone);
         boost::posix_time::ptime p = lt.local_time();
 
@@ -149,6 +167,7 @@ public:
         int64_t _second = p.time_of_day().seconds();
 
         tv->val = _hour * 3600 + _minute * 60 + _second;
+        return true;
     }
 
 public:

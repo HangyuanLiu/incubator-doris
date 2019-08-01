@@ -84,8 +84,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TException;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -95,7 +93,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
@@ -190,7 +190,11 @@ public class Coordinator {
         this.returnedAllResults = false;
         this.queryOptions = context.getSessionVariable().toThrift();
         this.queryGlobals.setNow_string(String.valueOf(new Date().getTime()));
-        this.queryGlobals.setTime_zone(ZonedDateTime.now(ZoneId.of(context.getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap)).getOffset().toString());
+        if (context.getSessionVariable().getTimeZone().equals("CST")) {
+            this.queryGlobals.setTime_zone("Asia/Shanghai");
+        } else {
+            this.queryGlobals.setTime_zone(context.getSessionVariable().getTimeZone());
+        }
         this.tResourceInfo = new TResourceInfo(context.getQualifiedUser(),
                 context.getSessionVariable().getResourceGroup());
         this.needReport = context.getSessionVariable().isReportSucc();

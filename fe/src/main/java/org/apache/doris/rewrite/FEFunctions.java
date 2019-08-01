@@ -96,7 +96,7 @@ public class FEFunctions {
 
     @FEFunction(name = "date_format", argTypes = { "DATETIME", "VARCHAR" }, returnType = "VARCHAR")
     public static StringLiteral dateFormat(LiteralExpr date, StringLiteral fmtLiteral) throws AnalysisException {
-        String result = dateFormat(new Date(getTime(date)), fmtLiteral.getStringValue());
+        String result = dateFormat(new Date(getTime(date)), fmtLiteral.getStringValue(), false);
         return new StringLiteral(result);
     }
 
@@ -277,12 +277,7 @@ public class FEFunctions {
 
     @FEFunction(name = "from_unixtime", argTypes = { "INT" }, returnType = "VARCHAR")
     public static StringLiteral fromUnixTime(LiteralExpr unixTime) throws AnalysisException {
-        //if unixTime < 0, we should return null, throw a exception and let BE process
-        if (unixTime.getLongValue() < 0) {
-            throw new AnalysisException("unixtime should larger than zero");
-        }
-        Date date = new Date(unixTime.getLongValue() * 1000);
-        return new StringLiteral(dateFormat(date, "%Y-%m-%d %H:%i:%S"));
+        return fromUnixTime(unixTime, new StringLiteral("%Y-%m-%d %H:%i:%S"));
     }
 
     @FEFunction(name = "from_unixtime", argTypes = { "INT", "VARCHAR" }, returnType = "VARCHAR")
@@ -292,8 +287,7 @@ public class FEFunctions {
             throw new AnalysisException("unixtime should larger than zero");
         }
         Date date = new Date(unixTime.getLongValue() * 1000);
-        //currently, doris BE only support "yyyy-MM-dd HH:mm:ss" and "yyyy-MM-dd" format
-        return new StringLiteral(DateFormatUtils.format(date, fmtLiteral.getStringValue()));
+        return new StringLiteral(dateFormat(date, fmtLiteral.getStringValue(), true));
     }
 
     private static long getTime(LiteralExpr expr) throws AnalysisException {
@@ -322,7 +316,7 @@ public class FEFunctions {
         return firstDay;
     }
 
-    private  static String dateFormat(Date date,  String pattern) {
+    private  static String dateFormat(Date date, String pattern, boolean isTimezone) {
         DateTimeFormatterBuilder formatterBuilder = new DateTimeFormatterBuilder();
         Calendar calendar = Calendar.getInstance();
         boolean escaped = false;
@@ -511,10 +505,13 @@ public class FEFunctions {
             }
         }
 
-        String timezone = ConnectContext.get().getSessionVariable().getTimeZone();
         DateTimeFormatter formatter = formatterBuilder.toFormatter();
-        return formatter.withZone(DateTimeZone.forID(timezone)).withLocale(Locale.US).print(date.getTime());
-        //return formatter.withLocale(Locale.US).print(date.getTime());
+        if (isTimezone) {
+            String timezone = ConnectContext.get().getSessionVariable().getTimeZone();
+            return formatter.withZone(DateTimeZone.forID(timezone)).withLocale(Locale.US).print(date.getTime());
+        } else {
+            return formatter.withLocale(Locale.US).print(date.getTime());
+        }
     }
 
     /**

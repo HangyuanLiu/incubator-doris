@@ -46,9 +46,9 @@ TEST_F(TimestampValueTest, struct_size) {
 TEST_F(TimestampValueTest, construct) {
 
     DateTimeValue value1;
-    value1.from_date_int64(20190730);
+    value1.from_date_int64(20190801114602);
     TimestampValue t(value1, "Asia/Shanghai");
-    ASSERT_EQ(123,t.val);
+    ASSERT_EQ(1564631162,t.val);
 }
 
 

@@ -391,74 +391,10 @@ IntVal TimestampFunctions::date_diff(
     return IntVal(ts_value1.daynr() - ts_value2.daynr());
 }
 
-
-// TimeZone relative function
+// TimeZone correlation functions.
 DateTimeVal TimestampFunctions::timestamp(
         FunctionContext* ctx, const DateTimeVal& val) {
     return val;
-}
-
-void* TimestampFunctions::from_utc(Expr* e, TupleRow* row) {
-    return NULL;
-    // DCHECK_EQ(e->get_num_children(), 2);
-    // Expr* op1 = e->children()[0];
-    // Expr* op2 = e->children()[1];
-    // DateTimeValue* tv = reinterpret_cast<DateTimeValue*>(op1->get_value(row));
-    // StringValue* tz = reinterpret_cast<StringValue*>(op2->get_value(row));
-
-    // if (tv == NULL || tz == NULL) {
-    //     return NULL;
-    // }
-
-    // if (tv->not_a_date_time()) {
-    //     return NULL;
-    // }
-
-     //boost::local_time::time_zone_ptr timezone = TimezoneDatabase::find_timezone(tz->debug_string());
-
-    // This should raise some sort of error or at least null. Hive just ignores it.
-    // if (timezone == NULL) {
-    //     LOG(ERROR) << "Unknown timezone '" << *tz << "'" << std::endl;
-    //     e->_result.timestamp_val = *tv;
-    //     return &e->_result.timestamp_val;
-    // }
-
-    // boost::posix_time::ptime temp;
-    // tv->to_ptime(&temp);
-    // boost::local_time::local_date_time lt(temp, timezone);
-    // e->_result.timestamp_val = lt.local_time();
-    // return &e->_result.timestamp_val;
-}
-
-void* TimestampFunctions::to_utc(Expr* e, TupleRow* row) {
-    return NULL;
-    // DCHECK_EQ(e->get_num_children(), 2);
-    // Expr* op1 = e->children()[0];
-    // Expr* op2 = e->children()[1];
-    // DateTimeValue* tv = reinterpret_cast<DateTimeValue*>(op1->get_value(row));
-    // StringValue* tz = reinterpret_cast<StringValue*>(op2->get_value(row));
-
-    // if (tv == NULL || tz == NULL) {
-    //     return NULL;
-    // }
-
-    // if (tv->not_a_date_time()) {
-    //     return NULL;
-    // }
-
-    // boost::local_time::time_zone_ptr timezone = TimezoneDatabase::find_timezone(tz->debug_string());
-
-    // This should raise some sort of error or at least null. Hive just ignores it.
-    // if (timezone == NULL) {
-    //     LOG(ERROR) << "Unknown timezone '" << *tz << "'" << std::endl;
-    //     e->_result.timestamp_val = *tv;
-    //     return &e->_result.timestamp_val;
-    // }
-
-    // boost::local_time::local_date_time lt(tv->date(), tv->time_of_day(),
-    //                    timezone, boost::local_time::local_date_time::NOT_DATE_TIME_ON_ERROR);
-    // e->_result.timestamp_val = DateTimeValue(lt.utc_time());
-    // return &e->_result.timestamp_val;
 }
 
 StringVal TimestampFunctions::from_unix(
@@ -478,14 +414,12 @@ StringVal TimestampFunctions::from_unix(
     }
 
     TimestampValue timestamp(unix_time.val);
-    DateTimeValue t;
-    timestamp.to_datetime_value(t, context->impl()->state()->timezone());
-    if (!check_format(fmt, t)) {
+    DateTimeValue tv;
+    timestamp.to_datetime_value(tv, context->impl()->state()->timezone());
+    char buf[128];
+    if (!tv.to_format_string((const char*)fmt.ptr, fmt.len, buf)){
         return StringVal::null();
     }
-
-    char buf[64];
-    t.to_string(buf);
     return AnyValUtil::from_string_temp(context, buf);
 }
 
@@ -500,12 +434,12 @@ IntVal TimestampFunctions::to_unix(
     }
     DateTimeValue tv;
     if (!tv.from_date_format_str(
-            (const char *) fmt.ptr, fmt.len, (const char *) string_val.ptr, string_val.len)) {
+            (const char *)fmt.ptr, fmt.len, (const char *)string_val.ptr, string_val.len)) {
         return IntVal::null();
     }
-
-    TimestampValue timestamp(tv, context->impl()->state()->timezone());
-    return timestamp.val;
+    TimestampValue ts;
+    ts.from_date_time_value(tv, context->impl()->state()->timezone());
+    return ts.val;
 }
 
 IntVal TimestampFunctions::to_unix(
@@ -514,8 +448,8 @@ IntVal TimestampFunctions::to_unix(
         return IntVal::null();
     }
     const DateTimeValue &tv = DateTimeValue::from_datetime_val(ts_val);
-
-    TimestampValue ts(tv, context->impl()->state()->timezone());
+    TimestampValue ts;
+    ts.from_date_time_value(tv, context->impl()->state()->timezone());
     return ts.val;
 }
 
@@ -542,10 +476,17 @@ DoubleVal TimestampFunctions::curtime(FunctionContext* context) {
 
 DateTimeVal TimestampFunctions::convert_tz(FunctionContext* ctx, const DateTimeVal& ts_val,
                                                const StringVal& from_tz, const StringVal& to_tz) {
+    if (TimezoneDatabase::find_timezone(std::string((char *)from_tz.ptr, from_tz.len)) == nullptr ||
+        TimezoneDatabase::find_timezone(std::string((char *)to_tz.ptr, to_tz.len)) == nullptr
+    ) {
+        return DateTimeVal::null();
+    }
+
     const DateTimeValue &ts_value = DateTimeValue::from_datetime_val(ts_val);
-    TimestampValue ts(ts_value, std::string((char *) from_tz.ptr, from_tz.len));
+    TimestampValue ts;
+    ts.from_date_time_value(ts_value, std::string((char *)from_tz.ptr, from_tz.len));
     DateTimeVal return_val;
-    ts.to_datetime_val(&return_val, std::string((char *) to_tz.ptr, to_tz.len));
+    ts.to_datetime_val(&return_val, std::string((char *)to_tz.ptr, to_tz.len));
     return return_val;
 }
 

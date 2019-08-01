@@ -362,7 +362,11 @@ public class SessionVariable implements Serializable, Writable {
     }
 
     public String getTimeZone() {
-        return timeZone;
+        if (timeZone.equalsIgnoreCase("SYSTEM")) {
+            return GlobalVariable.systemTimeZone;
+        } else {
+            return timeZone;
+        }
     }
 
     public void setTimeZone(String timeZone) {

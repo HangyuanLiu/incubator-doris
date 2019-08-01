@@ -69,34 +69,18 @@ TimezoneDatabase::TimezoneDatabase() {
 TimezoneDatabase::~TimezoneDatabase() {}
 
 boost::local_time::time_zone_ptr TimezoneDatabase::find_timezone(const std::string &tz) {
-    // See if they specified a zone id
-    if (tz.find_first_of('/') != std::string::npos) {
-        return _s_tz_database.time_zone_from_region(tz);
+    try {
+        // See if they specified a zone id
+        if (tz.find_first_of('/') != std::string::npos) {
+            return _s_tz_database.time_zone_from_region(tz);
+        } else {
+            //eg. +08:00
+            boost::local_time::time_zone_ptr tzp(new boost::local_time::posix_time_zone(std::string("TMP") + tz));
+            return tzp;
+        }
+    } catch (boost::exception& e) {
+        return nullptr;
     }
-
-    for (std::vector<std::string>::const_iterator iter = _s_tz_region_list.begin();
-         iter != _s_tz_region_list.end(); ++iter) {
-        boost::local_time::time_zone_ptr tzp = _s_tz_database.time_zone_from_region(*iter);
-        DCHECK(tzp != NULL);
-
-        if (tzp->dst_zone_abbrev() == tz) {
-            return tzp;
-        }
-
-        if (tzp->std_zone_abbrev() == tz) {
-            return tzp;
-        }
-
-        if (tzp->dst_zone_name() == tz) {
-            return tzp;
-        }
-
-        if (tzp->std_zone_name() == tz) {
-            return tzp;
-        }
-    }
-
-    return boost::local_time::time_zone_ptr();
 }
 
 }
