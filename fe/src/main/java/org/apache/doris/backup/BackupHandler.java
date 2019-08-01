@@ -381,12 +381,7 @@ public class BackupHandler extends Daemon implements Writable {
         checkAndFilterRestoreObjsExistInSnapshot(jobInfo, stmt.getTableRefs());
 
         // Create a restore job
-        TimeZone timeZone = TimeZone.getTimeZone(
-                ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
-        SimpleDateFormat dateFormatTimeZone = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-        dateFormatTimeZone.setTimeZone(timeZone);
-        Long backupTimestamp = TimeUtils.timeStringToLong(stmt.getBackupTimestamp(), dateFormatTimeZone);
-        RestoreJob restoreJob = new RestoreJob(stmt.getLabel(), backupTimestamp,
+        RestoreJob restoreJob = new RestoreJob(stmt.getLabel(), stmt.getBackupTimestamp(),
                 db.getId(), db.getFullName(), jobInfo, stmt.allowLoad(), stmt.getReplicationNum(),
                 stmt.getTimeoutMs(), stmt.getMetaVersion(), catalog, repository.getId());
         catalog.getEditLog().logRestoreJob(restoreJob);

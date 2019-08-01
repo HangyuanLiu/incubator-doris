@@ -101,7 +101,7 @@ public class RestoreJob extends AbstractJob {
         CANCELLED
     }
 
-    private Long backupTimestamp;
+    private String backupTimestamp;
 
     private BackupJobInfo jobInfo;
     private boolean allowLoad;
@@ -144,7 +144,7 @@ public class RestoreJob extends AbstractJob {
         super(JobType.RESTORE);
     }
 
-    public RestoreJob(String label, Long backupTs, long dbId, String dbName, BackupJobInfo jobInfo,
+    public RestoreJob(String label, String backupTs, long dbId, String dbName, BackupJobInfo jobInfo,
             boolean allowLoad, int restoreReplicationNum, long timeoutMs, int metaVersion,
             Catalog catalog, long repoId) {
         super(JobType.RESTORE, label, dbId, dbName, timeoutMs, catalog, repoId);
@@ -1250,7 +1250,7 @@ public class RestoreJob extends AbstractJob {
         List<String> info = Lists.newArrayList();
         info.add(String.valueOf(jobId));
         info.add(label);
-        info.add(TimeUtils.longToTimeString(backupTimestamp));
+        info.add(backupTimestamp);
         info.add(dbName);
         info.add(state.name());
         info.add(String.valueOf(allowLoad));
@@ -1414,7 +1414,7 @@ public class RestoreJob extends AbstractJob {
     public void write(DataOutput out) throws IOException {
         super.write(out);
 
-        out.writeLong(backupTimestamp);
+        Text.writeString(out, backupTimestamp);
         jobInfo.write(out);
         out.writeBoolean(allowLoad);
         
@@ -1473,7 +1473,7 @@ public class RestoreJob extends AbstractJob {
     public void readFields(DataInput in) throws IOException {
         super.readFields(in);
 
-        backupTimestamp = in.readLong();
+        backupTimestamp = Text.readString(in);
         jobInfo = BackupJobInfo.read(in);
         allowLoad = in.readBoolean();
 
