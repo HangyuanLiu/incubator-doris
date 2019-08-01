@@ -439,9 +439,9 @@ IntVal TimestampFunctions::to_unix(
             (const char *)fmt.ptr, fmt.len, (const char *)string_val.ptr, string_val.len)) {
         return IntVal::null();
     }
-
-    TimestampValue timestamp(tv, context->impl()->state()->timezone());
-    return timestamp.val;
+    TimestampValue ts;
+    ts.from_date_time_value(tv, context->impl()->state()->timezone());
+    return ts.val;
 }
 
 IntVal TimestampFunctions::to_unix(
@@ -450,7 +450,8 @@ IntVal TimestampFunctions::to_unix(
         return IntVal::null();
     }
     const DateTimeValue &tv = DateTimeValue::from_datetime_val(ts_val);
-    TimestampValue ts(tv, context->impl()->state()->timezone());
+    TimestampValue ts;
+    ts.from_date_time_value(tv, context->impl()->state()->timezone());
     return ts.val;
 }
 
@@ -477,10 +478,18 @@ DoubleVal TimestampFunctions::curtime(FunctionContext* context) {
 
 DateTimeVal TimestampFunctions::convert_tz(FunctionContext* ctx, const DateTimeVal& ts_val,
                                                const StringVal& from_tz, const StringVal& to_tz) {
+    if (TimezoneDatabase::find_timezone(std::string((char *)from_tz.ptr, from_tz.len)) == nullptr ||
+        TimezoneDatabase::find_timezone(std::string((char *)to_tz.ptr, to_tz.len)) == nullptr
+    ) {
+        return DateTimeVal::null();
+    }
+
     const DateTimeValue &ts_value = DateTimeValue::from_datetime_val(ts_val);
-    TimestampValue ts(ts_value, std::string((char *)from_tz.ptr, from_tz.len));
+    TimestampValue ts;
+    ts.from_date_time_value(ts_value, std::string((char *)from_tz.ptr, from_tz.len));
     DateTimeVal return_val;
     ts.to_datetime_val(&return_val, std::string((char *)to_tz.ptr, to_tz.len));
     return return_val;
 }
+
 }
