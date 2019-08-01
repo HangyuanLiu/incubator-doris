@@ -231,7 +231,6 @@ public class VariableMgr {
                      }
                  }
                  ZoneId.of(value, timeZoneAliasMap);
-                 System.out.println("TimeZone : " + value);
              } catch (DateTimeException ex) {
                  ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_TIME_ZONE, setVar.getValue().getStringValue());
              }

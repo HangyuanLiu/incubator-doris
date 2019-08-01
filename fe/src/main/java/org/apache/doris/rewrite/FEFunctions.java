@@ -293,7 +293,9 @@ public class FEFunctions {
         }
         Date date = new Date(unixTime.getLongValue() * 1000);
         //currently, doris BE only support "yyyy-MM-dd HH:mm:ss" and "yyyy-MM-dd" format
-        return new StringLiteral(DateFormatUtils.format(date, fmtLiteral.getStringValue()));
+        TimeZone timeZone = TimeZone.getTimeZone(
+                ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
+        return new StringLiteral(DateFormatUtils.format(date, fmtLiteral.getStringValue(),timeZone));
     }
 
     private static long getTime(LiteralExpr expr) throws AnalysisException {
@@ -514,7 +516,6 @@ public class FEFunctions {
         String timezone = ConnectContext.get().getSessionVariable().getTimeZone();
         DateTimeFormatter formatter = formatterBuilder.toFormatter();
         return formatter.withZone(DateTimeZone.forID(timezone)).withLocale(Locale.US).print(date.getTime());
-        //return formatter.withLocale(Locale.US).print(date.getTime());
     }
 
     /**
