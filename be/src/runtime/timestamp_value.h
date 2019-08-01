@@ -74,7 +74,7 @@ public:
         boost::posix_time::ptime utc_ptime = lt.utc_time();
         boost::posix_time::ptime utc_start(boost::gregorian::date(1970, 1, 1));
         boost::posix_time::time_duration dur = utc_ptime - utc_start;
-        val = dur.total_seconds();
+        val = dur.total_milliseconds();
         return true;
     }
 
