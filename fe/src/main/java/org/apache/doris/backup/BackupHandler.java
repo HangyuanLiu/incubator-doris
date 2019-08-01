@@ -42,6 +42,9 @@ import org.apache.doris.common.ErrorReport;
 import org.apache.doris.common.Pair;
 import org.apache.doris.common.io.Writable;
 import org.apache.doris.common.util.Daemon;
+import org.apache.doris.common.util.TimeUtils;
+import org.apache.doris.qe.ConnectContext;
+import org.apache.doris.qe.VariableMgr;
 import org.apache.doris.task.DirMoveTask;
 import org.apache.doris.task.DownloadTask;
 import org.apache.doris.task.SnapshotTask;
@@ -63,9 +66,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -375,7 +381,12 @@ public class BackupHandler extends Daemon implements Writable {
         checkAndFilterRestoreObjsExistInSnapshot(jobInfo, stmt.getTableRefs());
 
         // Create a restore job
-        RestoreJob restoreJob = new RestoreJob(stmt.getLabel(), stmt.getBackupTimestamp(),
+        TimeZone timeZone = TimeZone.getTimeZone(
+                ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
+        SimpleDateFormat dateFormatTimeZone = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+        dateFormatTimeZone.setTimeZone(timeZone);
+        Long backupTimestamp = TimeUtils.timeStringToLong(stmt.getBackupTimestamp(), dateFormatTimeZone);
+        RestoreJob restoreJob = new RestoreJob(stmt.getLabel(), backupTimestamp,
                 db.getId(), db.getFullName(), jobInfo, stmt.allowLoad(), stmt.getReplicationNum(),
                 stmt.getTimeoutMs(), stmt.getMetaVersion(), catalog, repository.getId());
         catalog.getEditLog().logRestoreJob(restoreJob);
