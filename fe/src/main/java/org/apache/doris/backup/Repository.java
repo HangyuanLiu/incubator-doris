@@ -51,6 +51,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 
@@ -471,7 +472,7 @@ public class Repository implements Writable {
             return PREFIX_JOB_INFO;
         } else {
             return PREFIX_JOB_INFO
-                    + String.valueOf(createTime);
+                    + String.valueOf(createTime/1000L);
         }
     }
 
