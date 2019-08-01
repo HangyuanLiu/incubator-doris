@@ -84,6 +84,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TException;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -188,7 +190,7 @@ public class Coordinator {
         this.returnedAllResults = false;
         this.queryOptions = context.getSessionVariable().toThrift();
         this.queryGlobals.setNow_string(String.valueOf(new Date().getTime()));
-        this.queryGlobals.setTime_zone(context.getSessionVariable().getTimeZone());
+        this.queryGlobals.setTime_zone(ZonedDateTime.now(ZoneId.of(context.getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap)).getOffset());
         this.tResourceInfo = new TResourceInfo(context.getQualifiedUser(),
                 context.getSessionVariable().getResourceGroup());
         this.needReport = context.getSessionVariable().isReportSucc();
