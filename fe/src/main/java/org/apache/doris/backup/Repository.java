@@ -17,6 +17,7 @@
 
 package org.apache.doris.backup;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.doris.backup.Status.ErrCode;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.FsBroker;
@@ -588,9 +589,15 @@ public class Repository implements Writable {
                         tmp.add("Invalid: " + file.getName());
                         continue;
                     }
-                    SimpleDateFormat sessionTimeZone = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-                    sessionTimeZone.setTimeZone(TimeZone.getTimeZone(ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap)));
-                    tmp.add(TimeUtils.longToTimeString(Long.valueOf(disjoinPrefix(PREFIX_JOB_INFO, pureFileName.first)), sessionTimeZone));
+
+                    String createTimeStr = disjoinPrefix(PREFIX_JOB_INFO, pureFileName.first);
+                    if (StringUtils.isNumeric(createTimeStr)) {
+                        SimpleDateFormat sessionTimeZone = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+                        sessionTimeZone.setTimeZone(TimeZone.getTimeZone(ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap)));
+                        tmp.add(TimeUtils.longToTimeString(Long.valueOf(createTimeStr), sessionTimeZone));
+                    } else {
+                        tmp.add(createTimeStr);
+                    }
                 }
                 info.add(Joiner.on("\n").join(tmp));
                 info.add(tmp.isEmpty() ? "ERROR: no snapshot" : "OK");
