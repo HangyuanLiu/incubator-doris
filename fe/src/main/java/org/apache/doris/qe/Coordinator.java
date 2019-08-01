@@ -190,7 +190,7 @@ public class Coordinator {
         this.returnedAllResults = false;
         this.queryOptions = context.getSessionVariable().toThrift();
         this.queryGlobals.setNow_string(String.valueOf(new Date().getTime()));
-        this.queryGlobals.setTime_zone(ZonedDateTime.now(ZoneId.of(context.getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap)).getOffset());
+        this.queryGlobals.setTime_zone(ZonedDateTime.now(ZoneId.of(context.getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap)).getOffset().toString());
         this.tResourceInfo = new TResourceInfo(context.getQualifiedUser(),
                 context.getSessionVariable().getResourceGroup());
         this.needReport = context.getSessionVariable().isReportSucc();
