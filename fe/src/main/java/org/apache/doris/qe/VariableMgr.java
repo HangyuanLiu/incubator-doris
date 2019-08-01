@@ -72,7 +72,7 @@ public class VariableMgr {
     public static final int READ_ONLY = 8;
     // Variables with this flag can not be seen with `SHOW VARIABLES` statement.
     public static final int INVISIBLE = 16;
-    
+
     // set CST to +08:00 instead of America/Chicago
     public static final Map<String, String> timeZoneAliasMap = new HashMap<>(ImmutableMap.of("CST", "Asia/Shanghai"));
 

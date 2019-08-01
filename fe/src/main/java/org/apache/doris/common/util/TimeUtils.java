@@ -71,7 +71,7 @@ public class TimeUtils {
     public static int MAX_TIME;
 
     static {
-        TIME_ZONE = SimpleTimeZone.getDefault();
+        TIME_ZONE = new SimpleTimeZone(8 * 3600 * 1000, "");
         
         DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
         DATE_FORMAT.setTimeZone(TIME_ZONE);

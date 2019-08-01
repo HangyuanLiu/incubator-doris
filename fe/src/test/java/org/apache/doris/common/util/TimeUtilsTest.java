@@ -25,8 +25,11 @@ import org.apache.doris.common.AnalysisException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.text.SimpleDateFormat;
+import java.time.ZoneId;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.TimeZone;
 
 public class TimeUtilsTest {
 
@@ -125,7 +128,10 @@ public class TimeUtilsTest {
         Assert.assertEquals("N/A", TimeUtils.longToTimeString(-2));
 
         long timestamp = 1426125600000L;
-        Assert.assertEquals("2015-03-12 10:00:00", TimeUtils.longToTimeString(timestamp));
+        TimeZone timeZone = TimeZone.getTimeZone(ZoneId.of("+08:00"));
+        SimpleDateFormat dateFormatTimeZone = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        dateFormatTimeZone.setTimeZone(timeZone);
+        Assert.assertEquals("2015-03-12 10:00:00", TimeUtils.longToTimeString(timestamp, dateFormatTimeZone));
 
         DateLiteral date = new DateLiteral("2015-03-01", ScalarType.DATE);
         Assert.assertEquals(1031777L, date.getRealValue());
