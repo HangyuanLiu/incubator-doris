@@ -1473,7 +1473,7 @@ public class RestoreJob extends AbstractJob {
     public void readFields(DataInput in) throws IOException {
         super.readFields(in);
 
-        backupTimestamp = in.readLong(in);
+        backupTimestamp = in.readLong();
         jobInfo = BackupJobInfo.read(in);
         allowLoad = in.readBoolean();
 
