@@ -325,7 +325,7 @@ public class Repository implements Writable {
                         ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
                 SimpleDateFormat dateFormatTimeZone = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
                 dateFormatTimeZone.setTimeZone(timeZone);
-                remoteInfoFilePath = assembleJobInfoFilePath(label, -1) + TimeUtils.timeStringToLong(backupTimestamp, dateFormatTimeZone)/1000L;
+                remoteInfoFilePath = assembleJobInfoFilePath(label, -1) + TimeUtils.timeStringToLong(backupTimestamp, dateFormatTimeZone);
                 st = download(remoteInfoFilePath, localInfoFile.getPath());
                 if (!st.ok()) {
                     return st;
@@ -471,7 +471,7 @@ public class Repository implements Writable {
             return PREFIX_JOB_INFO;
         } else {
             return PREFIX_JOB_INFO
-                    + String.valueOf(createTime/1000L);
+                    + String.valueOf(createTime/1000L*1000L);
         }
     }
 
