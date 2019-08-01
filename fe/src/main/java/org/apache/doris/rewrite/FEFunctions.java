@@ -277,12 +277,7 @@ public class FEFunctions {
 
     @FEFunction(name = "from_unixtime", argTypes = { "INT" }, returnType = "VARCHAR")
     public static StringLiteral fromUnixTime(LiteralExpr unixTime) throws AnalysisException {
-        //if unixTime < 0, we should return null, throw a exception and let BE process
-        if (unixTime.getLongValue() < 0) {
-            throw new AnalysisException("unixtime should larger than zero");
-        }
-        Date date = new Date(unixTime.getLongValue() * 1000);
-        return new StringLiteral(dateFormat(date, "%Y-%m-%d %H:%i:%S"));
+        return fromUnixTime(unixTime, new StringLiteral("%Y-%m-%d %H:%i:%S"));
     }
 
     @FEFunction(name = "from_unixtime", argTypes = { "INT", "VARCHAR" }, returnType = "VARCHAR")
@@ -292,10 +287,7 @@ public class FEFunctions {
             throw new AnalysisException("unixtime should larger than zero");
         }
         Date date = new Date(unixTime.getLongValue() * 1000);
-        //currently, doris BE only support "yyyy-MM-dd HH:mm:ss" and "yyyy-MM-dd" format
-        TimeZone timeZone = TimeZone.getTimeZone(
-                ZoneId.of(ConnectContext.get().getSessionVariable().getTimeZone(), VariableMgr.timeZoneAliasMap));
-        return new StringLiteral(DateFormatUtils.format(date, fmtLiteral.getStringValue(),timeZone));
+        return new StringLiteral(dateFormat(date, fmtLiteral.getStringValue()));
     }
 
     private static long getTime(LiteralExpr expr) throws AnalysisException {
