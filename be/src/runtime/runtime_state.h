@@ -538,10 +538,8 @@ private:
 
     // Username of user that is executing the query to which this RuntimeState belongs.
     std::string _user;
-    // Query-global timestamp, e.g., for implementing now().
-    // Use pointer to avoid inclusion of timestampvalue.h and avoid clang issues.
-    boost::scoped_ptr<DateTimeValue> _now;
 
+    //Query-global timestamp
     int64_t _timestamp;
     std::string _timezone;
 
