@@ -414,14 +414,12 @@ StringVal TimestampFunctions::from_unix(
     }
 
     TimestampValue timestamp(unix_time.val);
-    DateTimeValue t;
-    timestamp.to_datetime_value(t, context->impl()->state()->timezone());
-    if (!check_format(fmt, t)) {
+    DateTimeValue tv;
+    timestamp.to_datetime_value(tv, context->impl()->state()->timezone());
+    char buf[128];
+    if (!tv.to_format_string((const char*)fmt.ptr, fmt.len, buf)){
         return StringVal::null();
     }
-
-    char buf[64];
-    t.to_string(buf);
     return AnyValUtil::from_string_temp(context, buf);
 }
 
