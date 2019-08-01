@@ -15,13 +15,13 @@ Doris 内部存在多个时区相关参数
     当服务器启动时，会根据机器设置时区自动设置，设置后不可修改。
     
 * time_zone :
-    服务器当前时区
+    服务器当前时区，区分session级别和global级别
 
 ## 具体操作
 
 1. show variables like '%time_zone%'
 
-    查看当前时区相关配置：
+    查看当前时区相关配置
     
 2. SET time_zone = 'Asia/Shanghai'
 
@@ -30,7 +30,6 @@ Doris 内部存在多个时区相关参数
 3. SET global time_zone = 'Asia/Shanghai'
 
     该命令可以设置global级别的时区参数，fe会将参数持久化，连接断开后不失效
-    
     
 ### 时区的影响
 
@@ -42,7 +41,7 @@ Doris 内部存在多个时区相关参数
 
 ## 使用限制
 
-时区值可以用几种格式给出，但都不区分大小写:
+时区值可以使用几种格式给出，不区分大小写:
 
 * "SYSTEM"，表示服务器时区与系统时区相同
 
@@ -50,7 +49,7 @@ Doris 内部存在多个时区相关参数
 
 * 标准时区格式，如"Asia/Shanghai"、"America/Los_Angeles"
 
-* 不支持缩写失去格式，如"MET"、"CTT"。因为缩写时区在不同场景下存在歧义，不建议使用。
+* 不支持缩写时区格式，如"MET"、"CTT"。因为缩写时区在不同场景下存在歧义，不建议使用。
 
 * 为了兼容Doris，支持CST缩写时区，内部会将CST转移为"Asia/Shanghai"的中国标准时区
 

@@ -72,10 +72,11 @@ boost::local_time::time_zone_ptr TimezoneDatabase::find_timezone(const std::stri
     // See if they specified a zone id
     if (tz.find_first_of('/') != std::string::npos) {
         return _s_tz_database.time_zone_from_region(tz);
+    } else {
+        //eg. +08:00
+        boost::local_time::time_zone_ptr tzp(new boost::local_time::posix_time_zone(std::string("TMP") + tz));
+        return tzp;
     }
-    std::cout<<"timezone : " << tz << std::endl;
-    boost::local_time::time_zone_ptr tzp(new boost::local_time::posix_time_zone(std::string("TMP") + tz));
-    return tzp;
 }
 
 }

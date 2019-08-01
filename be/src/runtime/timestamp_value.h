@@ -51,7 +51,6 @@ private:
     static std::vector<std::string> _s_tz_region_list;
 };
 
-
 class TimestampValue {
 public:
     TimestampValue(time_t timestamp) {

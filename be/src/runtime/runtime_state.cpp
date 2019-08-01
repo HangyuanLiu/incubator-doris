@@ -107,13 +107,8 @@ RuntimeState::RuntimeState(const TQueryGlobals& query_globals)
       _profile(_obj_pool.get(), "<unnamed>"),
       _per_fragment_instance_idx(0) {
     _query_options.batch_size = DEFAULT_BATCH_SIZE;
-    _now.reset(new DateTimeValue());
-    _now->from_date_str(query_globals.now_string.c_str(), query_globals.now_string.size());
     _timestamp = atol(query_globals.now_string.c_str());
     if (query_globals.__isset.time_zone) {
-        if(TimezoneDatabase::find_timezone(query_globals.time_zone) == NULL) {
-            _timezone = "Asia/Shanghai";
-        }
         _timezone = query_globals.time_zone;
     } else {
         _timezone = "Asia/Shanghai";
@@ -174,16 +169,8 @@ Status RuntimeState::init(
     const TQueryGlobals&  query_globals, ExecEnv* exec_env) {
     _fragment_instance_id = fragment_instance_id;
     _query_options = query_options;
-
-    _now.reset(new DateTimeValue());
-    _now->from_date_str(query_globals.now_string.c_str(), query_globals.now_string.size());
-     _timestamp = atol(query_globals.now_string.c_str());
+    _timestamp = atol(query_globals.now_string.c_str());
     if (query_globals.__isset.time_zone) {
-        if(TimezoneDatabase::find_timezone(query_globals.time_zone) == NULL) {
-            std::stringstream error_msg;
-            error_msg <<"Unknow Timezone : " << query_globals.time_zone;
-            return Status::InternalError("Unknow Timezone : " + error_msg.str());
-        }
         _timezone = query_globals.time_zone;
     } else {
         _timezone = "Asia/Shanghai";
