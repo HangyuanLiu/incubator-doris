@@ -72,8 +72,9 @@ public class VariableMgr {
     public static final int READ_ONLY = 8;
     // Variables with this flag can not be seen with `SHOW VARIABLES` statement.
     public static final int INVISIBLE = 16;
-    // A map of zone overrides to enable the short time-zone names to be used.
-    public static final Map<String, String> timeZoneAliasMap = new HashMap<>(ZoneId.SHORT_IDS);
+    
+    // set CST to +08:00 instead of America/Chicago
+    public static final Map<String, String> timeZoneAliasMap = new HashMap<>(ImmutableMap.of("CST", "Asia/Shanghai"));
 
     // Map variable name to variable context which have enough information to change variable value.
     private static ImmutableMap<String, VarContext> ctxByVarName;
@@ -90,8 +91,6 @@ public class VariableMgr {
     static {
         // Session value
         globalSessionVariable = new SessionVariable();
-        // set CST to +08:00 instead of America/Chicago
-        timeZoneAliasMap.put("CST", "+08:00");
         ImmutableSortedMap.Builder<String, VarContext> builder =
                 ImmutableSortedMap.orderedBy(String.CASE_INSENSITIVE_ORDER);
         for (Field field : SessionVariable.class.getDeclaredFields()) {
