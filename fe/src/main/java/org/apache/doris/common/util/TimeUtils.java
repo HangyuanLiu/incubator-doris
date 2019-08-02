@@ -35,6 +35,7 @@ import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.SimpleTimeZone;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -70,7 +71,7 @@ public class TimeUtils {
     public static int MAX_TIME;
 
     static {
-        TIME_ZONE = TimeZone.getDefault();
+        TIME_ZONE = new SimpleTimeZone(8 * 3600 * 1000, "");
         
         DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
         DATE_FORMAT.setTimeZone(TIME_ZONE);
