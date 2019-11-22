@@ -119,6 +119,16 @@ public class Database extends MetaObject implements Writable {
         this.dbState = DbState.NORMAL;
         this.attachDbName = "";
         this.clusterName = "";
+
+
+        //TODO(lhy) delete if
+        Map<String, String> properties = null;
+        List<Column> columns = new ArrayList<>();
+        for (int i = 0;i < 5; ++i) {
+            columns.add(new Column("column" + i, Type.INT));
+        }
+        FunctionTable fnTable = new FunctionTable(0, "udtf", columns, properties);
+        nameToTable.put("udtf", fnTable);
     }
 
     public void readLock() {

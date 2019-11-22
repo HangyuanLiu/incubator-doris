@@ -17,7 +17,6 @@
 
 package org.apache.doris.catalog;
 
-import org.apache.doris.common.DdlException;
 import org.apache.doris.thrift.TFunctionTable;
 import org.apache.doris.thrift.TTableDescriptor;
 import org.apache.doris.thrift.TTableType;
@@ -40,7 +39,7 @@ public class FunctionTable extends Table {
         super(TableType.TABLEFUNCTION);
     }
 
-    public FunctionTable(long id, String name, List<Column> schema, Map<String, String> properties) throws DdlException {
+    public FunctionTable(long id, String name, List<Column> schema, Map<String, String> properties){
         super(id, name, TableType.TABLEFUNCTION, schema);
         //validate
     }

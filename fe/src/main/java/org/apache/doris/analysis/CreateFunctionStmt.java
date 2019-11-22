@@ -231,6 +231,7 @@ public class CreateFunctionStmt extends DdlStmt {
         for (int i = 0; i < returnArgsDef.getArgTypes().length; i++) {
             fnTableArgs.add(new FnTableArgs("column" + i, returnArgsDef.getArgTypes()[i]));
         }
+        //TODO(lhy) : we may don't need this
         function = TableFunction.createUdtf(
                 functionName, argsDef.getArgTypes(), fnTableArgs, false
         );
