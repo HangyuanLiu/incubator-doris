@@ -553,7 +553,8 @@ public class Function implements Writable {
     enum FunctionType {
         ORIGIN(0),
         SCALAR(1),
-        AGGREGATE(2);
+        AGGREGATE(2),
+        TABLE(3);
 
         private int code;
 
@@ -572,6 +573,8 @@ public class Function implements Writable {
                     return SCALAR;
                 case 2:
                     return AGGREGATE;
+                case 3:
+                    return TABLE;
             }
             return null;
         }
@@ -642,6 +645,9 @@ public class Function implements Writable {
                 break;
             case AGGREGATE:
                 function = new AggregateFunction();
+                break;
+            case TABLE:
+                function = new TableFunction();
                 break;
             default:
                 throw new Error("Unsupported function type, type=" + functionType);

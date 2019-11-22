@@ -6116,6 +6116,38 @@ public class Catalog {
     }
 
     public void createFunction(CreateFunctionStmt stmt) throws UserException {
+
+        if(stmt.isTableFn) {
+            FunctionName name = stmt.getFunctionName();
+            String dbName = getDb(name.getDb()).getFullName();
+            String tableName = stmt.getFunctionName().getFunction();
+
+            //check if db exists
+            Database db = getDb(name.getDb());
+            if (db == null) {
+                ErrorReport.reportDdlException(ErrorCode.ERR_BAD_DB_ERROR, dbName);
+            }
+
+            db.readLock();
+            try {
+                if (db.getTable(tableName) != null) {
+                    ErrorReport.reportDdlException(ErrorCode.ERR_TABLE_EXISTS_ERROR, tableName);
+                }
+            } finally {
+                db.readUnlock();
+            }
+
+            long tableId = Catalog.getInstance().getNextId();
+            FunctionTable fnTable = new FunctionTable();
+            if(!db.createTableWithLock(fnTable, false, false)) {
+                ErrorReport.reportDdlException(ErrorCode.ERR_CANT_CREATE_TABLE, tableName, "table already exist");
+            }
+            LOG.info("successfully create table[{}-{}]", tableName, tableId);
+
+            Preconditions.checkState(false);
+            return;
+        }
+
         FunctionName name = stmt.getFunctionName();
         Database db = getDb(name.getDb());
         if (db == null) {

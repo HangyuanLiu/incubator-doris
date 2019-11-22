@@ -53,6 +53,7 @@ public class FunctionSet {
     public void init() {
         // Populate all aggregate builtins.
         initAggregateBuiltins();
+        initTableFunctionBuiltins();
 
         ArithmeticExpr.initBuiltins(this);
         BinaryPredicate.initBuiltins(this);
@@ -651,6 +652,15 @@ public class FunctionSet {
      */
     public void addBuiltin(Function fn) {
         addFunction(fn);
+    }
+    private void initTableFunctionBuiltins() {
+        ArrayList<Type> argsType = new ArrayList<Type>();
+        Table retTable = null;
+        boolean varArgs = true;
+
+        //stack(INT n, v_1, v_2, ..., v_k) 将v_1, ..., v_k 分为n行，每行包含n/k列，n必须为常数
+        addBuiltin(TableFunction.createBuiltin(
+                "stack", argsType, varArgs, retTable));
     }
 
     // Populate all the aggregate builtins in the catalog.

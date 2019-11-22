@@ -45,7 +45,8 @@ enum TPlanNodeType {
   EMPTY_SET_NODE, 
   UNION_NODE,
   ES_SCAN_NODE,
-  ES_HTTP_SCAN_NODE
+  ES_HTTP_SCAN_NODE,
+  TABLE_FUNCTION_SCAN_NODE
 }
 
 // phases of an execution node
@@ -256,6 +257,12 @@ struct TOlapScanNode {
   4: required bool is_preaggregation
   5: optional string sort_column
 }
+
+struct TTableFunctionScanNode {
+  1: required Types.TTupleId tuple_id
+  2: required Types.TFunction fn
+}
+
 struct TEqJoinCondition {
   // left-hand side of "<a> = <b>"
   1: required Exprs.TExpr left;
@@ -587,6 +594,8 @@ struct TPlanNode {
   28: optional TUnionNode union_node
   29: optional TBackendResourceProfile resource_profile
   30: optional TEsScanNode es_scan_node
+
+  31: optional TTableFunctionScanNode table_func_scan_node
 }
 
 // A flattened representation of a tree of PlanNodes, obtained by depth-first

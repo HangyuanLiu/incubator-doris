@@ -253,6 +253,10 @@ struct TSchemaTable {
 struct TBrokerTable {
 }
 
+struct TFunctionTable {
+
+}
+
 // "Union" of all table types.
 struct TTableDescriptor {
   1: required Types.TTableId id
@@ -271,6 +275,8 @@ struct TTableDescriptor {
   13: optional TKuduTable kuduTable
   14: optional TBrokerTable BrokerTable
   15: optional TEsTable esTable
+
+  16: optional TFunctionTable fnTable
 }
 
 struct TDescriptorTable {

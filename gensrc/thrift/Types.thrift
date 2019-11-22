@@ -217,6 +217,7 @@ enum QueryState {
 enum TFunctionType {
   SCALAR,
   AGGREGATE,
+  TABLE
 }
 
 enum TFunctionBinaryType {
@@ -263,6 +264,10 @@ struct TAggregateFunction {
   10: optional bool is_analytic_only_fn = false
 }
 
+struct TTableFunction {
+    1: required string sysmbol;
+}
+
 // Represents a function in the Catalog.
 struct TFunction {
   // Fully qualified function name.
@@ -295,6 +300,8 @@ struct TFunction {
 
   11: optional i64 id
   12: optional string checksum
+
+  13: optional TTableFunction table_fn
 }
 
 enum TLoadJobState {
@@ -318,7 +325,8 @@ enum TTableType {
     SCHEMA_TABLE,
     KUDU_TABLE,
     BROKER_TABLE,
-    ES_TABLE
+    ES_TABLE,
+    FUNCTION_TABLE
 }
 
 enum TKeysType {

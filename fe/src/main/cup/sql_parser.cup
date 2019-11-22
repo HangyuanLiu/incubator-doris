@@ -873,9 +873,15 @@ create_stmt ::=
     :}*/
     /* Function */
     | KW_CREATE opt_aggregate:isAggregate KW_FUNCTION function_name:functionName LPAREN func_args_def:args RPAREN
-            KW_RETURNS type_def:retrunType opt_intermediate_type:intermediateType opt_properties:properties
+            KW_RETURNS type_def:returnType opt_intermediate_type:intermediateType opt_properties:properties
     {:
-        RESULT = new CreateFunctionStmt(isAggregate, functionName, args, retrunType, intermediateType, properties);
+        RESULT = new CreateFunctionStmt(isAggregate, functionName, args, returnType, intermediateType, properties);
+    :}
+    /* Table Function*/
+    | KW_CREATE KW_FUNCTION function_name:functionName LPAREN func_args_def:args RPAREN
+            KW_RETURNS KW_TABLE LPAREN func_args_def:returnType RPAREN opt_properties:properties
+    {:
+        RESULT = new CreateFunctionStmt(functionName, args, returnType, properties);
     :}
     /* Table */
     | KW_CREATE opt_external:isExternal KW_TABLE opt_if_not_exists:ifNotExists table_name:name

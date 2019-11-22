@@ -86,6 +86,10 @@ public class FromClause implements ParseNode, Iterable<TableRef> {
         // Start out with table refs to establish aliases.
         TableRef leftTblRef = null;  // the one to the left of tblRef
         for (int i = 0; i < tableRefs_.size(); ++i) {
+            System.out.println("tableRefs : " + tableRefs_.get(i).toSql());
+            System.out.println("tableRefs : " + tableRefs_.get(i).toString());
+            System.out.println("tableRefs : " + tableRefs_.get(i).tableRefToSql());
+
             // Resolve and replace non-InlineViewRef table refs with a BaseTableRef or ViewRef.
             TableRef tblRef = tableRefs_.get(i);
             tblRef = analyzer.resolveTableRef(tblRef);

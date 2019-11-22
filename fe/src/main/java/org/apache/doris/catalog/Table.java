@@ -53,7 +53,8 @@ public class Table extends MetaObject implements Writable {
         VIEW,
         KUDU,
         BROKER,
-        ELASTICSEARCH
+        ELASTICSEARCH,
+        TABLEFUNCTION
     }
 
     protected long id;

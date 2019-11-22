@@ -28,6 +28,7 @@ import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.ExprSubstitutionMap;
 import org.apache.doris.analysis.FunctionCallExpr;
+import org.apache.doris.analysis.FunctionTableRef;
 import org.apache.doris.analysis.InPredicate;
 import org.apache.doris.analysis.InlineViewRef;
 import org.apache.doris.analysis.IsNullPredicate;
@@ -1255,6 +1256,9 @@ public class SingleNodePlanner {
             case ELASTICSEARCH:
                 scanNode = new EsScanNode(ctx_.getNextNodeId(), tblRef.getDesc(), "EsScanNode");
                 break;
+            case TABLEFUNCTION:
+                scanNode = new TableFunctionScanNode(ctx_.getNextNodeId(), tblRef.getDesc());
+                break;
             default:
                 break;
         }
@@ -1419,7 +1423,7 @@ public class SingleNodePlanner {
      */
     private PlanNode createTableRefNode(Analyzer analyzer, TableRef tblRef)
             throws UserException,  AnalysisException {
-        if (tblRef instanceof BaseTableRef) {
+        if (tblRef instanceof BaseTableRef || tblRef instanceof FunctionTableRef) {
             return createScanNode(analyzer, tblRef);
         }
         if (tblRef instanceof InlineViewRef) {

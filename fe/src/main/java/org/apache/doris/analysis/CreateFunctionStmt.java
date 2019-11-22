@@ -22,8 +22,10 @@ import com.google.common.collect.ImmutableSortedMap;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.doris.catalog.AggregateFunction;
 import org.apache.doris.catalog.Catalog;
+import org.apache.doris.catalog.FnTableArgs;
 import org.apache.doris.catalog.Function;
 import org.apache.doris.catalog.ScalarFunction;
+import org.apache.doris.catalog.TableFunction;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
@@ -37,6 +39,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Map;
 
 // create a user define function
@@ -56,7 +59,10 @@ public class CreateFunctionStmt extends DdlStmt {
 
     private final FunctionName functionName;
     private final boolean isAggregate;
+    //TODO(lhy): delete it
+    public final boolean isTableFn;
     private final FunctionArgsDef argsDef;
+    private final FunctionArgsDef returnArgsDef;
     private final TypeDef returnType;
     private TypeDef intermediateType;
     private final Map<String, String> properties;
@@ -66,18 +72,38 @@ public class CreateFunctionStmt extends DdlStmt {
     private Function function;
     private String checksum;
 
+
     public CreateFunctionStmt(boolean isAggregate, FunctionName functionName, FunctionArgsDef argsDef,
                               TypeDef returnType, TypeDef intermediateType, Map<String, String> properties) {
         this.functionName = functionName;
         this.isAggregate = isAggregate;
         this.argsDef = argsDef;
         this.returnType = returnType;
+        this.returnArgsDef = null;
         this.intermediateType = intermediateType;
         if (properties == null) {
             this.properties = ImmutableSortedMap.of();
         } else {
             this.properties = ImmutableSortedMap.copyOf(properties, String.CASE_INSENSITIVE_ORDER);
         }
+        isTableFn = false;
+    }
+
+    //Construct for UDTF
+    public CreateFunctionStmt(FunctionName functionName, FunctionArgsDef argsDef,
+                              FunctionArgsDef returnArgsDef, Map<String, String> properties) {
+        this.functionName = functionName;
+        this.isAggregate = false;
+        this.argsDef = argsDef;
+        this.returnType = null;
+        this.returnArgsDef = returnArgsDef;
+        this.intermediateType = null;
+        if (properties == null) {
+            this.properties = ImmutableSortedMap.of();
+        } else {
+            this.properties = ImmutableSortedMap.copyOf(properties, String.CASE_INSENSITIVE_ORDER);
+        }
+        isTableFn = true;
     }
 
     public FunctionName getFunctionName() { return functionName; }
@@ -88,6 +114,11 @@ public class CreateFunctionStmt extends DdlStmt {
         super.analyze(analyzer);
 
         analyzeCommon(analyzer);
+        //TODO(lhy) delete it
+        if (isTableFn) {
+            analyzeUdtf();
+            return;
+        }
         // check
         if (isAggregate) {
             analyzeUda();
@@ -106,8 +137,11 @@ public class CreateFunctionStmt extends DdlStmt {
         }
         // check argument
         argsDef.analyze(analyzer);
-
-        returnType.analyze(analyzer);
+        if (returnType == null) {
+            returnArgsDef.analyze(analyzer);
+        } else {
+            returnType.analyze(analyzer);
+        }
         if (intermediateType != null) {
             intermediateType.analyze(analyzer);
         } else {
@@ -185,6 +219,21 @@ public class CreateFunctionStmt extends DdlStmt {
                 functionName, argsDef.getArgTypes(),
                 returnType.getType(), argsDef.isVariadic(),
                 objectFile, symbol, prepareFnSymbol, closeFnSymbol);
+        function.setChecksum(checksum);
+    }
+
+    private void analyzeUdtf() throws AnalysisException {
+        String symbol = properties.get(SYMBOL_KEY);
+        if (Strings.isNullOrEmpty(symbol)) {
+            throw new AnalysisException("No 'symbol' in properties");
+        }
+        ArrayList<FnTableArgs> fnTableArgs = new ArrayList<>();
+        for (int i = 0; i < returnArgsDef.getArgTypes().length; i++) {
+            fnTableArgs.add(new FnTableArgs("column" + i, returnArgsDef.getArgTypes()[i]));
+        }
+        function = TableFunction.createUdtf(
+                functionName, argsDef.getArgTypes(), fnTableArgs, false
+        );
         function.setChecksum(checksum);
     }
 
