@@ -53,7 +53,6 @@ public class FunctionTable extends Table {
         return tTableDescriptor;
     }
 
-
     @Override
     public int getSignature(int signatureVersion) {
         Adler32 adler32 = new Adler32();

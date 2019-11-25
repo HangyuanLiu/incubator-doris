@@ -20,10 +20,13 @@ package org.apache.doris.planner;
 import org.apache.doris.analysis.Analyzer;
 import org.apache.doris.analysis.TupleDescriptor;
 import org.apache.doris.common.UserException;
+import org.apache.doris.thrift.TFunction;
 import org.apache.doris.thrift.TPlanNode;
+import org.apache.doris.thrift.TPlanNodeType;
 import org.apache.doris.thrift.TScanRangeLocations;
 import com.google.common.base.Objects;
 import com.google.common.base.Objects.ToStringHelper;
+import org.apache.doris.thrift.TTableFunctionScanNode;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
@@ -47,10 +50,11 @@ public class TableFunctionScanNode extends ScanNode {
 
     }
 
+
     @Override
     protected void toThrift(TPlanNode msg) {
-        //msg.node_type = TPlanNodeType.TABLE_FUNCTION_SCAN_NODE;
-        //msg.table_func_scan_node = new TTableFunctionScanNode(desc.getId().asInt());
+        msg.node_type = TPlanNodeType.TABLE_FUNCTION_SCAN_NODE;
+        msg.table_func_scan_node = new TTableFunctionScanNode(desc.getId().asInt(), new TFunction());
     }
 
     @Override

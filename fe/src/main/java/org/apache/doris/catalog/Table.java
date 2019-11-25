@@ -169,6 +169,8 @@ public class Table extends MetaObject implements Writable {
             table = new BrokerTable();
         } else if (type == TableType.ELASTICSEARCH) {
             table = new EsTable();
+        } else if (type == TableType.TABLEFUNCTION) {
+            table = new FunctionTable();
         } else {
             throw new IOException("Unknown table type: " + type.name());
         }
