@@ -89,7 +89,6 @@ public class MysqlScanNode extends ScanNode {
     private void createMySQLFilters(Analyzer analyzer) {
         if (conjuncts.isEmpty()) {
             return;
-
         }
         List<SlotRef> slotRefs = Lists.newArrayList();
         Expr.collectList(conjuncts, SlotRef.class, slotRefs);

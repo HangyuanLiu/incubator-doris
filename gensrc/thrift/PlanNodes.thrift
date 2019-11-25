@@ -188,6 +188,11 @@ struct TMySQLScanNode {
   4: required list<string> filters
 }
 
+struct TTableFunctionScanNode {
+  1: required Types.TTupleId tuple_id
+  2: required Types.TFunction fn
+}
+
 struct TBrokerScanNode {
     1: required Types.TTupleId tuple_id
 
@@ -256,11 +261,6 @@ struct TOlapScanNode {
   3: required list<Types.TPrimitiveType> key_column_type
   4: required bool is_preaggregation
   5: optional string sort_column
-}
-
-struct TTableFunctionScanNode {
-  1: required Types.TTupleId tuple_id
-  2: required Types.TFunction fn
 }
 
 struct TEqJoinCondition {

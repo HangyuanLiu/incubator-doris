@@ -18,7 +18,11 @@
 package org.apache.doris.planner;
 
 import org.apache.doris.analysis.Analyzer;
+import org.apache.doris.analysis.FunctionName;
 import org.apache.doris.analysis.TupleDescriptor;
+import org.apache.doris.catalog.FnTableArgs;
+import org.apache.doris.catalog.TableFunction;
+import org.apache.doris.catalog.Type;
 import org.apache.doris.common.UserException;
 import org.apache.doris.thrift.TFunction;
 import org.apache.doris.thrift.TPlanNode;
@@ -30,13 +34,25 @@ import org.apache.doris.thrift.TTableFunctionScanNode;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class TableFunctionScanNode extends ScanNode {
     private static final Logger LOG = LogManager.getLogger(TableFunctionScanNode.class);
 
+    TableFunction tableFn;
+
     public TableFunctionScanNode(PlanNodeId id, TupleDescriptor desc) {
         super(id, desc, "TableFunctionScanNode");
+        //TODO(lhy) : we may don't need this
+        Type[] argTypes = new Type[5];
+        ArrayList<FnTableArgs> fnTableArgs = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            argTypes[i] = Type.INT;
+            fnTableArgs.add(new FnTableArgs("column" + i, Type.INT));
+        }
+        tableFn = TableFunction.createUdtf(
+                new FunctionName("udtf"), argTypes, fnTableArgs, false);
     }
 
     @Override
@@ -50,11 +66,10 @@ public class TableFunctionScanNode extends ScanNode {
 
     }
 
-
     @Override
     protected void toThrift(TPlanNode msg) {
         msg.node_type = TPlanNodeType.TABLE_FUNCTION_SCAN_NODE;
-        msg.table_func_scan_node = new TTableFunctionScanNode(desc.getId().asInt(), new TFunction());
+        msg.table_func_scan_node = new TTableFunctionScanNode(desc.getId().asInt(), tableFn.toThrift());
     }
 
     @Override
