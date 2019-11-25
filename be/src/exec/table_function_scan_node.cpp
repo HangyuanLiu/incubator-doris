@@ -55,14 +55,6 @@ TableFunctionScanNode::TableFunctionScanNode(ObjectPool *pool, const TPlanNode &
 
 TableFunctionScanNode::~TableFunctionScanNode() {
 }
-/*
-Status TableFunctionScanNode::init(const TPlanNode &tnode, RuntimeState *state) {
-    RETURN_IF_ERROR(ScanNode::init(tnode));
-    auto& table_function_scan_node = tnode.table_func_scan_node;
-    std::string fn_name = table_function_scan_node.;
-    return Status::OK();
-}
-*/
 
 Status TableFunctionScanNode::prepare(RuntimeState *state) {
     VLOG(1) << "TableFunctionScanNode prepare";
@@ -101,6 +93,18 @@ Status TableFunctionScanNode::prepare(RuntimeState *state) {
         return Status::InternalError("new a mem pool failed.");
     }
 
+    std::vector<doris_udf::FunctionContext::TypeDesc> return_type;
+    std::vector<doris_udf::FunctionContext::TypeDesc> arg_types;
+    for (int i = 0; i < 5; i++) {
+        FunctionContext::TypeDesc typeDesc;
+        typeDesc.type = FunctionContext::TYPE_INT;
+        return_type.push_back(typeDesc);
+        arg_types.push_back(typeDesc);
+    }
+
+    //TODO(lhy)
+    _context = FunctionContextImpl::create_context(state, _mem_pool.get(), return_type, arg_types, 0, false);
+
     return Status::OK();
 }
 
@@ -114,19 +118,16 @@ Status TableFunctionScanNode::open(RuntimeState* state) {
 }
 
 Status TableFunctionScanNode::get_next(RuntimeState* state, RowBatch* row_batch, bool* eos) {
-    std::vector<doris_udf::FunctionContext::TypeDesc> return_type;
-    std::vector<doris_udf::FunctionContext::TypeDesc> arg_types;
-    FunctionContext* context =
-            FunctionContextImpl::create_context(state, _mem_pool.get(), return_type, arg_types, 0, false);
 
-    BuiltinTableFn::generate_rand(context, 2, 2);
+    BuiltinTableFn::generate_rand(_context, 5, 5);
+    RecordStore* store = _context->impl()->record_store();
 
-    doris_udf::RecordStore* store = context->impl()->record_store();
     for (int i = 0; i < store->size(); ++i) {
         int row_idx = row_batch->add_row();
         TupleRow *row = row_batch->get_row(row_idx);
         row->set_tuple(0, reinterpret_cast<Tuple*> (store->get(i)));
     }
+    *eos = true;
     return Status::OK();
 }
 
