@@ -499,6 +499,9 @@ Status DescriptorTbl::create(ObjectPool* pool, const TDescriptorTable& thrift_tb
         case TTableType::ES_TABLE:
             desc = pool->add(new EsTableDescriptor(tdesc));
             break;
+        case TTableType::FUNCTION_TABLE:
+            desc = pool->add(new FunctionTableDescriptor(tdesc));
+            break;
         default:
             DCHECK(false) << "invalid table type: " << tdesc.tableType;
         }

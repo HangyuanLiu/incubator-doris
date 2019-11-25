@@ -65,10 +65,14 @@ Status TableFunctionScanNode::init(const TPlanNode &tnode, RuntimeState *state) 
 */
 
 Status TableFunctionScanNode::prepare(RuntimeState *state) {
-    VLOG_QUERY << "TableFunctionScanNode prepare";
+    VLOG(1) << "TableFunctionScanNode prepare";
+
+    if (NULL == state) {
+        return Status::InternalError("input pointer is NULL.");
+    }
     RETURN_IF_ERROR(ScanNode::prepare(state));
     // get tuple desc
-    _runtime_state = state;
+
     _tuple_desc = state->desc_tbl().get_tuple_descriptor(_tuple_id);
     if (_tuple_desc == nullptr) {
         std::stringstream ss;
@@ -76,7 +80,13 @@ Status TableFunctionScanNode::prepare(RuntimeState *state) {
         return Status::InternalError(ss.str());
     }
 
-    // Initialize slots map
+    const FunctionTableDescriptor* function_table =
+            static_cast<const FunctionTableDescriptor*>(_tuple_desc->table_desc());
+    if (nullptr == function_table) {
+        return Status::InternalError("function table pointer is null");
+    }
+
+    /*
     for (auto slot : _tuple_desc->slots()) {
         auto pair = _slots_map.emplace(slot->col_name(), slot);
         if (!pair.second) {
@@ -84,9 +94,12 @@ Status TableFunctionScanNode::prepare(RuntimeState *state) {
             ss << "Failed to insert slot, col_name=" << slot->col_name();
             return Status::InternalError(ss.str());
         }
-    }
+    }*/
 
-    _mem_pool.reset(new MemPool(mem_tracker()));
+    _mem_pool.reset(new(std::nothrow) MemPool(mem_tracker()));
+    if (_mem_pool.get() == nullptr) {
+        return Status::InternalError("new a mem pool failed.");
+    }
 
     return Status::OK();
 }

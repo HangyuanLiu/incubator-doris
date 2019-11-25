@@ -45,7 +45,7 @@ private:
     RuntimeState* _runtime_state;
     TupleDescriptor* _tuple_desc;
     std::map<std::string, SlotDescriptor*> _slots_map;
-    boost::scoped_ptr<MemPool> _mem_pool;
+    std::unique_ptr<MemPool> _mem_pool;
 
     TFunction _fn;
 };

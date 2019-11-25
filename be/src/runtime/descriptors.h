@@ -298,6 +298,14 @@ private:
     std::string _passwd;
 };
 
+class FunctionTableDescriptor : public TableDescriptor {
+public:
+    FunctionTableDescriptor(const TTableDescriptor& tdesc);
+
+private:
+
+};
+
 class TupleDescriptor {
 public:
     // virtual ~TupleDescriptor() {}
