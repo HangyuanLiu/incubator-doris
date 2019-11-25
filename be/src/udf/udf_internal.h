@@ -43,7 +43,7 @@ public:
         const std::vector<doris_udf::FunctionContext::TypeDesc>& arg_types,
         int varargs_buffer_size, bool debug);
 
-    /// Create a FunctionContext for a UDA. Identical to the UDF version except for the
+    /// Create a FunctionContext for a UDAF. Identical to the UDF version except for the
     /// intermediate type. Caller is responsible for deleting it.
     static doris_udf::FunctionContext* create_context(
         RuntimeState* state, MemPool* pool,
@@ -51,6 +51,14 @@ public:
         const doris_udf::FunctionContext::TypeDesc& return_type,
         const std::vector<doris_udf::FunctionContext::TypeDesc>& arg_types,
         int varargs_buffer_size, bool debug);
+
+    /// Create a FunctionContext for a UDTF. Identical to the UDF version except for the
+    /// intermediate type. Caller is responsible for deleting it.
+    static doris_udf::FunctionContext* create_context(
+            RuntimeState* state, MemPool* pool,
+            const std::vector<doris_udf::FunctionContext::TypeDesc>& return_type,
+            const std::vector<doris_udf::FunctionContext::TypeDesc>& arg_types,
+            int varargs_buffer_size, bool debug);
 
     ~FunctionContextImpl() {
     }
@@ -123,6 +131,10 @@ public:
         return _state; 
     }
 
+    doris_udf::RecordStore* record_store() {
+        return _record_store;
+    }
+
     std::string& string_result() {
         return _string_result;
     }
@@ -154,6 +166,9 @@ private:
     // We use the query's runtime state to report errors and warnings. NULL for test
     // contexts.
     RuntimeState* _state;
+
+    //use for udtf
+    doris_udf::RecordStore* _record_store;
 
     // If true, indicates this is a debug context which will do additional validation.
     bool _debug;
@@ -203,6 +218,33 @@ private:
     bool _closed;
 
     std::string _string_result;
+};
+
+class RecordStoreImpl {
+public:
+    static doris_udf::RecordStore *create_record_store(FreePool *pool, TupleDescriptor *descriptor);
+
+    RecordStoreImpl() {};
+
+    doris_udf::Record *allocate_record();
+
+    void append_record(doris_udf::Record *record);
+
+    void free_record(doris_udf::Record *record);
+
+    void *allocate(size_t size);
+
+    size_t size();
+
+    doris_udf::Record *get(int idx);
+
+    ~RecordStoreImpl();
+
+private:
+    FreePool *_free_pool;
+    TupleDescriptor *_descriptor;
+    std::vector<uint8_t *> _allocations;
+    std::vector<doris_udf::Record *> _record_vec;
 };
 
 }

@@ -198,6 +198,35 @@ doris_udf::FunctionContext* FunctionContextImpl::create_context(
     return ctx;
 }
 
+doris_udf::FunctionContext* FunctionContextImpl::create_context(
+            RuntimeState* state, MemPool* pool,
+            const std::vector<doris_udf::FunctionContext::TypeDesc>& return_type,
+            const std::vector<doris_udf::FunctionContext::TypeDesc>& arg_types,
+            int varargs_buffer_size, bool debug) {
+    doris_udf::FunctionContext *ctx = new doris_udf::FunctionContext();
+    ctx->_impl->_state = state;
+    ctx->_impl->_pool = new FreePool(pool);
+    //set _intermediate_type and _return_type invalid
+    doris_udf::FunctionContext::TypeDesc invalid_type;
+    invalid_type.type = doris_udf::FunctionContext::INVALID_TYPE;
+    invalid_type.precision = 0;
+    invalid_type.scale = 0;
+    ctx->_impl->_intermediate_type = invalid_type;
+    ctx->_impl->_return_type = invalid_type;
+
+    //TODO : construct TupleDescriptor
+    //ctx->_impl->_record_store = RecordStoreImpl::create_record_store(pool, _desc_tbl->get_tuple_descriptor(0));
+
+    ctx->_impl->_arg_types = arg_types;
+    ctx->_impl->_varargs_buffer =
+            reinterpret_cast<uint8_t *>(malloc(varargs_buffer_size));
+    ctx->_impl->_varargs_buffer_size = varargs_buffer_size;
+    ctx->_impl->_debug = debug;
+    VLOG_ROW << "Created FunctionContext: " << ctx
+             << " with pool " << ctx->_impl->_pool;
+    return ctx;
+}
+
 FunctionContext* FunctionContextImpl::clone(MemPool* pool) {
     doris_udf::FunctionContext* new_context =
         create_context(_state, pool, _intermediate_type, _return_type, _arg_types,
