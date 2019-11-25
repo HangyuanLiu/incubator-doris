@@ -38,6 +38,7 @@
 #include "exec/cross_join_node.h"
 #include "exec/empty_set_node.h"
 #include "exec/mysql_scan_node.h"
+#include "exec/table_function_scan_node.h"
 #include "exec/schema_scan_node.h"
 #include "exec/exchange_node.h"
 #include "exec/merge_join_node.h"
@@ -369,6 +370,9 @@ Status ExecNode::create_node(RuntimeState* state, ObjectPool* pool, const TPlanN
 #else
         return Status::InternalError("Don't support MySQL table, you should rebuild Doris with WITH_MYSQL option ON");
 #endif
+    case TPlanNodeType::TABLE_FUNCTION_SCAN_NODE:
+        *node = pool->add(new TableFunctionScanNode(pool, tnode, descs));
+        return Status::OK();
 
     case TPlanNodeType::ES_SCAN_NODE:
         *node = pool->add(new EsScanNode(pool, tnode, descs));

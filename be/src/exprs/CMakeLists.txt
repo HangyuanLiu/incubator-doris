@@ -65,4 +65,5 @@ add_library(Exprs
   agg_fn.cc
   new_agg_fn_evaluator.cc
   bitmap_function.cpp
-  hll_function.cpp)
+  hll_function.cpp
+  builtin_table_fn.cpp)
