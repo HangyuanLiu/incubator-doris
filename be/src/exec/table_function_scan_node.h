@@ -48,6 +48,7 @@ private:
     std::unique_ptr<MemPool> _mem_pool;
 
     TFunction _fn;
+    FunctionContext* _context;
 };
 
 }
