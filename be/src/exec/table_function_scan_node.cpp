@@ -126,6 +126,16 @@ Status TableFunctionScanNode::close(RuntimeState* state) {
     return ScanNode::close(state);
 }
 
+void TableFunctionScanNode::debug_string(int indentation_level, stringstream* out) const {
+    *out << string(indentation_level * 2, ' ');
+    *out << "TableFunctionScanNode(tupleid=" << _tuple_id << " table=" << _fn.name.function_name;
+    *out << ")" << std::endl;
+
+    for (int i = 0; i < _children.size(); ++i) {
+        _children[i]->debug_string(indentation_level + 1, out);
+    }
+}
+
 Status TableFunctionScanNode::set_scan_ranges(const vector<TScanRangeParams>& scan_ranges) {
     return Status::OK();
 }

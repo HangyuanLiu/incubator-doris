@@ -26,9 +26,6 @@ public:
     TableFunctionScanNode(ObjectPool* pool, const TPlanNode& tnode, const DescriptorTbl& desc);
     ~TableFunctionScanNode();
 
-    // Called after create this scan node
-    virtual Status init(const TPlanNode& tnode, RuntimeState* state = nullptr);
-
     virtual Status prepare(RuntimeState* state);
 
     virtual Status open(RuntimeState* state);
