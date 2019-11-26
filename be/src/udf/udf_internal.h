@@ -56,7 +56,7 @@ public:
     /// intermediate type. Caller is responsible for deleting it.
     static doris_udf::FunctionContext* create_context(
             RuntimeState* state, MemPool* pool,
-            const std::vector<doris_udf::FunctionContext::TypeDesc>& return_type,
+            TupleDescriptor* tuple_desc,
             const std::vector<doris_udf::FunctionContext::TypeDesc>& arg_types,
             int varargs_buffer_size, bool debug);
 

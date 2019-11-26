@@ -200,7 +200,7 @@ doris_udf::FunctionContext* FunctionContextImpl::create_context(
 
 doris_udf::FunctionContext* FunctionContextImpl::create_context(
             RuntimeState* state, MemPool* pool,
-            const std::vector<doris_udf::FunctionContext::TypeDesc>& return_type,
+            TupleDescriptor* tuple_desc,
             const std::vector<doris_udf::FunctionContext::TypeDesc>& arg_types,
             int varargs_buffer_size, bool debug) {
     doris_udf::FunctionContext *ctx = new doris_udf::FunctionContext();
@@ -214,8 +214,8 @@ doris_udf::FunctionContext* FunctionContextImpl::create_context(
     ctx->_impl->_intermediate_type = invalid_type;
     ctx->_impl->_return_type = invalid_type;
 
-    //TODO : construct TupleDescriptor
-    //ctx->_impl->_record_store = RecordStoreImpl::create_record_store(pool, _desc_tbl->get_tuple_descriptor(0));
+    //TODO(lhy) : construct TupleDescriptor
+    ctx->_impl->_record_store = RecordStoreImpl::create_record_store(ctx->_impl->_pool, tuple_desc);
 
     ctx->_impl->_arg_types = arg_types;
     ctx->_impl->_varargs_buffer =
