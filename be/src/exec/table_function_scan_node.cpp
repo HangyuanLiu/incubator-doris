@@ -103,12 +103,13 @@ Status TableFunctionScanNode::prepare(RuntimeState *state) {
     }
 
     //TODO(lhy)
-    _context = FunctionContextImpl::create_context(state, _mem_pool.get(), return_type, arg_types, 0, false);
+    _context = FunctionContextImpl::create_context(state, _mem_pool.get(), _tuple_desc, arg_types, 0, false);
 
     return Status::OK();
 }
 
 Status TableFunctionScanNode::open(RuntimeState* state) {
+    VLOG(1) << "TableFunctionScanNode::Open";
     SCOPED_TIMER(_runtime_profile->total_time_counter());
     RETURN_IF_ERROR(ExecNode::open(state));
     RETURN_IF_ERROR(exec_debug_action(TExecNodePhase::OPEN));
@@ -118,11 +119,14 @@ Status TableFunctionScanNode::open(RuntimeState* state) {
 }
 
 Status TableFunctionScanNode::get_next(RuntimeState* state, RowBatch* row_batch, bool* eos) {
-
+    VLOG(1) << "TableFunctionScanNode::GetNext";
     BuiltinTableFn::generate_rand(_context, 5, 5);
     RecordStore* store = _context->impl()->record_store();
 
     for (int i = 0; i < store->size(); ++i) {
+        Tuple* tuple = reinterpret_cast<Tuple*> (store->get(i));
+        std::cout << Tuple::to_string(tuple, *_tuple_desc) << std::endl;
+
         int row_idx = row_batch->add_row();
         TupleRow *row = row_batch->get_row(row_idx);
         row->set_tuple(0, reinterpret_cast<Tuple*> (store->get(i)));
@@ -132,6 +136,7 @@ Status TableFunctionScanNode::get_next(RuntimeState* state, RowBatch* row_batch,
 }
 
 Status TableFunctionScanNode::close(RuntimeState* state) {
+    VLOG(1) << "TableFunctionScanNode::Close";
     if (is_closed()) {
         return Status::OK();
     }

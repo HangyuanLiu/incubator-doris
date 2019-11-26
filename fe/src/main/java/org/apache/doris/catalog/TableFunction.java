@@ -22,7 +22,9 @@ import com.google.gson.Gson;
 import org.apache.doris.analysis.CreateFunctionStmt;
 import org.apache.doris.analysis.FunctionName;
 import org.apache.doris.common.io.Text;
+import org.apache.doris.thrift.TColumnType;
 import org.apache.doris.thrift.TFunction;
+import org.apache.doris.thrift.TFunctionBinaryType;
 import org.apache.doris.thrift.TTableFunction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -49,10 +51,12 @@ public class TableFunction extends Function {
     public TableFunction(FunctionName fnName,  Type[] argTypes, List<FnTableArgs> retType, boolean hasVarArgs) {
         super(fnName, argTypes, Type.NULL, hasVarArgs);
         tableRetType = retType;
+        symbolName = "symbol";
     }
 
     public static TableFunction createUdtf(FunctionName name, Type[] argTypes, List<FnTableArgs> retType, boolean hasVarArgs) {
         TableFunction fn = new TableFunction(name, argTypes, retType, hasVarArgs);
+        fn.setBinaryType(TFunctionBinaryType.BUILTIN);
         return fn;
     }
 
@@ -75,8 +79,12 @@ public class TableFunction extends Function {
     @Override
     public TFunction toThrift() {
         TFunction fn = super.toThrift();
-        fn.setTable_fn(new TTableFunction());
-        fn.getTable_fn().setSysmbol(symbolName);
+        fn.setTable_fn(new TTableFunction(symbolName));
+        for (int i = 0; i < tableRetType.size(); ++i) {
+            TColumnType tColumnType = new TColumnType();
+            tColumnType.setType(tableRetType.get(i).type.getPrimitiveType().toThrift());
+            fn.getTable_fn().putToTable_ret_args(tableRetType.get(i).name, tColumnType);
+        }
         return fn;
     }
 

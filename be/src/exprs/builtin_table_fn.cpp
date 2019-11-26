@@ -26,7 +26,8 @@ void BuiltinTableFn::generate_rand(doris_udf::FunctionContext *context, const In
         doris_udf::Record *record = store->allocate_record();
         for (int j = 0; j < col.val; ++j) {
             // set index
-            record->set_int(j, (int) MathFunctions::rand(context).val);
+            //record->set_int(j, (int) MathFunctions::rand(context).val);
+            record->set_int(j, i + j);
         }
         store->append_record(record);
     }

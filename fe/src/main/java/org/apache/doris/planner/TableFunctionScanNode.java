@@ -24,7 +24,6 @@ import org.apache.doris.catalog.FnTableArgs;
 import org.apache.doris.catalog.TableFunction;
 import org.apache.doris.catalog.Type;
 import org.apache.doris.common.UserException;
-import org.apache.doris.thrift.TFunction;
 import org.apache.doris.thrift.TPlanNode;
 import org.apache.doris.thrift.TPlanNodeType;
 import org.apache.doris.thrift.TScanRangeLocations;

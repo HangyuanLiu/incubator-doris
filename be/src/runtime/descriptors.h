@@ -301,9 +301,10 @@ private:
 class FunctionTableDescriptor : public TableDescriptor {
 public:
     FunctionTableDescriptor(const TTableDescriptor& tdesc);
+    virtual std::string debug_string() const;
 
 private:
-
+    std::string _symbol;
 };
 
 class TupleDescriptor {

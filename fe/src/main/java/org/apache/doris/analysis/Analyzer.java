@@ -448,6 +448,8 @@ public class Analyzer {
         if (tableRef.isResolved()) return tableRef;
         // Try to find a matching local view.
         TableName tableName = tableRef.getName();
+                System.out.println("getTbl : " + tableName.getTbl());
+
         if (!tableName.isFullyQualified()) {
             // Searches the hierarchy of analyzers bottom-up for a registered local view with
             // a matching alias.

@@ -265,7 +265,8 @@ struct TAggregateFunction {
 }
 
 struct TTableFunction {
-    1: required string sysmbol;
+    1: required string sysmbol
+    2: optional map<string, TColumnType> table_ret_args
 }
 
 // Represents a function in the Catalog.

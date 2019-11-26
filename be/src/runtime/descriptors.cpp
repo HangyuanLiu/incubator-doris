@@ -201,6 +201,16 @@ std::string MySQLTableDescriptor::debug_string() const {
     return out.str();
 }
 
+FunctionTableDescriptor::FunctionTableDescriptor(const TTableDescriptor& tdesc)
+        : TableDescriptor(tdesc) {
+}
+
+std::string FunctionTableDescriptor::debug_string() const {
+    std::stringstream out;
+    out << "FunctionTable(" << TableDescriptor::debug_string();
+    return out.str();
+}
+
 TupleDescriptor::TupleDescriptor(const TTupleDescriptor& tdesc) :
         _id(tdesc.id),
         _table_desc(NULL),
