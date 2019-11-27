@@ -24,7 +24,8 @@ namespace doris {
 
 class BuiltinTableFn {
 public:
-    static void generate_rand(doris_udf::FunctionContext*, const IntVal& row, const IntVal& col);
+    static void init();
+    static void generate_rand(doris_udf::FunctionContext*, const doris_udf::IntVal& row, const doris_udf::IntVal& col);
 };
 
 }

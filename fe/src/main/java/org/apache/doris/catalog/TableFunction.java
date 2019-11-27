@@ -51,7 +51,7 @@ public class TableFunction extends Function {
     public TableFunction(FunctionName fnName,  Type[] argTypes, List<FnTableArgs> retType, boolean hasVarArgs) {
         super(fnName, argTypes, Type.NULL, hasVarArgs);
         tableRetType = retType;
-        symbolName = "symbol";
+        symbolName = "_ZN5doris14BuiltinTableFn13generate_randEPN9doris_udf15FunctionContextERKNS1_6IntValES6_";
     }
 
     public static TableFunction createUdtf(FunctionName name, Type[] argTypes, List<FnTableArgs> retType, boolean hasVarArgs) {

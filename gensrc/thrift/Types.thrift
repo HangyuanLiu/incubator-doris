@@ -265,7 +265,7 @@ struct TAggregateFunction {
 }
 
 struct TTableFunction {
-    1: required string sysmbol
+    1: required string symbol
     2: optional map<string, TColumnType> table_ret_args
 }
 

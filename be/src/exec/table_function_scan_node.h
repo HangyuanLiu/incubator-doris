@@ -21,6 +21,9 @@
 #include "exec/scan_node.h"
 
 namespace doris {
+
+struct UserFunctionCacheEntry;
+
 class TableFunctionScanNode : public ScanNode {
 public:
     TableFunctionScanNode(ObjectPool* pool, const TPlanNode& tnode, const DescriptorTbl& desc);
@@ -49,6 +52,10 @@ private:
 
     TFunction _fn;
     FunctionContext* _context;
+
+        //TODO(lhy)
+    void* _scalar_fn;
+    UserFunctionCacheEntry* _cache_entry = nullptr;
 };
 
 }

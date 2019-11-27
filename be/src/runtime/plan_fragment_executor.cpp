@@ -493,6 +493,7 @@ Status PlanFragmentExecutor::get_next_internal(RowBatch** batch) {
         _row_batch->reset();
         SCOPED_TIMER(profile()->total_time_counter());
         RETURN_IF_ERROR(_plan->get_next(_runtime_state.get(), _row_batch.get(), &_done));
+        std::cout << "row batch : " << _row_batch->num_rows() << std::endl;
 
         if (_row_batch->num_rows() > 0) {
             COUNTER_UPDATE(_rows_produced_counter, _row_batch->num_rows());

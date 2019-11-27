@@ -18,10 +18,16 @@
 #include "math_functions.h"
 
 namespace doris {
-    class FunctionContextImpl;
 
-void BuiltinTableFn::generate_rand(doris_udf::FunctionContext *context, const IntVal &row, const IntVal &col) {
+class FunctionContextImpl;
+
+void BuiltinTableFn::init() {
+
+}
+
+void BuiltinTableFn::generate_rand(doris_udf::FunctionContext *context, const doris_udf::IntVal &row, const doris_udf::IntVal &col) {
     doris_udf::RecordStore* store = context->impl()->record_store();
+    std::cout << "BuiltinTableFn::generate_rand " << "row : " << row.val << "col : " << col.val <<std::endl;
     for (int i = 0; i < row.val; ++i) {
         doris_udf::Record *record = store->allocate_record();
         for (int j = 0; j < col.val; ++j) {

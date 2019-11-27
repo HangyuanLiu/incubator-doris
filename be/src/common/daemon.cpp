@@ -54,6 +54,7 @@
 #include "exprs/timezone_db.h"
 #include "exprs/bitmap_function.h"
 #include "exprs/hll_function.h"
+#include "exprs/builtin_table_fn.h"
 #include "geo/geo_functions.h"
 #include "olap/options.h"
 #include "util/time.h"
@@ -275,6 +276,7 @@ void init_daemon(int argc, char** argv, const std::vector<StorePath>& paths) {
     TimezoneDatabase::init();
     BitmapFunctions::init();
     HllFunctions::init();
+    BuiltinTableFn::init();
 
     pthread_t tc_malloc_pid;
     pthread_create(&tc_malloc_pid, NULL, tcmalloc_gc_thread, NULL);

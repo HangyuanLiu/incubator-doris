@@ -36,13 +36,14 @@
 #include "runtime/string_value.h"
 #include "runtime/tuple_row.h"
 #include "util/runtime_profile.h"
+#include "runtime/user_function_cache.h"
 #include "util/thread_pool.hpp"
 #include "util/debug_util.h"
 #include "util/priority_thread_pool.hpp"
 #include "agent/cgroups_mgr.h"
 #include "common/resource_tls.h"
 #include <boost/variant.hpp>
-#include <exprs/builtin_table_fn.h>
+#include "exprs/builtin_table_fn.h"
 
 namespace doris {
 
@@ -104,6 +105,9 @@ Status TableFunctionScanNode::prepare(RuntimeState *state) {
 
     //TODO(lhy)
     _context = FunctionContextImpl::create_context(state, _mem_pool.get(), _tuple_desc, arg_types, 0, false);
+    
+    UserFunctionCache::instance()->get_function_ptr(_fn.id, _fn.table_fn.symbol,
+                _fn.hdfs_location, _fn.checksum, &_scalar_fn, &_cache_entry);
 
     return Status::OK();
 }
@@ -120,7 +124,11 @@ Status TableFunctionScanNode::open(RuntimeState* state) {
 
 Status TableFunctionScanNode::get_next(RuntimeState* state, RowBatch* row_batch, bool* eos) {
     VLOG(1) << "TableFunctionScanNode::GetNext";
-    BuiltinTableFn::generate_rand(_context, 5, 5);
+    //BuiltinTableFn::generate_rand(_context, 5, 5);
+    typedef void (*ScalarFn2)(
+                FunctionContext*, const AnyVal& a1, const AnyVal& a2);
+    reinterpret_cast<ScalarFn2>(_scalar_fn)(_context, IntVal(5), IntVal(5));
+
     RecordStore* store = _context->impl()->record_store();
 
     for (int i = 0; i < store->size(); ++i) {
@@ -128,9 +136,12 @@ Status TableFunctionScanNode::get_next(RuntimeState* state, RowBatch* row_batch,
         std::cout << Tuple::to_string(tuple, *_tuple_desc) << std::endl;
 
         int row_idx = row_batch->add_row();
+        std::cout << "row idx : " << row_idx << std::endl;
         TupleRow *row = row_batch->get_row(row_idx);
         row->set_tuple(0, reinterpret_cast<Tuple*> (store->get(i)));
+        row_batch->commit_last_row();
     }
+    std::cout << "TableFunctionScanNode  row batch : " << row_batch->num_rows() << std::endl;
     *eos = true;
     return Status::OK();
 }

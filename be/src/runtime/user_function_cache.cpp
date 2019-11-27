@@ -190,9 +190,11 @@ Status UserFunctionCache::get_function_ptr(
         const std::string& checksum,
         void** fn_ptr,
         UserFunctionCacheEntry** output_entry) {
+    std::cout << "fid : " << fid << std::endl;
     auto symbol = get_real_symbol(orig_symbol);
     if (fid == 0) {
         // Just loading a function ptr in the current process. No need to take any locks.
+        std::cout<<"user function cache symbol : " << symbol.c_str() << " ,ptr : " << fn_ptr << std::endl;
         RETURN_IF_ERROR(dynamic_lookup(_current_process_handle, symbol.c_str(), fn_ptr));
         return Status::OK();
     }
