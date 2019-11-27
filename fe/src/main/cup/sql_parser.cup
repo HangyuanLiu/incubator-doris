@@ -3054,6 +3054,15 @@ table_ref ::=
   {: RESULT = b; :}
   | inline_view_ref:s
   {: RESULT = s; :}
+  |function_table_ref:f
+  {: RESULT = f; :}
+  ;
+
+function_table_ref ::=
+  LPAREN function_call_expr RPAREN opt_table_alias
+  {:
+      RESULT = new FunctionTableRef();
+  :}
   ;
 
 inline_view_ref ::=
