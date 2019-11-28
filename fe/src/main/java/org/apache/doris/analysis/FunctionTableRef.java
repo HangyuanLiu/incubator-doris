@@ -27,7 +27,11 @@ public class FunctionTableRef extends TableRef {
 
     private Table table;
 
-    public FunctionTableRef() {
+    public FunctionTableRef(TableName tableName) {
+        System.out.println("FunctionTableRef");
+    }
+
+    public FunctionTableRef(TableName tableName, FunctionParams params) {
         System.out.println("FunctionTableRef");
     }
 

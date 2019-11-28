@@ -3067,7 +3067,11 @@ function_table_ref ::=
     //LPAREN function_call_expr RPAREN opt_table_alias:alias
     table_name:name LPAREN RPAREN opt_table_alias:alias
     {:
-        RESULT = new FunctionTableRef();
+        RESULT = new FunctionTableRef(name);
+    :}
+    | table_name:name LPAREN function_params:params RPAREN
+    {:
+        RESULT = new FunctionTableRef(name, params);    
     :}
     ;
 
