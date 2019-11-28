@@ -1,3 +1,5 @@
+// Copyright 2012 Google Inc.
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -14,27 +16,35 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+//
+// All rights reserved.
+//
+// Additional constants from logging.h and its dependencies which are
+// not exported by glog.
 
-package org.apache.doris.common;
+#ifndef _LOGGING_IN_H_
+#define _LOGGING_IN_H_
 
-import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.config.plugins.Plugin;
-import org.apache.logging.log4j.core.pattern.ConverterKeys;
-import org.apache.logging.log4j.core.pattern.LogEventPatternConverter;
+// DFATAL is FATAL in debug mode, ERROR in normal mode
+#ifdef NDEBUG
+#define DFATAL_LEVEL ERROR
+#else
+#define DFATAL_LEVEL FATAL
+#endif
 
-@Plugin(name = "threadIdConverter", category = "Converter")
-@ConverterKeys({ "i", "tid" })
-public class ThreadIdConverter extends LogEventPatternConverter {
-    protected ThreadIdConverter(final String[] options) {
-        super("threadIdConverter", "");
-    }
+// NDEBUG usage helpers related to (RAW_)DCHECK:
+//
+// GUTIL_DEBUG_MODE is for small !NDEBUG uses like
+//   if (GUTIL_DEBUG_MODE) foo.CheckThatFoo();
+// instead of substantially more verbose
+//   #ifndef NDEBUG
+//     foo.CheckThatFoo();
+//   #endif
+//
+#ifdef NDEBUG
+const bool GUTIL_DEBUG_MODE = false;
+#else
+const bool GUTIL_DEBUG_MODE = true;
+#endif
 
-    public static ThreadIdConverter newInstance(final String[] options) {
-        return new ThreadIdConverter(options);
-    }
-
-    @Override
-    public void format(LogEvent arg0, StringBuilder arg1) {
-        arg1.append(Thread.currentThread().getId());
-    }
-}
+#endif  // _LOGGING_IN_H_

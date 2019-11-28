@@ -564,7 +564,6 @@ public class EditLog {
                     final TransactionState state = (TransactionState) journal.getData();
                     Catalog.getCurrentGlobalTransactionMgr().replayUpsertTransactionState(state);
                     LOG.debug("opcode: {}, tid: {}", opCode, state.getTransactionId());
-
                     break;
                 }
                 case OperationType.OP_DELETE_TRANSACTION_STATE: {
@@ -762,8 +761,9 @@ public class EditLog {
                     txId, numTransactions, totalTimeTransactions, op);
         }
 
-        if (txId == Config.edit_log_roll_num) {
-            LOG.info("txId is equal to edit_log_roll_num {}, will roll edit.", txId);
+        if (txId >= Config.edit_log_roll_num) {
+            LOG.info("txId {} is equal to or larger than edit_log_roll_num {}, will roll edit.",
+                    txId, Config.edit_log_roll_num);
             rollEditLog();
             txId = 0;
         }
@@ -1027,7 +1027,6 @@ public class EditLog {
     public void logGlobalVariable(SessionVariable variable) {
         logEdit(OperationType.OP_GLOBAL_VARIABLE, variable);
     }
-
 
     public void logCreateCluster(Cluster cluster) {
         logEdit(OperationType.OP_CREATE_CLUSTER, cluster);

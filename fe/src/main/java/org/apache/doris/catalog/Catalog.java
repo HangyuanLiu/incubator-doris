@@ -103,6 +103,7 @@ import org.apache.doris.common.UserException;
 import org.apache.doris.common.io.Text;
 import org.apache.doris.common.util.Daemon;
 import org.apache.doris.common.util.KuduUtil;
+import org.apache.doris.common.util.MasterDaemon;
 import org.apache.doris.common.util.PrintableMap;
 import org.apache.doris.common.util.PropertyAnalyzer;
 import org.apache.doris.common.util.QueryableReentrantLock;
@@ -272,7 +273,7 @@ public class Catalog {
     private PublishVersionDaemon publishVersionDaemon;
 
     private Daemon labelCleaner; // To clean old LabelInfo, ExportJobInfos
-    private Daemon txnCleaner; // To clean aborted or timeout txns
+    private MasterDaemon txnCleaner; // To clean aborted or timeout txns
     private Daemon replayer;
     private Daemon timePrinter;
     private Daemon listener;
@@ -543,6 +544,10 @@ public class Catalog {
 
     public TabletChecker getTabletChecker() {
         return tabletChecker;
+    }
+
+    public ConcurrentHashMap<String, Database> getFullNameToDb() {
+        return fullNameToDb;
     }
 
     // use this to get correct ClusterInfoService instance
@@ -1333,13 +1338,12 @@ public class Catalog {
             checksum = loadExportJob(dis, checksum);
             checksum = loadBackupHandler(dis, checksum);
             checksum = loadPaloAuth(dis, checksum);
+            // global transaction must be replayed before load jobs v2
             checksum = loadTransactionState(dis, checksum);
             checksum = loadColocateTableIndex(dis, checksum);
             checksum = loadRoutineLoadJobs(dis, checksum);
             checksum = loadLoadJobsV2(dis, checksum);
             checksum = loadSmallFiles(dis, checksum);
-
-
 
             long remoteChecksum = dis.readLong();
             Preconditions.checkState(remoteChecksum == checksum, remoteChecksum + " vs. " + checksum);
@@ -1715,7 +1719,8 @@ public class Catalog {
 
     public long loadLoadJobsV2(DataInputStream in, long checksum) throws IOException {
         if (Catalog.getCurrentCatalogJournalVersion() >= FeMetaVersion.VERSION_50) {
-            Catalog.getCurrentCatalog().getLoadManager().readFields(in);
+            loadManager.readFields(in);
+            loadManager.transferLoadingStateToCommitted(globalTransactionMgr);
         }
         return checksum;
     }
@@ -1840,10 +1845,11 @@ public class Catalog {
         checksum ^= dbCount;
         dos.writeInt(dbCount);
         for (Map.Entry<Long, Database> entry : idToDb.entrySet()) {
-            long dbId = entry.getKey();
-            if (dbId >= NEXT_ID_INIT_VALUE) {
-                checksum ^= dbId;
-                Database db = entry.getValue();
+            Database db = entry.getValue();
+            String dbName = db.getFullName();
+            // Don't write information_schema db meta
+            if (!InfoSchemaDb.isInfoSchemaDb(dbName)) {
+                checksum ^= entry.getKey();
                 db.readLock();
                 try {
                     db.write(dos);
@@ -2061,8 +2067,9 @@ public class Catalog {
     }
 
     public void createTxnCleaner() {
-        txnCleaner = new Daemon("txnCleaner", Config.transaction_clean_interval_second) {
-            protected void runOneCycle() {
+        txnCleaner = new MasterDaemon("txnCleaner", Config.transaction_clean_interval_second) {
+            @Override
+            protected void runAfterCatalogReady() {
                 globalTransactionMgr.removeExpiredAndTimeoutTxns();
             }
         };
@@ -2311,8 +2318,9 @@ public class Catalog {
 
     public void createTimePrinter() {
         // time printer will write timestamp edit log every 10 seconds
-        timePrinter = new Daemon("timePrinter", 10 * 1000L) {
-            protected void runOneCycle() {
+        timePrinter = new MasterDaemon("timePrinter", 10 * 1000L) {
+            @Override
+            protected void runAfterCatalogReady() {
                 Timestamp stamp = new Timestamp();
                 editLog.logTimestamp(stamp);
             }
@@ -5738,11 +5746,25 @@ public class Catalog {
                 // for adding BE to some Cluster, but loadCluster is after loadBackend.
                 cluster.setBackendIdList(latestBackendIds);
 
-                final InfoSchemaDb db = new InfoSchemaDb(cluster.getName());
-                db.setClusterName(cluster.getName());
+                String dbName =  InfoSchemaDb.getFullInfoSchemaDbName(cluster.getName());
+                InfoSchemaDb db;
+                // Use real Catalog instance to avoid InfoSchemaDb id continuously increment
+                // when checkpoint thread load image.
+                if (Catalog.getInstance().getFullNameToDb().containsKey(dbName)) {
+                    db = (InfoSchemaDb)Catalog.getInstance().getFullNameToDb().get(dbName);
+                } else {
+                    db = new InfoSchemaDb(cluster.getName());
+                    db.setClusterName(cluster.getName());
+                }
+                String errMsg = "InfoSchemaDb id shouldn't larger than 10000, please restart your FE server";
+                // Every time we construct the InfoSchemaDb, which id will increment.
+                // When InfoSchemaDb id larger than 10000 and put it to idToDb,
+                // which may be overwrite the normal db meta in idToDb,
+                // so we ensure InfoSchemaDb id less than 10000.
+                Preconditions.checkState(db.getId() < NEXT_ID_INIT_VALUE, errMsg);
                 idToDb.put(db.getId(), db);
                 fullNameToDb.put(db.getFullName(), db);
-                cluster.addDb(db.getFullName(), db.getId());
+                cluster.addDb(dbName, db.getId());
                 idToCluster.put(cluster.getId(), cluster);
                 nameToCluster.put(cluster.getName(), cluster);
             }

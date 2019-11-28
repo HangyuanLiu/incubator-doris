@@ -151,6 +151,7 @@ ${DORIS_TEST_BINARY_DIR}/util/byte_buffer_test2
 ${DORIS_TEST_BINARY_DIR}/util/uid_util_test
 ${DORIS_TEST_BINARY_DIR}/util/aes_util_test
 ${DORIS_TEST_BINARY_DIR}/util/string_util_test
+${DORIS_TEST_BINARY_DIR}/util/string_parser_test
 ${DORIS_TEST_BINARY_DIR}/util/coding_test
 ${DORIS_TEST_BINARY_DIR}/util/faststring_test
 ${DORIS_TEST_BINARY_DIR}/util/tdigest_test
@@ -248,6 +249,7 @@ ${DORIS_TEST_BINARY_DIR}/olap/row_cursor_test
 ${DORIS_TEST_BINARY_DIR}/olap/skiplist_test
 ${DORIS_TEST_BINARY_DIR}/olap/serialize_test
 # ${DORIS_TEST_BINARY_DIR}/olap/memtable_flush_executor_test
+${DORIS_TEST_BINARY_DIR}/olap/options_test
 
 # Running routine load test
 ${DORIS_TEST_BINARY_DIR}/olap/tablet_meta_manager_test

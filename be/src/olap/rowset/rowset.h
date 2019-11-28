@@ -37,9 +37,6 @@ class RowsetFactory;
 class RowsetReader;
 class TabletSchema;
 
-// TODO(gaodayue) change to BETA_ROWSET when we're going to release segment v2
-const RowsetTypePB DEFAULT_ROWSET_TYPE = ALPHA_ROWSET;
-
 class Rowset : public std::enable_shared_from_this<Rowset> {
 public:
     virtual ~Rowset() { }
@@ -67,7 +64,7 @@ public:
                                    uint64_t request_block_row_count,
                                    std::vector<OlapTuple>* ranges) = 0;
 
-    RowsetMetaSharedPtr rowset_meta() const { return _rowset_meta; }
+    const RowsetMetaSharedPtr& rowset_meta() const { return _rowset_meta; }
 
     bool is_pending() const { return _is_pending; }
 
