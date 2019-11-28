@@ -329,6 +329,7 @@ nonterminal ArrayList<TableRef> table_ref_list, base_table_ref_list;
 nonterminal FromClause from_clause;
 nonterminal TableRef table_ref;
 nonterminal TableRef base_table_ref;
+nonterminal FunctionTableRef function_table_ref;
 nonterminal WithClause opt_with_clause;
 nonterminal ArrayList<View> with_view_def_list;
 nonterminal View with_view_def;
@@ -3058,7 +3059,17 @@ table_ref ::=
   {: RESULT = b; :}
   | inline_view_ref:s
   {: RESULT = s; :}
+  |function_table_ref:f
+  {: RESULT = f; :}
   ;
+
+function_table_ref ::=
+    //LPAREN function_call_expr RPAREN opt_table_alias:alias
+    table_name:name LPAREN RPAREN opt_table_alias:alias
+    {:
+        RESULT = new FunctionTableRef();
+    :}
+    ;
 
 inline_view_ref ::=
     LPAREN query_stmt:query RPAREN opt_table_alias:alias
