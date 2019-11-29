@@ -61,6 +61,8 @@ public class FunctionSet {
         ScalarBuiltins.initBuiltins(this);
         LikePredicate.initBuiltins(this);
         InPredicate.initBuiltins(this);
+
+        TableFunction.initBuiltins(this);
     }
 
     private static final Map<Type, String> MIN_UPDATE_SYMBOL =

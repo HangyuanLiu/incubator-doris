@@ -17,6 +17,7 @@
 
 package org.apache.doris.analysis;
 
+import com.google.common.base.Preconditions;
 import org.apache.doris.catalog.Table;
 import org.apache.doris.common.AnalysisException;
 import org.apache.logging.log4j.LogManager;
@@ -48,6 +49,17 @@ public class FunctionTableRef extends TableRef {
     protected FunctionTableRef(FunctionTableRef other) {
         super(other);
         table = other.table;
+    }
+
+    /**
+     * This method should only be called after the TableRef has been analyzed.
+     */
+    @Override
+    public TupleDescriptor getDesc() {
+        Preconditions.checkState(isAnalyzed);
+        // after analyze(), desc should be set.
+        Preconditions.checkState(desc != null);
+        return desc;
     }
 
     @Override

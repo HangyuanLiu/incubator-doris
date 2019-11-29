@@ -32,6 +32,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -63,6 +64,20 @@ public class TableFunction extends Function {
     public String getSymbolName() { return symbolName; }
     public String getTableFnReturnString() {
         return "getTableFnReturnString";
+    }
+
+    public static void initBuiltins(FunctionSet functionSet) {
+        
+        //TODO(lhy) : we may don't need this
+        Type[] argTypes = new Type[5];
+        ArrayList<FnTableArgs> fnTableArgs = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            argTypes[i] = Type.INT;
+            fnTableArgs.add(new FnTableArgs("column" + i, Type.INT));
+        }
+        TableFunction tableFn = TableFunction.createUdtf(
+                new FunctionName("udtf"), argTypes, fnTableArgs, false);
+        functionSet.addBuiltin(tableFn);
     }
 
     @Override

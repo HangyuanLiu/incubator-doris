@@ -1423,7 +1423,9 @@ public class SingleNodePlanner {
      */
     private PlanNode createTableRefNode(Analyzer analyzer, TableRef tblRef)
             throws UserException,  AnalysisException {
-        if (tblRef instanceof BaseTableRef || tblRef instanceof FunctionTableRef) {
+        if (tblRef instanceof BaseTableRef) {
+            return createScanNode(analyzer, tblRef);
+        } else if (tblRef instanceof FunctionTableRef) {
             return createScanNode(analyzer, tblRef);
         }
         if (tblRef instanceof InlineViewRef) {

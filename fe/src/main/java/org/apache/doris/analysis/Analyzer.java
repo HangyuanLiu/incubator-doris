@@ -448,7 +448,7 @@ public class Analyzer {
         if (tableRef.isResolved()) return tableRef;
         // Try to find a matching local view.
         TableName tableName = tableRef.getName();
-                System.out.println("getTbl : " + tableName.getTbl());
+        System.out.println("getTbl : " + tableName.getTbl());
 
         if (!tableName.isFullyQualified()) {
             // Searches the hierarchy of analyzers bottom-up for a registered local view with
@@ -492,6 +492,8 @@ public class Analyzer {
         TableName tblName = new TableName(database.getFullName(), table.getName());
         if (table instanceof View) {
             return new InlineViewRef((View) table, tableRef);
+        } else if (table.getType() == TableType.TABLEFUNCTION) {
+            return new FunctionTableRef(tableRef, table, tblName);
         } else {
             // The table must be a base table.
             return new BaseTableRef(tableRef, table, tblName);

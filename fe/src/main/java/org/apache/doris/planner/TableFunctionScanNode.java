@@ -20,7 +20,8 @@ package org.apache.doris.planner;
 import org.apache.doris.analysis.Analyzer;
 import org.apache.doris.analysis.FunctionName;
 import org.apache.doris.analysis.TupleDescriptor;
-import org.apache.doris.catalog.FnTableArgs;
+import org.apache.doris.catalog.Catalog;
+import org.apache.doris.catalog.Function;
 import org.apache.doris.catalog.TableFunction;
 import org.apache.doris.catalog.Type;
 import org.apache.doris.common.UserException;
@@ -33,7 +34,6 @@ import org.apache.doris.thrift.TTableFunctionScanNode;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class TableFunctionScanNode extends ScanNode {
@@ -43,15 +43,15 @@ public class TableFunctionScanNode extends ScanNode {
 
     public TableFunctionScanNode(PlanNodeId id, TupleDescriptor desc) {
         super(id, desc, "TableFunctionScanNode");
+
         //TODO(lhy) : we may don't need this
         Type[] argTypes = new Type[5];
-        ArrayList<FnTableArgs> fnTableArgs = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             argTypes[i] = Type.INT;
-            fnTableArgs.add(new FnTableArgs("column" + i, Type.INT));
         }
-        tableFn = TableFunction.createUdtf(
-                new FunctionName("udtf"), argTypes, fnTableArgs, false);
+
+        Function searchDesc = new Function(new FunctionName("udtf"), argTypes, Type.INVALID, false);
+        tableFn = (TableFunction) Catalog.getInstance().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
     }
 
     @Override

@@ -44,7 +44,6 @@ public class FunctionTable extends Table {
         //validate
     }
 
-
     public TTableDescriptor toThrift() {
         TFunctionTable tFunctionTable = new TFunctionTable();
         TTableDescriptor tTableDescriptor = new TTableDescriptor(getId(), TTableType.FUNCTION_TABLE,
