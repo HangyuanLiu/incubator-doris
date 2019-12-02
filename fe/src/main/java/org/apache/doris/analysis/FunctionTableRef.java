@@ -29,11 +29,14 @@ public class FunctionTableRef extends TableRef {
     private Table table;
 
     public FunctionTableRef(TableName tableName) {
-        System.out.println("FunctionTableRef");
+        this(tableName, FunctionParams.createStarParam());            
     }
 
     public FunctionTableRef(TableName tableName, FunctionParams params) {
-        System.out.println("FunctionTableRef");
+        System.out.println("FunctionTableRef1");
+        this.name = tableName;
+        hasExplicitAlias_ = false;
+        isAnalyzed = false;                            
     }
 
     public FunctionTableRef(TableRef ref, Table table, TableName tableName) {
@@ -44,6 +47,7 @@ public class FunctionTableRef extends TableRef {
         // Set implicit aliases if no explicit one was given.
         if (hasExplicitAlias()) return;
         aliases_ = new String[] { name.toString(), tableName.getNoClusterString(), table.getName() };
+        System.out.println("FunctionTableRef2");
     }
 
     protected FunctionTableRef(FunctionTableRef other) {

@@ -1579,6 +1579,8 @@ public class SingleNodePlanner {
             materializeBaseTableRefResultForCrossJoinOrCountStar((BaseTableRef)tblRef, analyzer);
         } else if (tblRef instanceof InlineViewRef) {
             materializeInlineViewResultExprForCrossJoinOrCountStar((InlineViewRef)tblRef, analyzer);
+        } else if (tblRef instanceof FunctionTableRef) {
+            //TODO(lhy) :
         } else {
             Preconditions.checkArgument(false);
         }

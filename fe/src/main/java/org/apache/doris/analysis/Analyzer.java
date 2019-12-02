@@ -445,7 +445,9 @@ public class Analyzer {
      */
     public TableRef resolveTableRef(TableRef tableRef) throws AnalysisException {
         // Return the table if it is already resolved.
-        if (tableRef.isResolved()) return tableRef;
+        // TODO(lhy) update here 
+        if (tableRef.isResolved() && !(tableRef instanceof FunctionTableRef))
+            return tableRef;
         // Try to find a matching local view.
         TableName tableName = tableRef.getName();
         System.out.println("getTbl : " + tableName.getTbl());
@@ -491,8 +493,10 @@ public class Analyzer {
 
         TableName tblName = new TableName(database.getFullName(), table.getName());
         if (table instanceof View) {
+            System.out.println("VIEW");
             return new InlineViewRef((View) table, tableRef);
         } else if (table.getType() == TableType.TABLEFUNCTION) {
+            System.out.println("TABLEFUNCTION");
             return new FunctionTableRef(tableRef, table, tblName);
         } else {
             // The table must be a base table.
