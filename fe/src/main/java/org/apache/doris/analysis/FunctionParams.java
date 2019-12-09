@@ -40,6 +40,8 @@ public class FunctionParams implements Writable {
         isStar = false;
         this.isDistinct = isDistinct;
         this.exprs = exprs;
+        System.out.println( "FunctionParams expr : " + exprs.toString());
+        System.out.println("END");
     }
 
     // c'tor for non-star, non-distinct params

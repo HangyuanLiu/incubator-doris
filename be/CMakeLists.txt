@@ -420,7 +420,7 @@ message(STATUS "CLANG_IR_CXX_FLAGS: ${CLANG_IR_CXX_FLAGS}")
 
 # CMake really doesn't like adding link directories and wants absolute paths
 # Reconstruct it with LLVM_MODULE_LIBS and LLVM_LIBRARY_DIR
-#string(REPLACE " " ";" LLVM_LIBS_LIST ${LLVM_MODULE_LIBS})
+string(REPLACE " " ";" LLVM_LIBS_LIST ${LLVM_MODULE_LIBS})
 set (LLVM_MODULE_LIBS "")
 foreach (LIB ${LLVM_LIBS_LIST})
   set(LLVM_MODULE_LIBS ${LLVM_MODULE_LIBS} "${LLVM_LIBRARY_DIR}/${LIB}")
