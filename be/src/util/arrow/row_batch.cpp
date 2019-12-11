@@ -113,6 +113,8 @@ Status convert_to_arrow_schema(
 
 Status convert_to_doris_type(const arrow::DataType& type,
                              TSlotDescriptorBuilder* builder) {
+        builder->type(TYPE_VARCHAR);
+            return Status::OK();
     switch (type.id()) {
     case arrow::Type::INT8:
         builder->type(TYPE_TINYINT);

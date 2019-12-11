@@ -60,11 +60,13 @@ TEST_F(ArrowRowBatchTest, PrettyPrint) {
     parse_opts.explicit_schema = arrow::schema(
         {
         arrow::field("c1", arrow::int64()),
+        arrow::field("c2", arrow::float16()),
         });
 
     std::shared_ptr<arrow::RecordBatch> record_batch;
     auto arrow_st = arrow::json::ParseOne(parse_opts, buffer, &record_batch);
     ASSERT_TRUE(arrow_st.ok());
+    std::cout << record_batch->schema()->ToString() << std::endl;
 
     ObjectPool obj_pool;
     RowDescriptor* row_desc;
@@ -74,6 +76,7 @@ TEST_F(ArrowRowBatchTest, PrettyPrint) {
     std::shared_ptr<RowBatch> row_batch;
     doris_st = convert_to_row_batch(*record_batch, *row_desc, &tracker, &row_batch);
     ASSERT_TRUE(doris_st.ok());
+    std::cout << row_batch->to_string() << ":" <<  record_batch->schema()->ToString() << std::endl;
 
     {
         std::shared_ptr<arrow::Schema> check_schema;

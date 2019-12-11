@@ -26,6 +26,7 @@
 #include "runtime/client_cache.h"
 #include "runtime/exec_env.h"
 #include "util/thrift_util.h"
+#include "util/arrow/row_batch.h"
 #include "runtime/tuple.h"
 #include "runtime/descriptors.h"
 #include "runtime/mem_pool.h"
@@ -80,6 +81,11 @@ Status ParquetReaderWrap::init_parquet_reader(const std::vector<SlotDescriptor*>
                 LOG(WARNING) << "The first read record. " << status.ToString();
                 return Status::InternalError(status.ToString());
             }
+
+            std::string ser;
+            serialize_record_batch(*_batch.get(), &ser);
+            std::cout << "serialize : " << ser << std::endl;
+
             //save column type
             std::shared_ptr<arrow::Schema> field_schema = _batch->schema();
             for (int i = 0; i < _parquet_column_ids.size(); i++) {
