@@ -58,11 +58,22 @@ public:
     PRIMITIVE_VISIT(Int8Array);
     PRIMITIVE_VISIT(Int16Array);
     PRIMITIVE_VISIT(Int32Array);
+    PRIMITIVE_VISIT(UInt32Array);
     PRIMITIVE_VISIT(Int64Array);
+    PRIMITIVE_VISIT(UInt64Array);
     PRIMITIVE_VISIT(FloatArray);
     PRIMITIVE_VISIT(DoubleArray);
 
 #undef PRIMITIVE_VISIT
+
+#define PRIMITIVE_VISIT_2(TYPE) \
+    arrow::Status Visit(const arrow::TYPE& array) override { \
+        return _visit_binary(array); \
+    }
+
+    PRIMITIVE_VISIT_2(StringArray);
+
+#undef PRIMITIVE_VISIT_2
 
     Status convert(std::shared_ptr<RowBatch>* result);
 
@@ -99,7 +110,40 @@ private:
                 tuple->set_null(_cur_slot_ref->null_indicator_offset());
             }
         }
-        
+        return arrow::Status::OK();
+    }
+
+
+    template<typename T>
+    typename std::enable_if<std::is_base_of<arrow::PrimitiveCType, typename T::TypeClass>::value,
+         arrow::Status>::type
+    _visit_binary(const T& array) {
+        std::cout << "_visit : " << std::endl;
+        for (size_t i = 0; i < array.length(); ++i) {
+            std::cout << array.Value(i) << ",";
+        }
+        std::cout << std::endl;
+
+        for (size_t i = 0; i < array.length(); ++i) {
+            auto row = _output->get_row(i);
+            auto tuple = _cur_slot_ref->get_tuple(row);
+            if (array.IsValid(i)) {
+                tuple->set_not_null(_cur_slot_ref->null_indicator_offset());
+                StringValue *str_slot = reinterpret_cast<StringValue *>(_cur_slot_ref->get_slot(row));
+
+                int32_t len = 0;
+                std::string value_str = array.GetValue(i, &len);
+
+                str_slot->ptr = reinterpret_cast<char *>(_tuple_pool->allocate(value_str.length()));
+                memcpy(str_slot->ptr, (uint8_t *) (value_str.c_str()), value_str.length());
+                str_slot->len = value_str.length();
+
+                std::cout << "value : " << std::string(str_slot->ptr, str_slot->len) << std::endl;
+                //*(typename T::TypeClass::c_type*)slot = raw_values[i];
+            } else {
+                tuple->set_null(_cur_slot_ref->null_indicator_offset());
+            }
+        }
         return arrow::Status::OK();
     }
 
