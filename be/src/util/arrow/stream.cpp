@@ -58,10 +58,13 @@ public:
     PRIMITIVE_VISIT(Int8Array);
     PRIMITIVE_VISIT(UInt8Array);
     PRIMITIVE_VISIT(Int16Array);
+    PRIMITIVE_VISIT(UInt16Array);
     PRIMITIVE_VISIT(Int32Array);
     PRIMITIVE_VISIT(UInt32Array);
     PRIMITIVE_VISIT(Int64Array);
     PRIMITIVE_VISIT(UInt64Array);
+
+    PRIMITIVE_VISIT(HalfFloatArray);
     PRIMITIVE_VISIT(FloatArray);
     PRIMITIVE_VISIT(DoubleArray);
 
@@ -72,7 +75,33 @@ public:
         return _visit_binary(array); \
     }
     PRIMITIVE_VISIT(StringArray);
+    PRIMITIVE_VISIT(BinaryArray);
 #undef PRIMITIVE_VISIT
+
+    arrow::Status Visit(const arrow::FixedSizeBinaryArray& array) override {
+
+    }
+
+    arrow::Status Visit(const arrow::BooleanArray& array) override {
+
+    }
+
+    arrow::Status Visit(const arrow::TimestampArray& array) override {
+
+    }
+
+    arrow::Status Visit(const arrow::DecimalArray& array) override {
+
+    }
+
+    arrow::Status Visit(const arrow::Date32Array& array) override {
+
+    }
+
+    arrow::Status Visit(const arrow::Date64Array& array) override {
+
+    }
+
 
     Status convert(std::shared_ptr<RowBatch>* result);
 
