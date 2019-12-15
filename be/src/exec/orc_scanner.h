@@ -35,6 +35,8 @@
 #include "util/slice.h"
 #include "util/runtime_profile.h"
 
+#include "orc/OrcFile.hh"
+
 
 namespace doris {
 
@@ -51,6 +53,71 @@ class RowDescriptor;
 class MemTracker;
 class RuntimeProfile;
 class StreamLoadPipe;
+
+class ORCFileStream : public orc::InputStream {
+public:
+    ORCFileStream(FileReader *file) : _file(file) {
+
+    }
+    ~ORCFileStream() {
+
+    }
+    /**
+     * Get the total length of the file in bytes.
+     */
+    uint64_t getLength() const{
+        return _file->size();
+    }
+
+    /**
+     * Get the natural size for reads.
+     * @return the number of bytes that should be read at once
+     */
+    uint64_t getNaturalReadSize() const{
+        return 128 * 1024;
+    }
+
+    /**
+     * Read length bytes from the file starting at offset into
+     * the buffer starting at buf.
+     * @param buf the starting position of a buffer.
+     * @param length the number of bytes to read.
+     * @param offset the position in the stream to read from.
+     */
+     void read(void* buf,
+                      uint64_t length,
+                      uint64_t offset) {
+        int64_t reads = 0;
+        while(length != 0) {
+            Status result = _file->readat(offset, length, &reads, buf);
+            if (!result.ok()) {
+                //*bytes_read = 0;
+                //return arrow::Status::IOError("Readat failed.");
+                return ;
+            }
+            if (reads == 0) {
+                break;
+            }
+            //*bytes_read += reads;// total read bytes
+            length -= reads; // remained bytes
+            offset += reads;
+            buf = (char*)buf + reads;
+        }
+        //return arrow::Status::OK();
+        return ;
+    }
+
+    /**
+     * Get the name of the stream for error messages.
+     */
+    const std::string& getName() const{
+        return _filename;
+    }
+
+private:
+    FileReader* _file;
+    std::string _filename = "fuck";
+};
 
 
 

@@ -170,9 +170,15 @@ Status ORCScanner::open_next_reader() {
             continue;
         }
 
+        unique_ptr<orc::InputStream> inStream = std::unique_ptr<orc::InputStream>(new ORCFileStream(file_reader.release()));
+        orc::ReaderOptions options;
+        ORC_UNIQUE_PTR<orc::Reader> reader = orc::createReader(std::move(inStream), options);
+        reader->getNumberOfRows();
+
         _orc = std::shared_ptr<ORCFile>(new ORCFile(file_reader.release()));
         arrow::Status status =
                 arrow::adapters::orc::ORCFileReader::Open(_orc, arrow::default_memory_pool(), &_reader);
+        _reader->NumberOfRows();
         if (!status.ok()) {
             LOG(WARNING) << "Get RecordBatch Failed. " << status.ToString();
             return Status::InternalError(status.ToString());
