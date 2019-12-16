@@ -254,9 +254,10 @@ private:
     orc::ReaderOptions _options;
     orc::RowReaderOptions _rowReaderOptions;
 
-    std::shared_ptr<::arrow::RecordBatchReader> _rb_batch;
+
     std::shared_ptr<orc::ColumnVectorBatch> _batch;
     std::unique_ptr<orc::Reader> _reader;
+    std::unique_ptr<orc::RowReader> _row_reader;
     std::shared_ptr<ORCFile> _orc;
 
 
@@ -267,6 +268,8 @@ private:
     int _current_group;
     int _rows_of_group; // rows in a group.
     int _current_line_of_group;
+
+    std::list<std::string> includes;
 };
 
 
