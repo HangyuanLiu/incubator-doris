@@ -34,20 +34,19 @@
 
 namespace doris {
 
-    ORCScanner::ORCScanner(RuntimeState* state,
-                                   RuntimeProfile* profile,
-                                   const TBrokerScanRangeParams& params,
-                                   const std::vector<TBrokerRangeDesc>& ranges,
-                                   const std::vector<TNetworkAddress>& broker_addresses,
-                                   ScannerCounter* counter) : BaseScanner(state, profile, params, counter),
-                                                              _ranges(ranges),
-                                                              _broker_addresses(broker_addresses),
+ORCScanner::ORCScanner(RuntimeState* state,
+            RuntimeProfile* profile,
+            const TBrokerScanRangeParams& params,
+            const std::vector<TBrokerRangeDesc>& ranges,
+            const std::vector<TNetworkAddress>& broker_addresses,
+            ScannerCounter* counter) : BaseScanner(state, profile, params, counter),
+            _ranges(ranges),
+            _broker_addresses(broker_addresses),
             // _splittable(params.splittable),
-                                                              _cur_file_reader(nullptr),
-                                                              _next_range(0),
-                                                              _cur_file_eof(false),
-                                                              _scanner_eof(false) {
-    }
+            _cur_file_reader(nullptr),
+            _next_range(0),
+            _cur_file_eof(true),
+            _scanner_eof(false) {}
 
 ORCScanner::~ORCScanner() {
     close();
@@ -61,7 +60,7 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
     SCOPED_TIMER(_read_timer);
     // Get one line
     while (!_scanner_eof) {
-        if (_cur_file_reader == nullptr || _cur_file_eof) {
+        if (_cur_file_eof) {
             RETURN_IF_ERROR(open_next_reader());
             // If there isn't any more reader, break this
             if (_scanner_eof) {
@@ -73,16 +72,20 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
 
         //RETURN_IF_ERROR(_cur_file_reader->read(_src_tuple, _src_slot_descs, tuple_pool, &_cur_file_eof));
         if (_current_line_of_group >= _rows_of_group) { // read next row group
-            ++_current_group;
-            if (_current_group > _total_groups) {
-                *eof = true;
+            if (_current_group >= _total_groups) {
+                _cur_file_eof = true;
                 return Status::OK();
             }
+            _rows_of_group = _reader->getStripe(_current_group)->getNumberOfRows();
+            _batch = _row_reader->createRowBatch(_rows_of_group);
+            _row_reader->next(*_batch.get());
 
             ORC_UNIQUE_PTR<orc::RowReader> rowReader = _reader->createRowReader(_rowReaderOptions);
             _batch = rowReader->createRowBatch(_reader->getNumberOfRows());
             rowReader->next(*_batch.get());
             _current_line_of_group = 0;
+            _rows_of_group = _reader->getNumberOfRows();
+            ++_current_group;
         }
 
         std::vector<orc::ColumnVectorBatch *> _batch_vec = ((orc::StructVectorBatch *) _batch.get())->fields;
@@ -98,8 +101,8 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
                     int64_t value = ((orc::LongVectorBatch *) b)->data[_current_line_of_group];
                     wbytes = sprintf((char *) tmp_buf, "%ld", value);
 
-                    tuple->set_not_null(slot_desc->null_indicator_offset());
-                    void *slot = tuple->get_slot(slot_desc->tuple_offset());
+                    _src_tuple->set_not_null(slot_desc->null_indicator_offset());
+                    void *slot = _src_tuple->get_slot(slot_desc->tuple_offset());
                     StringValue *str_slot = reinterpret_cast<StringValue *>(slot);
                     str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(wbytes));
                     memcpy(str_slot->ptr, tmp_buf, wbytes);
@@ -111,8 +114,6 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
             }
         }
         ++_current_line_of_group;
-        Tuple::to_string(_row_batch->get_row(0)->get_tuple(0), *(_row_desc->tuple_descriptors()[0]));
-
 
         // range of current file
         const TBrokerRangeDesc &range = _ranges.at(_next_range - 1);
@@ -127,6 +128,7 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
                 }
             }
         }
+        std::cout << Tuple::to_string(tuple, *(_row_desc->tuple_descriptors()[0])) << std::endl;
     }
     if (_scanner_eof) {
         *eof = true;
@@ -194,6 +196,18 @@ Status ORCScanner::open_next_reader() {
         std::unique_ptr<orc::InputStream> inStream = std::unique_ptr<orc::InputStream>(new ORCFileStream(file_reader.release()));
         _reader = orc::createReader(std::move(inStream), _options);
         _total_groups = _reader->getNumberOfStripes();
+        _current_line_of_group = 0;
+
+        includes.clear();
+        int num_of_columns_from_file =
+                range.__isset.num_of_columns_from_file ? range.num_of_columns_from_file : _src_slot_descs.size();
+        for (int i = 0; i < num_of_columns_from_file; i++) {
+            auto slot_desc = _src_slot_descs.at(i);
+            includes.push_back(slot_desc->col_name());
+        }
+        _rowReaderOptions.include(includes);
+        _row_reader = _reader->createRowReader(_rowReaderOptions);
+
         return Status::OK();
     }
 }
