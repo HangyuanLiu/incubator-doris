@@ -250,9 +250,12 @@ private:
     std::shared_ptr<StreamLoadPipe> _stream_load_pipe;
 
     // orc file reader object
+    orc::ReaderOptions _options;
+    orc::RowReaderOptions _rowReaderOptions;
+
     std::shared_ptr<::arrow::RecordBatchReader> _rb_batch;
-    std::shared_ptr<arrow::RecordBatch> _batch;
-    std::unique_ptr<arrow::adapters::orc::ORCFileReader> _reader;
+    std::shared_ptr<orc::ColumnVectorBatch> _batch;
+    std::unique_ptr<orc::Reader> _reader;
     std::shared_ptr<ORCFile> _orc;
     std::shared_ptr<arrow::Schema> _schema;
 

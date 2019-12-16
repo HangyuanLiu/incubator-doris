@@ -81,11 +81,22 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
 
             _current_line_of_group = 0;
             //_rows_of_group =xxx
-            arrow::Status status = _reader->ReadStripe(_current_group, &_batch);
-            if (!status.ok()) {
-                return Status::InternalError("Get RecordBatchReader Failed.");
-            }
-            convert_to_stream(*_batch, *_row_desc, tuple_pool, _row_batch);
+
+            ORC_UNIQUE_PTR<orc::RowReader> rowReader = _reader->createRowReader(_rowReaderOptions);
+           _batch = rowReader->createRowBatch(_reader->getNumberOfRows());
+
+           for (uint64_t r = 0; r < _batch->numElements; ++r) {
+                switch (_reader->getType().getSubtype(r)->getKind()) {
+                    case orc::INT:
+                        std:: cout << ((orc::LongVectorBatch*) _batch.get())->data[r] << std::endl;
+                        break;
+                    case orc::LONG:
+                        std:: cout << ((orc::LongVectorBatch*) _batch.get())->data[r] << std::endl;
+                        break;
+                    default:
+                        std::cout << "ORC ERROR" << std::endl;
+                }
+           }
 
             _src_tuple = (*_row_batch)->get_row(0)->get_tuple(0);
         } else {
@@ -171,18 +182,8 @@ Status ORCScanner::open_next_reader() {
         }
 
         unique_ptr<orc::InputStream> inStream = std::unique_ptr<orc::InputStream>(new ORCFileStream(file_reader.release()));
-        orc::ReaderOptions options;
-        ORC_UNIQUE_PTR<orc::Reader> reader = orc::createReader(std::move(inStream), options);
-        reader->getNumberOfRows();
-
-        _orc = std::shared_ptr<ORCFile>(new ORCFile(file_reader.release()));
-        arrow::Status status =
-                arrow::adapters::orc::ORCFileReader::Open(_orc, arrow::default_memory_pool(), &_reader);
-        _reader->NumberOfRows();
-        if (!status.ok()) {
-            LOG(WARNING) << "Get RecordBatch Failed. " << status.ToString();
-            return Status::InternalError(status.ToString());
-        }
+        _reader = orc::createReader(std::move(inStream), _options);
+        _total_groups = _reader->getNumberOfStripes();
     }
 }
 
