@@ -32,9 +32,10 @@
 #include "gen_cpp/Types_types.h"
 #include "runtime/mem_pool.h"
 #include "runtime/row_batch.h"
+#include "runtime/tuple.h"
 #include "util/slice.h"
 #include "util/runtime_profile.h"
-
+#include "exprs/slot_ref.h"
 #include "orc/OrcFile.hh"
 
 
@@ -257,9 +258,10 @@ private:
     std::shared_ptr<orc::ColumnVectorBatch> _batch;
     std::unique_ptr<orc::Reader> _reader;
     std::shared_ptr<ORCFile> _orc;
-    std::shared_ptr<arrow::Schema> _schema;
 
-    std::shared_ptr<RowBatch>* _row_batch;
+
+    std::unique_ptr<SlotRef> _cur_slot_ref;
+    std::shared_ptr<RowBatch> _row_batch;
 
     int _total_groups; // groups in a orc file
     int _current_group;
