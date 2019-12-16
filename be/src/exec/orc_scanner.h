@@ -270,6 +270,8 @@ private:
     int _current_line_of_group;
 
     std::list<std::string> includes;
+    std::map<std::string, int> _column_name_map_orc_index;
+    int _num_of_columns_from_file;
 };
 
 
