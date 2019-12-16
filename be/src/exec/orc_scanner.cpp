@@ -68,12 +68,15 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
                 continue;
             }
             _cur_file_eof = false;
-        }
+       }
+
+
+        std::cout<<_current_line_of_group << "," << _rows_of_group << "," << _current_group << "," << _total_groups << std::endl;
 
         //RETURN_IF_ERROR(_cur_file_reader->read(_src_tuple, _src_slot_descs, tuple_pool, &_cur_file_eof));
         if (_current_line_of_group >= _rows_of_group) { // read next row group
             ++_current_group;
-            if (_current_group >= _total_groups) {
+            if (_current_group > _total_groups) {
                 //_parquet_column_ids.clear(); //TODO: need clear?
                 *eof = true;
                 return Status::OK();
@@ -83,20 +86,28 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
             //_rows_of_group =xxx
 
             ORC_UNIQUE_PTR<orc::RowReader> rowReader = _reader->createRowReader(_rowReaderOptions);
+            std::cout << _reader->getType().toString() << std::endl;
            _batch = rowReader->createRowBatch(_reader->getNumberOfRows());
 
-           for (uint64_t r = 0; r < _batch->numElements; ++r) {
-                switch (_reader->getType().getSubtype(r)->getKind()) {
-                    case orc::INT:
-                        std:: cout << ((orc::LongVectorBatch*) _batch.get())->data[r] << std::endl;
-                        break;
-                    case orc::LONG:
-                        std:: cout << ((orc::LongVectorBatch*) _batch.get())->data[r] << std::endl;
-                        break;
-                    default:
-                        std::cout << "ORC ERROR" << std::endl;
+           rowReader->next(*_batch.get());
+           std::cout << "batch : " << _batch->numElements << ",  numberOfRows : " << _reader->getNumberOfRows() << std::endl;
+
+            std::vector<orc::ColumnVectorBatch*> _batch_vec = ((orc::StructVectorBatch*) _batch.get())->fields;
+
+            for (int column_ipos = 0; column_ipos < _batch_vec.size() ; ++column_ipos ) {
+                orc::ColumnVectorBatch b = _batch_vec[column_ipos];
+
+                for (uint64_t r = 0; r < b->numElements; ++r) {
+                    switch (_reader->getType().getSubtype(r)->getKind()) {
+                        case orc::INT:
+                        case orc::LONG:
+                            std::cout << ((orc::LongVectorBatch *) b)->data[r] << std::endl;
+                            break;
+                        default:
+                            std::cout << "ORC ERROR" << std::endl;
+                    }
                 }
-           }
+            }
 
             _src_tuple = (*_row_batch)->get_row(0)->get_tuple(0);
         } else {
@@ -181,9 +192,10 @@ Status ORCScanner::open_next_reader() {
             continue;
         }
 
-        unique_ptr<orc::InputStream> inStream = std::unique_ptr<orc::InputStream>(new ORCFileStream(file_reader.release()));
+        std::unique_ptr<orc::InputStream> inStream = std::unique_ptr<orc::InputStream>(new ORCFileStream(file_reader.release()));
         _reader = orc::createReader(std::move(inStream), _options);
         _total_groups = _reader->getNumberOfStripes();
+        return Status::OK();
     }
 }
 
