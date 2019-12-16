@@ -79,19 +79,20 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
             _rows_of_group = _reader->getStripe(_current_group)->getNumberOfRows();
             _batch = _row_reader->createRowBatch(_rows_of_group);
             _row_reader->next(*_batch.get());
+            std::cout << _row_reader->getSelectedType().toString() << std::endl;
+            std::cout << _reader->getType().toString() << std::endl;
 
-            ORC_UNIQUE_PTR<orc::RowReader> rowReader = _reader->createRowReader(_rowReaderOptions);
-            _batch = rowReader->createRowBatch(_reader->getNumberOfRows());
-            rowReader->next(*_batch.get());
             _current_line_of_group = 0;
             _rows_of_group = _reader->getNumberOfRows();
             ++_current_group;
         }
 
         std::vector<orc::ColumnVectorBatch *> _batch_vec = ((orc::StructVectorBatch *) _batch.get())->fields;
-        for (int column_ipos = 0; column_ipos < _batch_vec.size() ; ++column_ipos ) {
-            orc::ColumnVectorBatch *b = _batch_vec[column_ipos];
+        for (int column_ipos = 0; column_ipos < _num_of_columns_from_file ; ++column_ipos ) {
+
+
             auto slot_desc = _src_slot_descs[column_ipos];
+            orc::ColumnVectorBatch *b = _batch_vec[_column_name_map_orc_index.find(slot_desc->col_name())->second];
 
             int32_t wbytes = 0;
             uint8_t tmp_buf[128] = {0};
@@ -199,29 +200,37 @@ Status ORCScanner::open_next_reader() {
         _current_line_of_group = 0;
 
         includes.clear();
-        int num_of_columns_from_file =
+        _num_of_columns_from_file =
                 range.__isset.num_of_columns_from_file ? range.num_of_columns_from_file : _src_slot_descs.size();
-        for (int i = 0; i < num_of_columns_from_file; i++) {
+        for (int i = 0; i < _num_of_columns_from_file; i++) {
             auto slot_desc = _src_slot_descs.at(i);
             includes.push_back(slot_desc->col_name());
         }
         _rowReaderOptions.include(includes);
+
+        std::vector<std::string> orc_file_columns;
+        int orc_index = 0;
+        for (int i = 0; i < _reader->getType().getSubtypeCount(); ++i) {
+            if(std::find(includes.begin(), includes.end(), _reader->getType().getFieldName(i)) != includes.end()) {
+                _column_name_map_orc_index.emplace(_reader->getType().getFieldName(i), orc_index++);
+            }
+        }
         _row_reader = _reader->createRowReader(_rowReaderOptions);
 
         return Status::OK();
     }
 }
 
-    void ORCScanner::close() {
-        if (_cur_file_reader != nullptr) {
-            if (_stream_load_pipe != nullptr) {
-                _stream_load_pipe.reset();
-                _cur_file_reader = nullptr;
-            } else {
-                delete _cur_file_reader;
-                _cur_file_reader = nullptr;
-            }
+void ORCScanner::close() {
+    if (_cur_file_reader != nullptr) {
+        if (_stream_load_pipe != nullptr) {
+            _stream_load_pipe.reset();
+            _cur_file_reader = nullptr;
+        } else {
+            delete _cur_file_reader;
+            _cur_file_reader = nullptr;
         }
     }
+}
 
 }
