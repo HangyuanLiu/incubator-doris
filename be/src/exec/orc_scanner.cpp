@@ -75,7 +75,7 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
 
         //RETURN_IF_ERROR(_cur_file_reader->read(_src_tuple, _src_slot_descs, tuple_pool, &_cur_file_eof));
         if (_current_line_of_group >= _rows_of_group) { // read next row group
-            ++_current_group;
+            // ++_current_group;
             if (_current_group > _total_groups) {
                 //_parquet_column_ids.clear(); //TODO: need clear?
                 *eof = true;
@@ -87,31 +87,71 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
 
             ORC_UNIQUE_PTR<orc::RowReader> rowReader = _reader->createRowReader(_rowReaderOptions);
             std::cout << _reader->getType().toString() << std::endl;
-           _batch = rowReader->createRowBatch(_reader->getNumberOfRows());
+            _batch = rowReader->createRowBatch(_reader->getNumberOfRows());
+            _row_batch.reset(new RowBatch(*_row_desc.get(), _reader->getNumberOfRows(), tuple_pool->mem_tracker()));
+            _row_batch->commit_rows(_reader->getNumberOfRows());
 
-           rowReader->next(*_batch.get());
-           std::cout << "batch : " << _batch->numElements << ",  numberOfRows : " << _reader->getNumberOfRows() << std::endl;
+            rowReader->next(*_batch.get());
+            std::cout << "batch : " << _batch->numElements << ",  numberOfRows : " << _reader->getNumberOfRows() << std::endl;
 
             std::vector<orc::ColumnVectorBatch*> _batch_vec = ((orc::StructVectorBatch*) _batch.get())->fields;
 
+
+            std::vector<SlotDescriptor*> slot_descs;
+            for (auto tuple_desc : _row_desc->tuple_descriptors()) {
+                for (auto desc : tuple_desc->slots()) {
+                    slot_descs.push_back(desc);
+                }
+            }
+            size_t num_fields = slot_descs.size();
+
             for (int column_ipos = 0; column_ipos < _batch_vec.size() ; ++column_ipos ) {
-                orc::ColumnVectorBatch b = _batch_vec[column_ipos];
+                orc::ColumnVectorBatch* b = _batch_vec[column_ipos];
+                auto slot_desc = _src_slot_descs[column_ipos];
+                _cur_slot_ref.reset(new SlotRef(slot_descs[column_ipos]));
+                RETURN_IF_ERROR(_cur_slot_ref->prepare(slot_descs[column_ipos], *_row_desc));
 
                 for (uint64_t r = 0; r < b->numElements; ++r) {
+
+                    auto row = _row_batch->get_row(r);
+                    auto t = _cur_slot_ref->get_tuple(row);
+
+                    int32_t wbytes = 0;
+                    uint8_t tmp_buf[128] = {0};
                     switch (_reader->getType().getSubtype(r)->getKind()) {
-                        case orc::INT:
-                        case orc::LONG:
-                            std::cout << ((orc::LongVectorBatch *) b)->data[r] << std::endl;
+                        case orc::INT: {
+                            int32_t value = ((orc::LongVectorBatch *) b)->data[r];
+                            wbytes = sprintf((char *) tmp_buf, "%d", value);
+
+                            t->set_not_null(slot_desc->null_indicator_offset());
+                            void *slot = t->get_slot(slot_desc->tuple_offset());
+                            StringValue *str_slot = reinterpret_cast<StringValue *>(slot);
+                            str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(wbytes));
+                            memcpy(str_slot->ptr, value, wbytes);
+                            str_slot->len = wbytes;
                             break;
+                        }
+                        case orc::LONG: {
+                            int64_t value = ((orc::LongVectorBatch *) b)->data[r];
+                            wbytes = sprintf((char *) tmp_buf, "%ld", value);
+
+                            t->set_not_null(slot_desc->null_indicator_offset());
+                            void *slot = t->get_slot(slot_desc->tuple_offset());
+                            StringValue *str_slot = reinterpret_cast<StringValue *>(slot);
+                            str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(wbytes));
+                            memcpy(str_slot->ptr, value, wbytes);
+                            str_slot->len = wbytes;
+                            break;
+                        }
                         default:
                             std::cout << "ORC ERROR" << std::endl;
                     }
                 }
             }
 
-            _src_tuple = (*_row_batch)->get_row(0)->get_tuple(0);
+            Tuple::to_string(_row_batch->get_row(0)->get_tuple(0), *(_row_desc->tuple_descriptors()[0]));
         } else {
-            _src_tuple = (*_row_batch)->get_row(_current_line_of_group)->get_tuple(0);
+            //_src_tuple = (*_row_batch)->get_row(_current_line_of_group)->get_tuple(0);
         }
 
 
