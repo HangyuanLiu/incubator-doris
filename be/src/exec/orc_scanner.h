@@ -15,15 +15,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#pragma once
+#ifndef ORC_SCANNER_H
+#define ORC_SCANNER_H
 
 #include <memory>
 #include <vector>
 #include <string>
 #include <map>
 #include <sstream>
-#include <arrow/record_batch.h>
-#include <arrow/adapters/orc/adapter.h>
 
 #include "exec/base_scanner.h"
 #include "exec/file_reader.h"
@@ -35,9 +34,7 @@
 #include "runtime/tuple.h"
 #include "util/slice.h"
 #include "util/runtime_profile.h"
-#include "exprs/slot_ref.h"
 #include "orc/OrcFile.hh"
-
 
 namespace doris {
 
@@ -120,98 +117,6 @@ private:
     std::string _filename = "fuck";
 };
 
-
-
-class ORCFile : public arrow::io::RandomAccessFile {
-public:
-    ORCFile(FileReader *file) : _file(file) {
-
-    }
-
-    virtual ~ORCFile() {
-        Close();
-    }
-
-    arrow::Status Read(int64_t nbytes, int64_t *bytes_read, void *buffer) override {
-        bool eof = false;
-        size_t data_size = 0;
-        do {
-            data_size = nbytes;
-            Status result = _file->read((uint8_t*)buffer, &data_size, &eof);
-            if (!result.ok()) {
-                return arrow::Status::IOError("Read failed.");
-            }
-            if (eof) {
-                break;
-            }
-            *bytes_read += data_size; // total read bytes
-            nbytes -= data_size; // remained bytes
-            buffer = (uint8_t*)buffer + data_size;
-        } while (nbytes != 0);
-        return arrow::Status::OK();
-    }
-
-    arrow::Status ReadAt(int64_t position, int64_t nbytes, int64_t *bytes_read,
-                         void *out) override {
-        int64_t reads = 0;
-        while(nbytes != 0) {
-            Status result = _file->readat(position, nbytes, &reads, out);
-            if (!result.ok()) {
-                *bytes_read = 0;
-                return arrow::Status::IOError("Readat failed.");
-            }
-            if (reads == 0) {
-                break;
-            }
-            *bytes_read += reads;// total read bytes
-            nbytes -= reads; // remained bytes
-            position += reads;
-            out = (char*)out + reads;
-        }
-        return arrow::Status::OK();
-    }
-
-    arrow::Status GetSize(int64_t *size) override {
-        *size = _file->size();
-        return arrow::Status::OK();
-    }
-
-    arrow::Status Seek(int64_t position) override {
-        _file->seek(position);
-        return arrow::Status::OK();
-    }
-
-    arrow::Status Read(int64_t nbytes, std::shared_ptr<arrow::Buffer> *out) override {
-        return arrow::Status::NotImplemented("Not Supported.");
-    }
-
-    arrow::Status Tell(int64_t *position) const override {
-        _file->tell(position);
-        return arrow::Status::OK();
-    }
-
-    arrow::Status Close() override {
-        if (_file) {
-            _file->close();
-            delete _file;
-            _file = nullptr;
-        }
-        return arrow::Status::OK();
-    }
-
-    bool closed() const override {
-        if (_file) {
-            return _file->closed();
-        } else {
-            return true;
-        }
-    }
-
-private:
-    FileReader *_file;
-};
-
-
 // Broker scanner convert the data read from broker to doris's tuple.
 class ORCScanner : public BaseScanner {
 public:
@@ -242,39 +147,25 @@ private:
     const std::vector<TNetworkAddress> &_broker_addresses;
 
     // Reader
-    ParquetReaderWrap *_cur_file_reader;
     int _next_range;
     bool _cur_file_eof; // is read over?
     bool _scanner_eof;
 
-    // used to hold current StreamLoadPipe
-    std::shared_ptr<StreamLoadPipe> _stream_load_pipe;
-
     // orc file reader object
     orc::ReaderOptions _options;
     orc::RowReaderOptions _rowReaderOptions;
-
-
     std::shared_ptr<orc::ColumnVectorBatch> _batch;
     std::unique_ptr<orc::Reader> _reader;
     std::unique_ptr<orc::RowReader> _row_reader;
-    std::shared_ptr<ORCFile> _orc;
-
-
-    std::unique_ptr<SlotRef> _cur_slot_ref;
-    std::shared_ptr<RowBatch> _row_batch;
+    std::list<std::string> includes;
+    std::map<std::string, int> _column_name_map_orc_index;
+    int _num_of_columns_from_file;
 
     int _total_groups; // groups in a orc file
     int _current_group;
     int _rows_of_group; // rows in a group.
     int _current_line_of_group;
-
-    std::list<std::string> includes;
-    std::map<std::string, int> _column_name_map_orc_index;
-    int _num_of_columns_from_file;
 };
 
-
-
-
 }
+#endif //ORC_SCANNER_H
