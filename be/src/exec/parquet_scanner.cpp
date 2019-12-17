@@ -92,6 +92,8 @@ Status ParquetScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
 }
 
 Status ParquetScanner::open_next_reader() {
+            std::cout <<"row_desc : " <<  _row_desc->debug_string() << std::endl;
+
     // open_file_reader
     if (_cur_file_reader != nullptr) {
         if (_stream_load_pipe != nullptr) {

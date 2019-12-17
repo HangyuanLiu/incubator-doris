@@ -537,7 +537,7 @@ build_arrow() {
     export ARROW_ZSTD_URL=${TP_SOURCE_DIR}/${ZSTD_NAME}
     export LDFLAGS="-L${TP_LIB_DIR} -static-libstdc++ -static-libgcc"
 
-    cmake -DARROW_PARQUET=ON -DARROW_IPC=ON -DARROW_USE_GLOG=off -DARROW_BUILD_SHARED=OFF \
+    cmake -DARROW_PARQUET=ON -DARROW_ORC=ON -DARROW_IPC=ON -DARROW_USE_GLOG=off -DARROW_BUILD_SHARED=OFF \
     -DCMAKE_INSTALL_PREFIX=$TP_INSTALL_DIR \
     -DCMAKE_INSTALL_LIBDIR=lib64 \
     -DARROW_BOOST_USE_SHARED=OFF -DARROW_GFLAGS_USE_SHARED=OFF -DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT=$TP_INSTALL_DIR \
@@ -545,6 +545,7 @@ build_arrow() {
     -DSnappy_ROOT=$TP_INSTALL_DIR/ \
     -DGLOG_ROOT=$TP_INSTALL_DIR/ \
     -DLZ4_ROOT=$TP_INSTALL_DIR/ \
+    -DORC_ROOT=$TP_INSTALL_DIR/orc \
     -DThrift_ROOT=$TP_INSTALL_DIR/ ..
 
     make -j$PARALLEL && make install
@@ -636,32 +637,44 @@ build_croaringbitmap() {
     make -j$PARALLEL && make install
 }
 
-build_llvm
-build_libevent
-build_zlib
-build_lz4
-build_bzip
-build_lzo2
-build_openssl
-build_boost # must before thrift
-build_protobuf
-build_gflags
-build_gtest
-build_glog
-build_rapidjson
-build_snappy
-build_gperftools
-build_curl
-build_re2
-build_mysql
-build_thrift
-build_leveldb
-build_brpc
-build_rocksdb
-build_librdkafka
-build_arrow
-build_s2
-build_bitshuffle
-build_croaringbitmap
+build_orc() {
+    check_if_source_exist $ORC_SOURCE
+    cd $TP_SOURCE_DIR/orc-1.4.5
+    mkdir build -p && cd build
+    rm -rf CMakeCache.txt CMakeFiles/
+    $CMAKE_CMD ../ -DBUILD_JAVA=OFF -DPROTOBUF_VERSION=3.5.1 -DPROTOBUF_EXECUTABLE=$TP_INSTALL_DIR/bin/protoc
+    make -j$PARALLEL
+    cp $TP_SOURCE_DIR/$ORC_SOURCE/build/c++/src/liborc.a $TP_INSTALL_DIR/lib
+    cp -r $TP_SOURCE_DIR/$ORC_SOURCE/c++/include/orc $TP_INSTALL_DIR/include
+}
+
+#build_llvm
+#build_libevent
+#build_zlib
+#build_lz4
+#build_bzip
+#build_lzo2
+#build_openssl
+#build_boost # must before thrift
+#build_protobuf
+#build_gflags
+#build_gtest
+#build_glog
+#build_rapidjson
+#build_snappy
+#build_gperftools
+#build_curl
+#build_re2
+#build_mysql
+#build_thrift
+#build_leveldb
+#build_brpc
+#build_rocksdb
+#build_librdkafka
+#build_arrow
+#build_s2
+#build_bitshuffle
+#build_croaringbitmap
+build_orc
 
 echo "Finihsed to build all thirdparties"
