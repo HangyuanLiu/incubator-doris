@@ -57,13 +57,13 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
     while (!_scanner_eof) {
         if (_cur_file_eof) {
             RETURN_IF_ERROR(open_next_reader());
-            // If there isn't any more reader, break this
             if (_scanner_eof) {
-                continue;
+                *eof = true;
+                return Status::OK();
+            } else {
+                _cur_file_eof = false;
             }
-            _cur_file_eof = false;
         }
-        std::cout<<_current_line_of_group << "," << _rows_of_group << "," << _current_group << "," << _total_groups << std::endl;
 
         //RETURN_IF_ERROR(_cur_file_reader->read(_src_tuple, _src_slot_descs, tuple_pool, &_cur_file_eof));
         if (_current_line_of_group >= _rows_of_group) { // read next row group
@@ -76,7 +76,6 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
             _row_reader->next(*_batch.get());
 
             _current_line_of_group = 0;
-            _rows_of_group = _reader->getNumberOfRows();
             ++_current_group;
         }
 
@@ -86,7 +85,7 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
             auto slot_desc = _src_slot_descs[column_ipos];
             orc::ColumnVectorBatch *cvb = _batch_vec[_column_name_map_orc_index.find(slot_desc->col_name())->second];
 
-            if (cvb->notNull[_current_line_of_group]) {
+            if (cvb->hasNulls && !cvb->notNull[_current_line_of_group]) {
                 if (!slot_desc->is_nullable()) {
                     std::stringstream str_error;
                     str_error << "The field name(" << slot_desc->col_name()
@@ -95,7 +94,6 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
                     return Status::RuntimeError(str_error.str());
                 }
                 _src_tuple->set_null(slot_desc->null_indicator_offset());
-                continue;
             } else {
                 int32_t wbytes = 0;
                 uint8_t tmp_buf[128] = {0};
@@ -159,6 +157,7 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
             }
         }
         ++_current_line_of_group;
+        std::cout<<_current_line_of_group << "," << _rows_of_group << "," << _current_group << "," << _total_groups << std::endl;
 
         // range of current file
         const TBrokerRangeDesc &range = _ranges.at(_next_range - 1);
@@ -173,12 +172,6 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
                 }
             }
         }
-        std::cout << Tuple::to_string(tuple, *(_row_desc->tuple_descriptors()[0])) << std::endl;
-    }
-    if (_scanner_eof) {
-        *eof = true;
-    } else {
-        *eof = false;
     }
     return Status::OK();
 }
