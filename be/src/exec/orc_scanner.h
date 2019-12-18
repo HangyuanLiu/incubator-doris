@@ -58,7 +58,11 @@ public:
 
     }
     ~ORCFileStream() {
-
+        if (_file) {
+            _file->close();
+            delete _file;
+            _file = nullptr;
+        }
     }
     /**
      * Get the total length of the file in bytes.
@@ -114,7 +118,7 @@ public:
 
 private:
     FileReader* _file;
-    std::string _filename = "fuck";
+    std::string _filename = "hehe";
 };
 
 // Broker scanner convert the data read from broker to doris's tuple.
