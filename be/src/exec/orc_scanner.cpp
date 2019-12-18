@@ -69,7 +69,7 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
         if (_current_line_of_group >= _rows_of_group) { // read next row group
             if (_current_group >= _total_groups) {
                 _cur_file_eof = true;
-                return Status::OK();
+                continue;
             }
             _rows_of_group = _reader->getStripe(_current_group)->getNumberOfRows();
             _batch = _row_reader->createRowBatch(_rows_of_group);
@@ -119,6 +119,7 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
                     case orc::LONG:
                     case orc::DATE: {
                         int64_t value = ((orc::LongVectorBatch *) cvb)->data[_current_line_of_group];
+                        std::cout << cvb->capacity << "," << cvb->numElements << "," << ((orc::LongVectorBatch *) cvb)->data.size() << std::endl;
                         wbytes = sprintf((char *) tmp_buf, "%ld", value);
                         str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(wbytes));
                         memcpy(str_slot->ptr, tmp_buf, wbytes);
@@ -165,6 +166,7 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
             fill_slots_of_columns_from_path(range.num_of_columns_from_file, range.columns_from_path);
             {
                 COUNTER_UPDATE(_rows_read_counter, 1);
+                std::cout << "value : " << _rows_read_counter->value() << std::endl;
                 SCOPED_TIMER(_materialize_timer);
                 //TODO : why ?
                 if (fill_dest_tuple(Slice(), tuple, tuple_pool)) {
@@ -231,12 +233,14 @@ Status ORCScanner::open_next_reader() {
             }
         }
         _row_reader = _reader->createRowReader(_rowReaderOptions);
-
         return Status::OK();
     }
 }
 
 void ORCScanner::close() {
+    _batch = nullptr;
+    _reader.reset(nullptr);
+    _row_reader.reset(nullptr);
 }
 
 }
