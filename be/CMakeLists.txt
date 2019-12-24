@@ -23,7 +23,7 @@ if (DEFINED ENV{DORIS_GCC_HOME})
     set(CMAKE_CXX_COMPILER "$ENV{DORIS_GCC_HOME}/bin/g++")
     set(GCC_HOME $ENV{DORIS_GCC_HOME})
 else()
-    message(FATAL_ERROR "DORIS_GCC_HOME environment variable is not set")
+    #message(FATAL_ERROR "DORIS_GCC_HOME environment variable is not set")
 endif()
 
 project(doris CXX C)
@@ -244,7 +244,7 @@ find_program(LLVM_CONFIG_EXECUTABLE llvm-config
 )
 
 if (NOT LLVM_CONFIG_EXECUTABLE)
-  message(FATAL_ERROR "Could not find llvm-config")
+  #message(FATAL_ERROR "Could not find llvm-config")
 endif (NOT LLVM_CONFIG_EXECUTABLE)
 
 # clang++
@@ -255,7 +255,7 @@ find_program(LLVM_CLANG_EXECUTABLE clang++
 )
 
 if (NOT LLVM_CLANG_EXECUTABLE)
-  message(FATAL_ERROR "Could not find clang++")
+  #message(FATAL_ERROR "Could not find clang++")
 endif (NOT LLVM_CLANG_EXECUTABLE)
 
 # opt
@@ -266,7 +266,7 @@ find_program(LLVM_OPT_EXECUTABLE opt
 )
 
 if (NOT LLVM_OPT_EXECUTABLE)
-  message(FATAL_ERROR "Could not find llvm opt")
+  #message(FATAL_ERROR "Could not find llvm opt")
 endif (NOT LLVM_OPT_EXECUTABLE)
 
 message(STATUS "LLVM llvm-config found at: ${LLVM_CONFIG_EXECUTABLE}")
@@ -432,7 +432,7 @@ message(STATUS "CLANG_IR_CXX_FLAGS: ${CLANG_IR_CXX_FLAGS}")
 
 # CMake really doesn't like adding link directories and wants absolute paths
 # Reconstruct it with LLVM_MODULE_LIBS and LLVM_LIBRARY_DIR
-string(REPLACE " " ";" LLVM_LIBS_LIST ${LLVM_MODULE_LIBS})
+#string(REPLACE " " ";" LLVM_LIBS_LIST ${LLVM_MODULE_LIBS})
 set (LLVM_MODULE_LIBS "")
 foreach (LIB ${LLVM_LIBS_LIST})
   set(LLVM_MODULE_LIBS ${LLVM_MODULE_LIBS} "${LLVM_LIBRARY_DIR}/${LIB}")
@@ -480,6 +480,7 @@ include_directories(
     ${THIRDPARTY_DIR}/include/thrift/
     ${THIRDPARTY_DIR}/include/event/
 )
+include_directories("/Users/liuhangyuan1/CLionProjects/fork/incubator-doris/thirdparty/include")
 
 set(WL_START_GROUP "-Wl,--start-group")
 set(WL_END_GROUP "-Wl,--end-group")

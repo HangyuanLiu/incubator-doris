@@ -54,9 +54,9 @@ class StreamLoadPipe;
 
 class ORCFileStream : public orc::InputStream {
 public:
-    ORCFileStream(FileReader *file) : _file(file) {
-
+    ORCFileStream(FileReader *file, std::string filename) : _file(file), _filename(filename) {
     }
+
     ~ORCFileStream() {
         if (_file) {
             _file->close();
@@ -64,10 +64,11 @@ public:
             _file = nullptr;
         }
     }
+
     /**
      * Get the total length of the file in bytes.
      */
-    uint64_t getLength() const{
+    uint64_t getLength() const {
         return _file->size();
     }
 
@@ -75,7 +76,7 @@ public:
      * Get the natural size for reads.
      * @return the number of bytes that should be read at once
      */
-    uint64_t getNaturalReadSize() const{
+    uint64_t getNaturalReadSize() const {
         return 128 * 1024;
     }
 
@@ -86,39 +87,42 @@ public:
      * @param length the number of bytes to read.
      * @param offset the position in the stream to read from.
      */
-     void read(void* buf,
-                      uint64_t length,
-                      uint64_t offset) {
+    void read(void *buf, uint64_t length, uint64_t offset) {
+        if (!buf) {
+            throw orc::ParseError("Buffer is null");
+        }
+
+        int64_t bytes_read = 0;
         int64_t reads = 0;
-        while(length != 0) {
-            Status result = _file->readat(offset, length, &reads, buf);
+        while (bytes_read < length) {
+            Status result = _file->readat(offset, length - bytes_read, &reads, buf);
             if (!result.ok()) {
-                //*bytes_read = 0;
-                //return arrow::Status::IOError("Readat failed.");
-                return ;
+                throw orc::ParseError("Bad read of " + _filename);
             }
             if (reads == 0) {
                 break;
             }
-            //*bytes_read += reads;// total read bytes
-            length -= reads; // remained bytes
+            bytes_read += reads;// total read bytes
             offset += reads;
-            buf = (char*)buf + reads;
+            buf = (char *) buf + reads;
         }
-        //return arrow::Status::OK();
-        return ;
+        if (length != 0) {
+            throw orc::ParseError("Short read of " + _filename
+                                  + ". expected :" + std::to_string(length) + ", actual : " +
+                                  std::to_string(bytes_read));
+        }
     }
 
     /**
      * Get the name of the stream for error messages.
      */
-    const std::string& getName() const{
+    const std::string &getName() const {
         return _filename;
     }
 
 private:
-    FileReader* _file;
-    std::string _filename = "hehe";
+    FileReader *_file;
+    std::string _filename;
 };
 
 // Broker scanner convert the data read from broker to doris's tuple.
@@ -161,7 +165,9 @@ private:
     std::shared_ptr<orc::ColumnVectorBatch> _batch;
     std::unique_ptr<orc::Reader> _reader;
     std::unique_ptr<orc::RowReader> _row_reader;
-    std::list<std::string> includes;
+    std::list<std::string> _includes; // include columns in orc file
+    // The batch after reading from orc data is arranged in the original order,
+    // so we need to record the index in the original order to correspond the column names to the order
     std::map<std::string, int> _column_name_map_orc_index;
     int _num_of_columns_from_file;
 

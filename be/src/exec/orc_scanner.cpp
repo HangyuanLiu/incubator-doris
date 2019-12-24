@@ -52,130 +52,142 @@ Status ORCScanner::open() {
 }
 
 Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
-    SCOPED_TIMER(_read_timer);
-    // Get one line
-    while (!_scanner_eof) {
-        if (_cur_file_eof) {
-            RETURN_IF_ERROR(open_next_reader());
-            if (_scanner_eof) {
-                *eof = true;
-                return Status::OK();
-            } else {
-                _cur_file_eof = false;
-            }
-        }
-
-        //RETURN_IF_ERROR(_cur_file_reader->read(_src_tuple, _src_slot_descs, tuple_pool, &_cur_file_eof));
-        if (_current_line_of_group >= _rows_of_group) { // read next row group
-            if (_current_group >= _total_groups) {
-                _cur_file_eof = true;
-                continue;
-            }
-            _rows_of_group = _reader->getStripe(_current_group)->getNumberOfRows();
-            _batch = _row_reader->createRowBatch(_rows_of_group);
-            _row_reader->next(*_batch.get());
-
-            _current_line_of_group = 0;
-            ++_current_group;
-        }
-
-
-        std::vector<orc::ColumnVectorBatch *> _batch_vec = ((orc::StructVectorBatch *) _batch.get())->fields;
-        for (int column_ipos = 0; column_ipos < _num_of_columns_from_file ; ++column_ipos ) {
-            auto slot_desc = _src_slot_descs[column_ipos];
-            orc::ColumnVectorBatch *cvb = _batch_vec[_column_name_map_orc_index.find(slot_desc->col_name())->second];
-
-            if (cvb->hasNulls && !cvb->notNull[_current_line_of_group]) {
-                if (!slot_desc->is_nullable()) {
-                    std::stringstream str_error;
-                    str_error << "The field name(" << slot_desc->col_name()
-                              << ") is not allowed null, but ORC field is NULL.";
-                    LOG(WARNING) << str_error.str();
-                    return Status::RuntimeError(str_error.str());
+    try {
+        SCOPED_TIMER(_read_timer);
+        // Get one line
+        while (!_scanner_eof) {
+            if (_cur_file_eof) {
+                RETURN_IF_ERROR(open_next_reader());
+                if (_scanner_eof) {
+                    *eof = true;
+                    return Status::OK();
+                } else {
+                    _cur_file_eof = false;
                 }
-                _src_tuple->set_null(slot_desc->null_indicator_offset());
-            } else {
-                int32_t wbytes = 0;
-                uint8_t tmp_buf[128] = {0};
-                _src_tuple->set_not_null(slot_desc->null_indicator_offset());
-                void *slot = _src_tuple->get_slot(slot_desc->tuple_offset());
-                StringValue *str_slot = reinterpret_cast<StringValue *>(slot);
+            }
+            if (_current_line_of_group >= _rows_of_group) { // read next stripe
+                if (_current_group >= _total_groups) {
+                    _cur_file_eof = true;
+                    continue;
+                }
+                _rows_of_group = _reader->getStripe(_current_group)->getNumberOfRows();
+                _batch = _row_reader->createRowBatch(_rows_of_group);
+                _row_reader->next(*_batch.get());
 
-                switch (_reader->getType().getSubtype(column_ipos)->getKind()) {
-                    case orc::BOOLEAN: {
-                        int64_t value = ((orc::LongVectorBatch *) cvb)->data[_current_line_of_group];
-                        if (value == 0) {
-                            str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(5));
-                            memcpy(str_slot->ptr, "false", 5);
-                            str_slot->len = 5;
-                        } else {
-                            str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(4));
-                            memcpy(str_slot->ptr, "true", 4);
-                            str_slot->len = 4;
+                _current_line_of_group = 0;
+                ++_current_group;
+            }
+
+            std::vector<orc::ColumnVectorBatch *> _batch_vec = ((orc::StructVectorBatch *) _batch.get())->fields;
+            for (int column_ipos = 0; column_ipos < _num_of_columns_from_file; ++column_ipos) {
+                auto slot_desc = _src_slot_descs[column_ipos];
+                orc::ColumnVectorBatch *cvb = _batch_vec[_column_name_map_orc_index.find(
+                        slot_desc->col_name())->second];
+
+                if (cvb->hasNulls && !cvb->notNull[_current_line_of_group]) {
+                    if (!slot_desc->is_nullable()) {
+                        std::stringstream str_error;
+                        str_error << "The field name(" << slot_desc->col_name()
+                                  << ") is not allowed null, but ORC field is NULL.";
+                        LOG(WARNING) << str_error.str();
+                        return Status::RuntimeError(str_error.str());
+                    }
+                    _src_tuple->set_null(slot_desc->null_indicator_offset());
+                } else {
+                    int32_t wbytes = 0;
+                    uint8_t tmp_buf[128] = {0};
+                    _src_tuple->set_not_null(slot_desc->null_indicator_offset());
+                    void *slot = _src_tuple->get_slot(slot_desc->tuple_offset());
+                    StringValue *str_slot = reinterpret_cast<StringValue *>(slot);
+
+                    switch (_reader->getType().getSubtype(column_ipos)->getKind()) {
+                        case orc::BOOLEAN: {
+                            int64_t value = ((orc::LongVectorBatch *) cvb)->data[_current_line_of_group];
+                            if (value == 0) {
+                                str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(5));
+                                memcpy(str_slot->ptr, "false", 5);
+                                str_slot->len = 5;
+                            } else {
+                                str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(4));
+                                memcpy(str_slot->ptr, "true", 4);
+                                str_slot->len = 4;
+                            }
+                            break;
                         }
-                        break;
+                        case orc::INT:
+                        case orc::SHORT:
+                        case orc::LONG:
+                        case orc::DATE: {
+                            int64_t value = ((orc::LongVectorBatch *) cvb)->data[_current_line_of_group];
+                            wbytes = sprintf((char *) tmp_buf, "%ld", value);
+                            str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(wbytes));
+                            memcpy(str_slot->ptr, tmp_buf, wbytes);
+                            str_slot->len = wbytes;
+                            break;
+                        }
+                        case orc::FLOAT:
+                        case orc::DOUBLE: {
+                            double value = ((orc::DoubleVectorBatch *) cvb)->data[_current_line_of_group];
+                            wbytes = sprintf((char *) tmp_buf, "%f", value);
+                            str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(wbytes));
+                            memcpy(str_slot->ptr, tmp_buf, wbytes);
+                            str_slot->len = wbytes;
+                            break;
+                        }
+                        case orc::BINARY:
+                        case orc::CHAR:
+                        case orc::VARCHAR:
+                        case orc::STRING: {
+                            char *value = ((orc::StringVectorBatch *) cvb)->data[_current_line_of_group];
+                            wbytes = ((orc::StringVectorBatch *) cvb)->length[_current_line_of_group];
+                            str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(wbytes));
+                            memcpy(str_slot->ptr, value, wbytes);
+                            str_slot->len = wbytes;
+                            break;
+                        }
+                            //TODO (lhy) : support more orc type
+                        case orc::TIMESTAMP:
+                        case orc::DECIMAL:
+                        default: {
+                            std::stringstream str_error;
+                            str_error << "The field name(" << slot_desc->col_name() << ") type not support. ";
+                            LOG(WARNING) << str_error.str();
+                            return Status::InternalError(str_error.str());
+                        }
                     }
-                    case orc::INT:
-                    case orc::LONG:
-                    case orc::DATE: {
-                        int64_t value = ((orc::LongVectorBatch *) cvb)->data[_current_line_of_group];
-                        std::cout << cvb->capacity << "," << cvb->numElements << "," << ((orc::LongVectorBatch *) cvb)->data.size() << std::endl;
-                        wbytes = sprintf((char *) tmp_buf, "%ld", value);
-                        str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(wbytes));
-                        memcpy(str_slot->ptr, tmp_buf, wbytes);
-                        str_slot->len = wbytes;
-                        break;
-                    }
-                    case orc::FLOAT:
-                    case orc::DOUBLE: {
-                        double value = ((orc::DoubleVectorBatch *) cvb)->data[_current_line_of_group];
-                        wbytes = sprintf((char *) tmp_buf, "%f", value);
-                        str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(wbytes));
-                        memcpy(str_slot->ptr, tmp_buf, wbytes);
-                        str_slot->len = wbytes;
-                        break;
-                    }
-                    case orc::BINARY:
-                    case orc::CHAR:
-                    case orc::VARCHAR:
-                    case orc::STRING: {
-                        char *value = ((orc::StringVectorBatch *) cvb)->data[_current_line_of_group];
-                        wbytes = ((orc::StringVectorBatch *) cvb)->length[_current_line_of_group];
-                        str_slot->ptr = reinterpret_cast<char *>(tuple_pool->allocate(wbytes));
-                        memcpy(str_slot->ptr, value, wbytes);
-                        str_slot->len = wbytes;
-                        break;
-                    }
-                    case orc::TIMESTAMP: {
-                        break;
-                    }
-                    case orc::DECIMAL: {
-                        break;
-                    }
-                    default:
-                        std::cout << "No Support ORC type" << std::endl;
                 }
             }
-        }
-        ++_current_line_of_group;
-        std::cout<<_current_line_of_group << "," << _rows_of_group << "," << _current_group << "," << _total_groups << std::endl;
+            ++_current_line_of_group;
 
-        // range of current file
-        const TBrokerRangeDesc &range = _ranges.at(_next_range - 1);
-        if (range.__isset.num_of_columns_from_file) {
-            fill_slots_of_columns_from_path(range.num_of_columns_from_file, range.columns_from_path);
-            {
-                COUNTER_UPDATE(_rows_read_counter, 1);
-                std::cout << "value : " << _rows_read_counter->value() << std::endl;
-                SCOPED_TIMER(_materialize_timer);
-                //TODO : why ?
-                if (fill_dest_tuple(Slice(), tuple, tuple_pool)) {
-                    break;// break if true
-                }
+            // range of current file
+            const TBrokerRangeDesc &range = _ranges.at(_next_range - 1);
+            if (range.__isset.num_of_columns_from_file) {
+                fill_slots_of_columns_from_path(range.num_of_columns_from_file, range.columns_from_path);
+            }
+
+            COUNTER_UPDATE(_rows_read_counter, 1);
+            SCOPED_TIMER(_materialize_timer);
+            if (!fill_dest_tuple(Slice(), tuple, tuple_pool)) {
+                std::stringstream str_error;
+                str_error << "fill_dest_tuple error";
+                LOG(WARNING) << str_error.str();
+                return Status::InternalError(str_error.str());
+            } else {
+
             }
         }
+        return Status::OK();
+    } catch (orc::ParseError& e) {
+        std::stringstream str_error;
+        str_error <<"ParseError : "<<  e.what();
+        LOG(WARNING) << str_error.str();
+        return Status::InternalError(str_error.str());
+    } catch (orc::InvalidArgument& e) {
+        std::stringstream str_error;
+        str_error <<"ParseError : "<<  e.what();
+        LOG(WARNING) << str_error.str();
+        return Status::InternalError(str_error.str());
     }
-    return Status::OK();
 }
 
 Status ORCScanner::open_next_reader() {
@@ -211,24 +223,27 @@ Status ORCScanner::open_next_reader() {
             continue;
         }
 
-        std::unique_ptr<orc::InputStream> inStream = std::unique_ptr<orc::InputStream>(new ORCFileStream(file_reader.release()));
+        std::unique_ptr<orc::InputStream> inStream = std::unique_ptr<orc::InputStream>(new ORCFileStream(file_reader.release(), range.path));
         _reader = orc::createReader(std::move(inStream), _options);
+
         _total_groups = _reader->getNumberOfStripes();
+        _current_group = 0;
+        _rows_of_group = 0;
         _current_line_of_group = 0;
 
-        includes.clear();
+        _includes.clear();
         _num_of_columns_from_file =
                 range.__isset.num_of_columns_from_file ? range.num_of_columns_from_file : _src_slot_descs.size();
         for (int i = 0; i < _num_of_columns_from_file; i++) {
             auto slot_desc = _src_slot_descs.at(i);
-            includes.push_back(slot_desc->col_name());
+            _includes.push_back(slot_desc->col_name());
         }
-        _rowReaderOptions.include(includes);
+        _rowReaderOptions.include(_includes);
 
         std::vector<std::string> orc_file_columns;
         int orc_index = 0;
         for (int i = 0; i < _reader->getType().getSubtypeCount(); ++i) {
-            if(std::find(includes.begin(), includes.end(), _reader->getType().getFieldName(i)) != includes.end()) {
+            if(std::find(_includes.begin(), _includes.end(), _reader->getType().getFieldName(i)) != _includes.end()) {
                 _column_name_map_orc_index.emplace(_reader->getType().getFieldName(i), orc_index++);
             }
         }

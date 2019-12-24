@@ -496,6 +496,17 @@ DoubleVal TimestampFunctions::curtime(FunctionContext* context) {
 
     return dtv.hour() * 3600 + dtv.minute() * 60 + dtv.second();
 }
+DateTimeVal TimestampFunctions::curdate(FunctionContext* context) {
+    DateTimeValue dtv;
+    if (!dtv.from_unixtime(context->impl()->state()->timestamp_ms() / 1000,
+            context->impl()->state()->timezone())) {
+        return DateTimeVal::null();
+    }
+    DateTimeVal return_val;
+    dtv.set_type(TIME_DATE);
+    dtv.to_datetime_val(&return_val);
+    return return_val;
+}
 
 DateTimeVal TimestampFunctions::convert_tz(FunctionContext* ctx, const DateTimeVal& ts_val,
                                                const StringVal& from_tz, const StringVal& to_tz) {
