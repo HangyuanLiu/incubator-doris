@@ -185,6 +185,12 @@ std::string TabletColumn::get_string_by_field_type(FieldType type) {
         case OLAP_FIELD_TYPE_OBJECT:
             return "OBJECT";
 
+        case OLAP_FIELD_TYPE_TIME:
+            return "TIME";
+
+        case OLAP_FIELD_TYPE_TIMESTAMP:
+            return "TIMESTAMP";
+
         default:
             return "UNKNOWN";
     }
@@ -237,6 +243,8 @@ uint32_t TabletColumn::get_field_length_by_type(TPrimitiveType::type type, uint3
         case TPrimitiveType::DATE:
             return 3;
         case TPrimitiveType::DATETIME:
+        case TPrimitiveType::TIME:
+        case TPrimitiveType::TIMESTAMP:
             return 8;
         case TPrimitiveType::FLOAT:
             return 4;

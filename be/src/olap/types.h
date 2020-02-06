@@ -692,21 +692,21 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_DATETIME> : public BaseFieldtypeTraits<OL
 };
 
 template<>
-struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_FILED_TYPE_TIME> {
+struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_FIELD_TYPE_TIME> {
     static OLAPStatus from_string(void* buf, const std::string& scan_key) {
-
+        std::cout << "from_string" << std::endl;
     }
     static std::string to_string(const void* src) {
-
+        std::cout << "to_string" << std::endl;
     }
     static OLAPStatus convert_from(void* dest, const void* src, const TypeInfo* src_type, MemPool* memPool) {
-
+        std::cout << "convert_from" << std::endl;
     }
     static void set_to_max(void* buf) {
-
+        std::cout << "set_to_max" << std::endl;
     }
     static void set_to_min(void* buf) {
-
+        std::cout << "set_to_min" << std::endl;
     }
 };
 

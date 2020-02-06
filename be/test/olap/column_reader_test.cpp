@@ -1787,7 +1787,7 @@ TEST_F(TestColumn, VectorizedDateColumnWithoutPresent) {
     
     SetTabletSchemaWithOneColumn(
             "DateColumnWithoutoutPresent", 
-            "DATE", 
+            "DATE",
             "REPLACE", 
             3, 
             false,
@@ -2972,13 +2972,13 @@ TEST_F(TestColumn, VectorizedDirectVarcharColumnWith65533) {
     }   
 }
 
-TEST_F(TestColumn, VectorizedTimestampColumnWithoutPresent) {
+TEST_F(TestColumn, VectorizedTimeColumnWithoutPresent) {
     // write data
     TabletSchema tablet_schema;
 
     SetTabletSchemaWithOneColumn(
-            "TimestampColumnWithoutPresent",
-            "TIMESTAMP",
+            "TimeColumnWithoutPresent",
+            "TIME",
             "REPLACE",
             8,
             false,
@@ -2993,8 +2993,13 @@ TEST_F(TestColumn, VectorizedTimestampColumnWithoutPresent) {
     block_info.row_num = 10000;
     block.init(block_info);
 
+    write_row.set_null(0);
+    block.set_row(0, write_row);
+    block.finalize(1);
+    ASSERT_EQ(_column_writer->write_batch(&block, &write_row), OLAP_SUCCESS);
+
     std::vector<std::string> val_string_array;
-    val_string_array.push_back("2000-10-10 10:10:10");
+    val_string_array.push_back("12:45:59");
     OlapTuple tuple(val_string_array);
     write_row.from_tuple(tuple);
     block.set_row(0, write_row);
@@ -3003,6 +3008,25 @@ TEST_F(TestColumn, VectorizedTimestampColumnWithoutPresent) {
 
     ColumnDataHeaderMessage header;
     ASSERT_EQ(_column_writer->finalize(&header), OLAP_SUCCESS);
+
+    //read data
+    CreateColumnReader(tablet_schema);
+
+    RowCursor read_row;
+    read_row.init(tablet_schema);
+
+    _col_vector.reset(new ColumnVector());
+    ASSERT_EQ(_column_reader->next_vector(
+            _col_vector.get(), 2, _mem_pool.get()), OLAP_SUCCESS);
+    bool* is_null = _col_vector->is_null();
+    ASSERT_EQ(is_null[0], false);
+
+    char* data = reinterpret_cast<char*>(_col_vector->col_data());
+    ASSERT_EQ(is_null[1], false);
+
+    data += sizeof(uint64_t);
+    read_row.set_field_content(0, data, _mem_pool.get());
+    std::cout << "read row : " << read_row.to_string() << std::endl;
 }
 
 }
