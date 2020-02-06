@@ -2972,6 +2972,39 @@ TEST_F(TestColumn, VectorizedDirectVarcharColumnWith65533) {
     }   
 }
 
+TEST_F(TestColumn, VectorizedTimestampColumnWithoutPresent) {
+    // write data
+    TabletSchema tablet_schema;
+
+    SetTabletSchemaWithOneColumn(
+            "TimestampColumnWithoutPresent",
+            "TIMESTAMP",
+            "REPLACE",
+            8,
+            false,
+            true, &tablet_schema);
+    CreateColumnWriter(tablet_schema);
+
+    RowCursor write_row;
+    write_row.init(tablet_schema);
+
+    RowBlock block(&tablet_schema);
+    RowBlockInfo block_info;
+    block_info.row_num = 10000;
+    block.init(block_info);
+
+    std::vector<std::string> val_string_array;
+    val_string_array.push_back("2000-10-10 10:10:10");
+    OlapTuple tuple(val_string_array);
+    write_row.from_tuple(tuple);
+    block.set_row(0, write_row);
+    block.finalize(1);
+    ASSERT_EQ(_column_writer->write_batch(&block, &write_row), OLAP_SUCCESS);
+
+    ColumnDataHeaderMessage header;
+    ASSERT_EQ(_column_writer->finalize(&header), OLAP_SUCCESS);
+}
+
 }
 
 int main(int argc, char** argv) {

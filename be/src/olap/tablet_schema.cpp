@@ -72,9 +72,14 @@ FieldType TabletColumn::get_field_type_by_string(const std::string& type_str) {
         type = OLAP_FIELD_TYPE_MAP;
     } else if (0 == upper_type_str.compare("OBJECT")) {
         type = OLAP_FIELD_TYPE_OBJECT;
+    } else if (0 == upper_type_str.compare("TIME")) {
+        type = OLAP_FIELD_TYPE_TIME;
+    } else if (0 == upper_type_str.compare("TIMESTAMP")) {
+        type = OLAP_FIELD_TYPE_TIMESTAMP;
     } else {
-        LOG(WARNING) << "invalid type string. [type='" << type_str << "']";
-        type = OLAP_FIELD_TYPE_UNKNOWN;
+            LOG(WARNING) << "invalid type string. [type='" << type_str << "']";
+            type = OLAP_FIELD_TYPE_UNKNOWN;
+        }
     }
 
     return type;

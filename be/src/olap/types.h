@@ -184,6 +184,14 @@ template<> struct CppTypeTraits<OLAP_FIELD_TYPE_HLL> {
 template<> struct CppTypeTraits<OLAP_FIELD_TYPE_OBJECT> {
     using CppType = Slice;
 };
+template<> struct CppTypeTraits<OLAP_FIELD_TYPE_TIME> {
+    using CppType = int64_t;
+    using UnsignedCppType = uint64_t;
+};
+template<> struct CppTypeTraits<OLAP_FIELD_TYPE_TIMESTAMP> {
+    using CppType = int64_t;
+    using UnsignedCppType = uint64_t;
+};
 
 template<FieldType field_type>
 struct BaseFieldtypeTraits : public CppTypeTraits<field_type> {
@@ -680,6 +688,25 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_DATETIME> : public BaseFieldtypeTraits<OL
     }
     static void set_to_min(void* buf) {
         *reinterpret_cast<CppType*>(buf) = 101000000;
+    }
+};
+
+template<>
+struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_FILED_TYPE_TIME> {
+    static OLAPStatus from_string(void* buf, const std::string& scan_key) {
+
+    }
+    static std::string to_string(const void* src) {
+
+    }
+    static OLAPStatus convert_from(void* dest, const void* src, const TypeInfo* src_type, MemPool* memPool) {
+
+    }
+    static void set_to_max(void* buf) {
+
+    }
+    static void set_to_min(void* buf) {
+
     }
 };
 
