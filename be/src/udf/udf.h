@@ -68,6 +68,7 @@ public:
         TYPE_DECIMAL,
         TYPE_DATE,
         TYPE_DATETIME,
+        TYPE_TIME,
         TYPE_CHAR,
         TYPE_VARCHAR,
         TYPE_HLL,

@@ -179,7 +179,7 @@ struct TypeDescriptor {
     }
 
     inline bool is_date_type() const {
-        return type == TYPE_DATE || type == TYPE_DATETIME;
+        return type == TYPE_DATE || type == TYPE_DATETIME || type == TYPE_TIME;
     }
 
     inline bool is_decimal_type() const {

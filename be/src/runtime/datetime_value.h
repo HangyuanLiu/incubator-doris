@@ -410,6 +410,8 @@ public:
         value.from_packed_time(tv.packed_time);
         if (tv.type == TIME_DATE) {
             value.cast_to_date();
+        } else if (tv.type == TIME_TIME) {
+            value.cast_to_time();
         }
         return value;
     }

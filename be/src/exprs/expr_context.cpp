@@ -324,7 +324,7 @@ void* ExprContext::get_value(Expr* e, TupleRow* row) {
         _result.float_val = v.val;
         return &_result.float_val;
     }
-    case TYPE_TIME:
+
     case TYPE_DOUBLE: {
         doris_udf::DoubleVal v = e->get_double_val(this, row);
         if (v.is_null) {
@@ -361,7 +361,8 @@ void* ExprContext::get_value(Expr* e, TupleRow* row) {
     }
 #endif
     case TYPE_DATE:
-    case TYPE_DATETIME: {
+    case TYPE_DATETIME:
+    case TYPE_TIME: {
         doris_udf::DateTimeVal v = e->get_datetime_val(this, row);
         if (v.is_null) {
             return NULL;

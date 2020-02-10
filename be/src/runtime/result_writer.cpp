@@ -105,13 +105,15 @@ Status ResultWriter::add_one_row(TupleRow* row) {
             buf_ret = _row_buffer->push_double(*static_cast<double*>(item));
             break;
 
-        case TYPE_TIME: {
+        case TYPE_TIME:
+         /*
+            {
             double time = *static_cast<double *>(item);
             std::string time_str = time_str_from_double(time);
             buf_ret = _row_buffer->push_string(time_str.c_str(), time_str.size());
             break;
         }
-
+        */
         case TYPE_DATE:
         case TYPE_DATETIME: {
             char buf[64];

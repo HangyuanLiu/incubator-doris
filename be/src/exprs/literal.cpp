@@ -78,13 +78,14 @@ Literal::Literal(const TExprNode& node) :
         _value.float_val = node.float_literal.value;
         break;
     case TYPE_DOUBLE:
-    case TYPE_TIME:
         DCHECK_EQ(node.node_type, TExprNodeType::FLOAT_LITERAL);
         DCHECK(node.__isset.float_literal);
         _value.double_val = node.float_literal.value;
         break;
     case TYPE_DATE:
     case TYPE_DATETIME:
+    case TYPE_TIME:
+        std::cout << "Literal from date string" << std::endl;
         _value.datetime_val.from_date_str(
             node.date_literal.value.c_str(), node.date_literal.value.size());
         break;

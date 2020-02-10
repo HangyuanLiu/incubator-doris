@@ -822,7 +822,7 @@ FloatVal ScalarFnCall::get_float_val(ExprContext* context, TupleRow* row) {
 }
 
 DoubleVal ScalarFnCall::get_double_val(ExprContext* context, TupleRow* row) {
-    DCHECK(_type.type == TYPE_DOUBLE || _type.type == TYPE_TIME);
+    DCHECK(_type.type == TYPE_DOUBLE);
     DCHECK(context != NULL);
     if (_scalar_fn_wrapper == NULL) {      
         return interpret_eval<DoubleVal>(context, row);

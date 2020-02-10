@@ -493,15 +493,21 @@ IntVal TimestampFunctions::to_days(
     return IntVal(ts_value.daynr());
 }
 
-DoubleVal TimestampFunctions::time_diff(
+DateTimeVal TimestampFunctions::time_diff(
         FunctionContext* ctx, const DateTimeVal& ts_val1, const DateTimeVal& ts_val2) {
     if (ts_val1.is_null || ts_val2.is_null) {
-        return DoubleVal::null();
+        return DateTimeVal::null();
     }
 
     const DateTimeValue& ts_value1 = DateTimeValue::from_datetime_val(ts_val1);
     const DateTimeValue& ts_value2 = DateTimeValue::from_datetime_val(ts_val2);
-    return DoubleVal(ts_value1.second_diff(ts_value2));
+    //return DoubleVal(ts_value1.second_diff(ts_value2));
+    DateTimeValue ts_value;
+    ts_value.from_time_int64(141559);
+
+    DateTimeVal ts_val;
+    ts_value.to_datetime_val(&ts_val);
+    return ts_val;
 }
 
 IntVal TimestampFunctions::date_diff(

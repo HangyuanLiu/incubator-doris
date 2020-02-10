@@ -333,7 +333,6 @@ public:
             reinterpret_cast<doris_udf::FloatVal*>(dst)->val = 
                 *reinterpret_cast<const float*>(slot);
             return;
-        case TYPE_TIME:
         case TYPE_DOUBLE:
             reinterpret_cast<doris_udf::DoubleVal*>(dst)->val = 
                 *reinterpret_cast<const double*>(slot);
@@ -354,10 +353,8 @@ public:
                 reinterpret_cast<const PackedInt128*>(slot)->value;
             return; 
         case TYPE_DATE:
-            reinterpret_cast<const DateTimeValue*>(slot)->to_datetime_val(
-            reinterpret_cast<doris_udf::DateTimeVal*>(dst));
-        return;
         case TYPE_DATETIME:
+        case TYPE_TIME:
             reinterpret_cast<const DateTimeValue*>(slot)->to_datetime_val(
             reinterpret_cast<doris_udf::DateTimeVal*>(dst));
             return;
