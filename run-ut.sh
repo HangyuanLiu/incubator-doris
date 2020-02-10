@@ -89,7 +89,7 @@ fi
 
 cd ${DORIS_HOME}/be/build/
 
-cmake ../ -DWITH_MYSQL=OFF -DMAKE_TEST=ON
+${CMAKE_CMD} ../ -DWITH_MYSQL=OFF -DMAKE_TEST=ON
 make -j${PARALLEL}
 
 if [ ${RUN} -ne 1 ]; then
@@ -168,6 +168,9 @@ ${DORIS_TEST_BINARY_DIR}/util/zip_util_test
 ${DORIS_TEST_BINARY_DIR}/util/utf8_check_test
 ${DORIS_TEST_BINARY_DIR}/util/cgroup_util_test
 ${DORIS_TEST_BINARY_DIR}/util/path_util_test
+${DORIS_TEST_BINARY_DIR}/util/file_cache_test
+${DORIS_TEST_BINARY_DIR}/util/file_manager_test
+${DORIS_TEST_BINARY_DIR}/util/parse_util_test
 
 # Running common Unittest
 ${DORIS_TEST_BINARY_DIR}/common/resource_tls_test

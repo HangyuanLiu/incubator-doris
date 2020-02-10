@@ -46,10 +46,7 @@ class DataDir;
 class TabletManager {
 public:
     TabletManager();
-
-    ~TabletManager() {
-        _tablet_map.clear();
-    }
+    ~TabletManager() = default;
 
     bool check_tablet_id_exist(TTabletId tablet_id);
 
@@ -70,7 +67,6 @@ public:
 
     TabletSharedPtr find_best_tablet_to_compaction(CompactionType compaction_type, DataDir* data_dir);
 
-    // Get tablet pointer
     TabletSharedPtr get_tablet(TTabletId tablet_id, SchemaHash schema_hash,
                                bool include_deleted = false, std::string* err = nullptr);
 
@@ -168,6 +164,8 @@ private:
                                             TabletMetaSharedPtr* tablet_meta);
 
     void _build_tablet_stat();
+
+    void _remove_tablet_from_partition_unlocked(const Tablet& tablet);
 
 private:
     // TODO(lingbin): should be TabletInstances?
