@@ -54,6 +54,7 @@ public enum PrimitiveType {
     
     HLL("HLL", 16, TPrimitiveType.HLL),
     TIME("TIME", 8, TPrimitiveType.TIME),
+    TIMESTAMP("TIMESTAMP", 8, TPrimitiveType.TIMESTAMP),
     // we use OBJECT type represent BITMAP type in Backend
     BITMAP("BITMAP", 16, TPrimitiveType.OBJECT),
     // Unsupported scalar types.
@@ -244,6 +245,7 @@ public enum PrimitiveType {
         builder.put(VARCHAR, VARCHAR);
         builder.put(VARCHAR, HLL);
         builder.put(VARCHAR, BITMAP);
+        builder.put(VARCHAR, TIME);
         // Decimal
         builder.put(DECIMAL, BOOLEAN);
         builder.put(DECIMAL, TINYINT);
@@ -280,6 +282,7 @@ public enum PrimitiveType {
         //TIME
         builder.put(TIME, TIME);
         builder.put(TIME, DOUBLE);
+        builder.put(TIME, VARCHAR);
 
         implicitCastMap = builder.build();
     }
@@ -323,6 +326,7 @@ public enum PrimitiveType {
         supportedTypes.add(DATE);
         supportedTypes.add(DATETIME);
         supportedTypes.add(TIME);
+        supportedTypes.add(TIMESTAMP);
         supportedTypes.add(DECIMAL);
         supportedTypes.add(DECIMALV2);
         supportedTypes.add(BITMAP);

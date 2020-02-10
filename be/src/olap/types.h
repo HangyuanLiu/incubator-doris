@@ -695,12 +695,36 @@ template<>
 struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_FIELD_TYPE_TIME> {
     static OLAPStatus from_string(void* buf, const std::string& scan_key) {
         std::cout << "from_string" << std::endl;
+        tm time_tm;
+        strptime(scan_key.c_str(), "%H:%M:%S", &time_tm);
+        CppType value = time_tm.tm_hour * 10000L
+            + time_tm.tm_min * 100L
+            + time_tm.tm_sec;
+        *reinterpret_cast<CppType*>(buf) = value;
+        return OLAP_SUCCESS;
     }
     static std::string to_string(const void* src) {
         std::cout << "to_string" << std::endl;
+        tm time_tm;
+        CppType tmp = *reinterpret_cast<const CppType*>(src);
+        CppType part1 = (tmp / 1000000L);
+        CppType part2 = (tmp - part1 * 1000000L);
+
+        time_tm.tm_year = static_cast<int>((part1 / 10000L) % 10000) - 1900;
+        time_tm.tm_mon = static_cast<int>((part1 / 100) % 100) - 1;
+        time_tm.tm_mday = static_cast<int>(part1 % 100);
+
+        time_tm.tm_hour = static_cast<int>((part2 / 10000L) % 10000);
+        time_tm.tm_min = static_cast<int>((part2 / 100) % 100);
+        time_tm.tm_sec = static_cast<int>(part2 % 100);
+
+        char buf[20] = {'\0'};
+        strftime(buf, 20, "%H:%M:%S", &time_tm);
+        return std::string(buf);
     }
     static OLAPStatus convert_from(void* dest, const void* src, const TypeInfo* src_type, MemPool* memPool) {
         std::cout << "convert_from" << std::endl;
+        return OLAP_SUCCESS;
     }
     static void set_to_max(void* buf) {
         std::cout << "set_to_max" << std::endl;

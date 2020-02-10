@@ -77,9 +77,8 @@ FieldType TabletColumn::get_field_type_by_string(const std::string& type_str) {
     } else if (0 == upper_type_str.compare("TIMESTAMP")) {
         type = OLAP_FIELD_TYPE_TIMESTAMP;
     } else {
-            LOG(WARNING) << "invalid type string. [type='" << type_str << "']";
-            type = OLAP_FIELD_TYPE_UNKNOWN;
-        }
+        LOG(WARNING) << "invalid type string. [type='" << type_str << "']";
+        type = OLAP_FIELD_TYPE_UNKNOWN;
     }
 
     return type;

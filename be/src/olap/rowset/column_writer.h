@@ -538,6 +538,8 @@ typedef IntegerColumnWriterWrapper<uint24_t, false> DateColumnWriter;
 
 // DateTime是用int64实现的
 typedef IntegerColumnWriterWrapper<uint64_t, false> DateTimeColumnWriter;
+typedef IntegerColumnWriterWrapper<uint64_t, false> TimeColumnWriter;
+typedef IntegerColumnWriterWrapper<uint64_t, false> TimestampColumnWriter;
 
 class DecimalColumnWriter : public ColumnWriter {
 public:

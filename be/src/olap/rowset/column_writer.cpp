@@ -100,6 +100,16 @@ ColumnWriter* ColumnWriter::create(uint32_t column_id,
                 stream_factory, column, num_rows_per_row_block, bf_fpp);
         break;
     }
+    case OLAP_FIELD_TYPE_TIME: {
+        column_writer = new(std::nothrow) TimeColumnWriter(column_id,
+                stream_factory, column, num_rows_per_row_block, bf_fpp);
+        break;                               
+    }
+    case OLAP_FIELD_TYPE_TIMESTAMP: {
+        column_writer = new(std::nothrow) TimestampColumnWriter(column_id,
+                stream_factory, column, num_rows_per_row_block, bf_fpp);
+        break;
+    }
     case OLAP_FIELD_TYPE_DECIMAL: {
         column_writer = new(std::nothrow) DecimalColumnWriter(column_id,
                 stream_factory, column, num_rows_per_row_block, bf_fpp);

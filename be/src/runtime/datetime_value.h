@@ -571,12 +571,3 @@ namespace std {
 }
 
 #endif
-CREATE TABLE `test` (
-`col` datetime NOT NULL COMMENT ""
-) ENGINE=OLAP
-DUPLICATE KEY(`col`)
-COMMENT "OLAP"
-DISTRIBUTED BY HASH(`col`) BUCKETS 1
-PROPERTIES (
-"storage_type" = "COLUMN"
-);

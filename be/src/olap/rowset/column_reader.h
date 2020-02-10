@@ -925,6 +925,8 @@ typedef IntegerColumnReaderWrapper<uint24_t, false> DateColumnReader;
 
 // 内部使用LONG实现
 typedef IntegerColumnReaderWrapper<uint64_t, false> DateTimeColumnReader;
+typedef IntegerColumnReaderWrapper<uint64_t, false> TimeColumnReader;
+typedef IntegerColumnReaderWrapper<uint64_t, false> TimestampColumnReader;
 
 }  // namespace doris
 

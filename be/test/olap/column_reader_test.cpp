@@ -2993,11 +2993,6 @@ TEST_F(TestColumn, VectorizedTimeColumnWithoutPresent) {
     block_info.row_num = 10000;
     block.init(block_info);
 
-    write_row.set_null(0);
-    block.set_row(0, write_row);
-    block.finalize(1);
-    ASSERT_EQ(_column_writer->write_batch(&block, &write_row), OLAP_SUCCESS);
-
     std::vector<std::string> val_string_array;
     val_string_array.push_back("12:45:59");
     OlapTuple tuple(val_string_array);
@@ -3017,14 +3012,9 @@ TEST_F(TestColumn, VectorizedTimeColumnWithoutPresent) {
 
     _col_vector.reset(new ColumnVector());
     ASSERT_EQ(_column_reader->next_vector(
-            _col_vector.get(), 2, _mem_pool.get()), OLAP_SUCCESS);
-    bool* is_null = _col_vector->is_null();
-    ASSERT_EQ(is_null[0], false);
+            _col_vector.get(), 1, _mem_pool.get()), OLAP_SUCCESS);
 
     char* data = reinterpret_cast<char*>(_col_vector->col_data());
-    ASSERT_EQ(is_null[1], false);
-
-    data += sizeof(uint64_t);
     read_row.set_field_content(0, data, _mem_pool.get());
     std::cout << "read row : " << read_row.to_string() << std::endl;
 }

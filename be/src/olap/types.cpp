@@ -79,6 +79,8 @@ TypeInfoResolver::TypeInfoResolver() {
     add_mapping<OLAP_FIELD_TYPE_VARCHAR>();
     add_mapping<OLAP_FIELD_TYPE_HLL>();
     add_mapping<OLAP_FIELD_TYPE_OBJECT>();
+    add_mapping<OLAP_FIELD_TYPE_TIME>();
+    add_mapping<OLAP_FIELD_TYPE_TIMESTAMP>();
 }
 
 TypeInfoResolver::~TypeInfoResolver() {}

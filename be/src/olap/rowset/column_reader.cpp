@@ -626,9 +626,18 @@ ColumnReader* ColumnReader::create(uint32_t column_id,
         break;
     }
 
+    case OLAP_FIELD_TYPE_TIME: {
+        reader = new(std::nothrow) TimeColumnReader(column_id, column_unique_id);
+        break;                                               
+    }
+
+    case OLAP_FIELD_TYPE_TIMESTAMP: {
+        reader = new(std::nothrow) TimestampColumnReader(column_id, column_unique_id);
+        break;                                                    
+    }
+
     case OLAP_FIELD_TYPE_DATE: {
         reader = new(std::nothrow) DateColumnReader(column_id, column_unique_id);
-
         break;
     }
 

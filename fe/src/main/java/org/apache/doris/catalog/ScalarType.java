@@ -342,6 +342,7 @@ public class ScalarType extends Type {
             case DATETIME:
             case HLL:
             case BITMAP:
+            case TIME:
                 stringBuilder.append(type.toString().toLowerCase());
                 break;
             default:
