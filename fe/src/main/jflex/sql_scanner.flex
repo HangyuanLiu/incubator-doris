@@ -332,6 +332,7 @@ import org.apache.doris.qe.SqlModeHelper;
         keywordMap.put("terminated", new Integer(SqlParserSymbols.KW_TERMINATED));
         keywordMap.put("than", new Integer(SqlParserSymbols.KW_THAN));
         keywordMap.put("then", new Integer(SqlParserSymbols.KW_THEN));
+        keywordMap.put("time", new Integer(SqlParserSymbols.KW_TIME));
         keywordMap.put("timestamp", new Integer(SqlParserSymbols.KW_TIMESTAMP));
         keywordMap.put("tinyint", new Integer(SqlParserSymbols.KW_TINYINT));
         keywordMap.put("to", new Integer(SqlParserSymbols.KW_TO));

@@ -3468,6 +3468,8 @@ type ::=
   {: RESULT = Type.DATETIME; :}
   | KW_TIME
   {: RESULT = Type.TIME; :}
+  | KW_TIMESTAMP
+  {: RESULT = Type.TIMESTAMP; :}
   | KW_BITMAP
   {: RESULT = Type.BITMAP; :}
   | KW_STRING
@@ -4356,6 +4358,8 @@ keyword ::=
     | KW_TABLES:id
     {: RESULT = id; :}
     | KW_THAN:id
+    {: RESULT = id; :}
+    | KW_TIME:id
     {: RESULT = id; :}
     | KW_TIMESTAMP:id
     {: RESULT = id; :}
