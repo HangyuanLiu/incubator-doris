@@ -47,13 +47,14 @@ public class FEFunctions {
     /**
      * date and time function
      */
+    /*
     @FEFunction(name = "timediff", argTypes = { "DATETIME", "DATETIME" }, returnType = "TIME")
     public static FloatLiteral timeDiff(LiteralExpr first, LiteralExpr second) throws AnalysisException {
         long firstTimestamp = ((DateLiteral) first).unixTimestamp(TimeUtils.getTimeZone());
         long secondTimestamp = ((DateLiteral) second).unixTimestamp(TimeUtils.getTimeZone());
         return new FloatLiteral((double) (firstTimestamp - secondTimestamp) / 1000, Type.TIME);
     }
-
+    */
     @FEFunction(name = "datediff", argTypes = { "DATETIME", "DATETIME" }, returnType = "INT")
     public static IntLiteral dateDiff(LiteralExpr first, LiteralExpr second) throws AnalysisException {
         DateLiteral firstDate = ((DateLiteral) first);

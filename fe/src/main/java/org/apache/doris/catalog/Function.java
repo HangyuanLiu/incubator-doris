@@ -450,7 +450,6 @@ public class Function implements Writable {
             case FLOAT:
                 return "float_val";
             case DOUBLE:
-            case TIME:
                 return "double_val";
             case VARCHAR:
             case CHAR:
@@ -459,6 +458,7 @@ public class Function implements Writable {
                 return "string_val";
             case DATE:
             case DATETIME:
+            case TIME:
                 return "datetime_val";
             case DECIMAL:
                 return "decimal_val";
@@ -489,7 +489,6 @@ public class Function implements Writable {
             case FLOAT:
                 return "FloatVal";
             case DOUBLE:
-            case TIME:
                 return "DoubleVal";
             case VARCHAR:
             case CHAR:
@@ -498,6 +497,7 @@ public class Function implements Writable {
                 return "StringVal";
             case DATE:
             case DATETIME:
+            case TIME:
                 return "DateTimeVal";
             case DECIMAL:
                 return "DecimalVal";
