@@ -77,6 +77,7 @@ public abstract class LiteralExpr extends Expr {
                 break;
             case DATE:
             case DATETIME:
+            case TIME:
                 literalExpr = new DateLiteral(value, type);
                 break;
             default:

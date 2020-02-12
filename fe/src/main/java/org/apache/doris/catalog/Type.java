@@ -244,7 +244,7 @@ public abstract class Type {
     }
 
     public boolean isDateType() {
-        return isScalarType(PrimitiveType.DATE) || isScalarType(PrimitiveType.DATETIME);
+        return isScalarType(PrimitiveType.DATE) || isScalarType(PrimitiveType.DATETIME) || isScalarType(PrimitiveType.TIME);
     }
 
     public boolean isDatetime() {
