@@ -56,6 +56,7 @@ public class DateLiteral extends LiteralExpr {
     
     private static DateTimeFormatter DATE_TIME_FORMATTER = null;
     private static DateTimeFormatter DATE_FORMATTER = null;
+    private static DateTimeFormatter TIME_FORMATTER = null;
     /* 
      * Dates containing two-digit year values are ambiguous because the century is unknown. 
      * MySQL interprets two-digit year values using these rules:
@@ -71,6 +72,8 @@ public class DateLiteral extends LiteralExpr {
             DATE_FORMATTER = formatBuilder("%Y-%m-%d").toFormatter();
             DATE_TIME_FORMATTER_TWO_DIGIT = formatBuilder("%y-%m-%d %H:%i:%s").toFormatter();
             DATE_FORMATTER_TWO_DIGIT = formatBuilder("%y-%m-%d").toFormatter();
+
+            TIME_FORMATTER = formatBuilder("%H:%i:%s").toFormatter();
         } catch (AnalysisException e) {
             LOG.error("invalid date format", e);
             System.exit(-1);
@@ -197,12 +200,16 @@ public class DateLiteral extends LiteralExpr {
                 } else {
                     dateTime = DATE_FORMATTER.parseLocalDateTime(s);
                 }
-            } else {
+            } else if (type == Type.DATETIME){
                 if (s.split("-")[0].length() == 2) {
                     dateTime = DATE_TIME_FORMATTER_TWO_DIGIT.parseLocalDateTime(s);
                 } else {
                     dateTime = DATE_TIME_FORMATTER.parseLocalDateTime(s);
                 }
+            } else if (type == Type.TIME) {
+                dateTime = TIME_FORMATTER.parseLocalDateTime(s);
+            } else {
+                throw new AnalysisException("");
             }
 
             year = dateTime.getYear();
@@ -211,6 +218,8 @@ public class DateLiteral extends LiteralExpr {
             hour = dateTime.getHourOfDay();
             minute = dateTime.getMinuteOfHour();
             second = dateTime.getSecondOfMinute();
+
+            System.out.println("DatetimeLiteral : " + dateTime.toString());
             this.type = type;
         } catch (Exception ex) {
             throw new AnalysisException("date literal [" + s + "] is invalid");
