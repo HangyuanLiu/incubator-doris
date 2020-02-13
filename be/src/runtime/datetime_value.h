@@ -202,6 +202,24 @@ public:
         return val;
     }
 
+    bool from_olap_time(uint64_t time) {
+        std::cout << "from olap time : " << time << std::endl;
+        _neg = false;
+        _type = TIME_TIME;
+        _year = _month = _day = 0;
+
+        _hour = time / 10000;
+        time %= 10000;
+        _minute = time / 100;
+        _second = time % 100;
+        _microsecond = 0;
+    }
+
+    uint64_t to_olap_time() const {
+        std::cout << "to_olap_time : " << _hour * 10000 + _minute * 100 + _second << std::endl;
+        return _hour * 10000 + _minute * 100 + _second;
+    }
+
     bool from_date_format_str(const char* format, int format_len,
                               const char* value, int value_len) {
         memset(this, 0, sizeof(*this));

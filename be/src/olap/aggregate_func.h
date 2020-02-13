@@ -170,7 +170,7 @@ struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_NONE, OLAP_FIELD_TYPE_TIME> :
 
         auto* datetime_value = reinterpret_cast<const DateTimeValue*>(src);
         auto* storage_datetime_value = reinterpret_cast<uint64_t*>(dst->mutable_cell_ptr());
-        *storage_datetime_value = datetime_value->to_olap_datetime();
+        *storage_datetime_value = datetime_value->to_olap_time();
     }
 };
 
