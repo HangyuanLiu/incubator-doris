@@ -67,6 +67,10 @@ static uint32_t calc_days_in_year(uint32_t year) {
 DateTimeValue DateTimeValue::_s_min_datetime_value(0, TIME_DATETIME, 0, 0, 0, 0, 0, 1, 1);
 DateTimeValue DateTimeValue::_s_max_datetime_value(0, TIME_DATETIME, 23, 59, 59, 0, 
                                                    9999, 12, 31);
+
+DateTimeValue DateTimeValue::_s_max_time_value(0, TIME_TIME, 838, 59, 59, 0, 0, 0, 0);
+DateTimeValue DateTimeValue::_s_min_time_value(1, TIME_TIME, 838, 59, 59, 0, 0, 0, 0);
+
 // jint length_of_str(DateTimeValue& value) {
 // j    if (_type == TIME_DATE) {
 // j        return 10;

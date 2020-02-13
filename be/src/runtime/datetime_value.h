@@ -462,6 +462,14 @@ public:
         return _s_max_datetime_value;
     }
 
+    static DateTimeValue time_min_value() {
+        return _s_min_time_value;
+    }
+
+    static DateTimeValue time_max_value() {
+        return _s_max_time_value;
+    }
+
     int64_t second_diff(const DateTimeValue& rhs) const {
         int day_diff = daynr() - rhs.daynr();
         int time_diff = (hour() * 3600 + minute() * 60 + second())
@@ -573,7 +581,7 @@ private:
     // TODO(zc): used for nothing
     uint64_t _microsecond;
 
-    DateTimeValue(uint8_t neg, uint8_t type, uint8_t hour, 
+    DateTimeValue(uint8_t neg, uint8_t type, uint16_t hour,
                   uint8_t minute, uint8_t second, uint32_t microsecond, 
                   uint16_t year, uint8_t month, uint8_t day) : 
             _neg(neg), _type(type), _hour(hour), _minute(minute), _second(second),
@@ -581,6 +589,9 @@ private:
 
     static DateTimeValue _s_min_datetime_value;
     static DateTimeValue _s_max_datetime_value;
+
+    static DateTimeValue _s_min_time_value;
+    static DateTimeValue _s_max_time_value;
 };
 
 // only support DATE - DATE (no support DATETIME - DATETIME)
