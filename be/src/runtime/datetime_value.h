@@ -164,6 +164,7 @@ public:
     }
 
     uint64_t to_olap_datetime() const {
+        std::cout << "to olap datetime" << std::endl;
         uint64_t date_val = _year * 10000 + _month * 100 + _day;
         uint64_t time_val = _hour * 10000 + _minute * 100 + _second;
         return date_val * 1000000 + time_val;
@@ -191,6 +192,7 @@ public:
     }
 
     uint64_t to_olap_date() const {
+        std::cout << "to olap date" << std::endl;
         uint64_t val;
         val = _year;
         val <<= 4;
@@ -220,6 +222,7 @@ public:
     // 'YYYYMMDDTHHMMSS'
     bool from_date_str(const char* str, int len);
 
+    bool from_time_str(const char* str, int len);
     // Construct Date/Datetime type value from int64_t value.
     // Return true if convert success. Otherwise return false.
     bool from_date_int64(int64_t value);
@@ -463,6 +466,12 @@ private:
     friend class UnusedClass;
 
     void from_packed_time(int64_t packed_time) {
+        if (packed_time < 0) {
+            packed_time = -packed_time;
+            _neg = 1;
+        } else {
+            _neg = 0;
+        }
         _microsecond = packed_time % (1LL << 24);
         int64_t ymdhms = packed_time >> 24;
         int64_t ymd = ymdhms >> 17;
@@ -476,8 +485,10 @@ private:
         _second = hms % (1 << 6);
         _minute = (hms >> 6) % (1 << 6);
         _hour = (hms >> 12);
-        _neg = 0;
+        //_neg = 0;
         _type = TIME_DATETIME;
+
+        std::cout << _year << "," << (int16_t)_month << "," << (int16_t)_day << "," << (int16_t)_hour << "," << (int16_t)_minute << "," << (int16_t)_second << std::endl;
     }
 
     int64_t make_packed_time(int64_t time, int64_t second_part) const {

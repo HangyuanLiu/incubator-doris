@@ -337,6 +337,7 @@ inline void AggFnEvaluator::set_any_val(
 
     case TYPE_DATE:
     case TYPE_DATETIME:
+    case TYPE_TIME:
         reinterpret_cast<const DateTimeValue*>(slot)->to_datetime_val(
                 reinterpret_cast<DateTimeVal*>(dst));
         return;
@@ -412,6 +413,7 @@ inline void AggFnEvaluator::set_output_slot(const AnyVal* src,
 
     case TYPE_DATE:
     case TYPE_DATETIME:
+    case TYPE_TIME:
         *reinterpret_cast<DateTimeValue*>(slot) = DateTimeValue::from_datetime_val(
                     *reinterpret_cast<const DateTimeVal*>(src));
         return;
@@ -608,6 +610,7 @@ bool AggFnEvaluator::count_distinct_data_filter(TupleRow* row, Tuple* dst) {
             break;
         }
 
+        case TYPE_TIME:
         case TYPE_DATE:
         case TYPE_DATETIME: {
             DateTimeVal* value = reinterpret_cast<DateTimeVal*>(_staging_input_vals[i]);
@@ -950,7 +953,7 @@ void AggFnEvaluator::serialize_or_finalize(FunctionContext* agg_fn_ctx, Tuple* s
         set_output_slot(&v, dst_slot_desc, dst);
         break;
     }
-
+    case TYPE_TIME:
     case TYPE_DATE:
     case TYPE_DATETIME: {
         typedef DateTimeVal(*Fn)(FunctionContext*, AnyVal*);

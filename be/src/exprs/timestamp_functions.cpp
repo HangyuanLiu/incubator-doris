@@ -501,12 +501,26 @@ DateTimeVal TimestampFunctions::time_diff(
 
     const DateTimeValue& ts_value1 = DateTimeValue::from_datetime_val(ts_val1);
     const DateTimeValue& ts_value2 = DateTimeValue::from_datetime_val(ts_val2);
-    //return DoubleVal(ts_value1.second_diff(ts_value2));
+
+    int time = ts_value1.second_diff(ts_value2);
+    bool neg = 0;
+    if (time < 0) {
+        neg = 1;
+        time = -time;
+    }
+    int second = time % 60;
+    int minute = time / 60 % 60;
+    int hour = time / 3600;
     DateTimeValue ts_value;
-    ts_value.from_time_int64(141559);
+    ts_value.from_time_int64((hour * 10000 + minute * 100 + second) * (neg == 0 ? 1 : -1));
+    std::cout << "time diff " <<     ts_value.to_int64() << std::endl;
 
     DateTimeVal ts_val;
     ts_value.to_datetime_val(&ts_val);
+    std::cout << "timediff pack : " << ts_val.packed_time << std::endl;
+    
+    ts_value = DateTimeValue::from_datetime_val(ts_val);
+    std::cout << "time diff " << ts_value.to_int64() << std::endl;
     return ts_val;
 }
 

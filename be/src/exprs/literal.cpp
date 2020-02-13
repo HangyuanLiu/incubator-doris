@@ -84,9 +84,13 @@ Literal::Literal(const TExprNode& node) :
         break;
     case TYPE_DATE:
     case TYPE_DATETIME:
+        std::cout << "Literal from date string : " << node.date_literal.value << std::endl;
+        _value.datetime_val.from_date_str(
+            node.date_literal.value.c_str(), node.date_literal.value.size());
+        break;
     case TYPE_TIME:
         std::cout << "Literal from date string" << std::endl;
-        _value.datetime_val.from_date_str(
+        _value.datetime_val.from_time_str(
             node.date_literal.value.c_str(), node.date_literal.value.size());
         break;
     case TYPE_CHAR:

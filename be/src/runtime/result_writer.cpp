@@ -118,6 +118,7 @@ Status ResultWriter::add_one_row(TupleRow* row) {
         case TYPE_DATETIME: {
             char buf[64];
             const DateTimeValue* time_val = (const DateTimeValue*)(item);
+            std::cout << time_val->to_int64() << std::endl;
             // TODO(zhaochun), this function has core risk
             char* pos = time_val->to_string(buf);
             buf_ret = _row_buffer->push_string(buf, pos - buf - 1);

@@ -365,9 +365,13 @@ void* ExprContext::get_value(Expr* e, TupleRow* row) {
     case TYPE_TIME: {
         doris_udf::DateTimeVal v = e->get_datetime_val(this, row);
         if (v.is_null) {
+            std::cout << " get datetime val is null" << std::endl;
             return NULL;
         }
+        std::cout << "expr context pack : " << v.packed_time << std::endl;
         _result.datetime_val = DateTimeValue::from_datetime_val(v);
+        std::cout << "toint : " << _result.datetime_val.to_int64() << std::endl;
+
         return &_result.datetime_val;
     }
     case TYPE_DECIMAL: {

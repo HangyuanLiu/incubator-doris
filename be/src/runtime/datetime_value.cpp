@@ -23,6 +23,7 @@
 
 #include <limits>
 #include <sstream>
+#include <gutil/strings/split.h>
 
 #include "common/logging.h"
 
@@ -99,6 +100,30 @@ bool DateTimeValue::check_date() const {
         return true;
     }
     return false;
+}
+
+bool DateTimeValue::from_time_str(const char* time_str, int len) {
+    const char* ptr = time_str;
+    const char* end = time_str + len;
+    // Skip space character
+    while (ptr < end && isspace(*ptr)) {
+        ptr++;
+    }
+    if (*ptr == '-') {
+        _neg = true;
+    } else {
+        _neg = false;
+    }
+
+    std::vector<std::string> path_parts = strings::Split(std::string(time_str, len), ":", strings::SkipWhitespace());
+
+    _hour = atoi(path_parts[0].c_str());
+    _minute = atoi(path_parts[1].c_str());
+    _second = atoi(path_parts[2].c_str());
+    _year = _month = _day = 0;
+    _microsecond = 0;
+    _type = TIME_TIME;
+    return true;
 }
 
 // The interval format is that with no delimiters
@@ -348,6 +373,7 @@ void DateTimeValue::set_max_time(bool neg) {
 
 bool DateTimeValue::from_time_int64(int64_t value) {
     _type = TIME_TIME;
+    std::cout << "value : " << value << std::endl;
     if (value > TIME_MAX_VALUE) {
         // 0001-01-01 00:00:00 to convert to a datetime
         if (value > 10000000000L) {
@@ -365,13 +391,14 @@ bool DateTimeValue::from_time_int64(int64_t value) {
         _neg = 1;
         value = -value;
     }
-    _hour = value / 10000;
+    _hour = (uint8_t) (value / 10000);
     value %= 10000;
-    _minute = value / 100;
+    _minute = (uint8_t)(value / 100);
     if (_minute > TIME_MAX_MINUTE) {
         return false;
     }
-    _second = value % 100;
+    _second = (uint8_t)(value % 100);
+    std::cout << "from time int : " << (uint16_t)_hour << "," << (uint16_t)_minute << "," << (uint16_t)_second << std::endl;
     if (_second > TIME_MAX_SECOND) {
         return false;
     }

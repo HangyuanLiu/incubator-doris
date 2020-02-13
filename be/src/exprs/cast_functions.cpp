@@ -327,6 +327,7 @@ DateTimeVal CastFunctions::cast_to_datetime_val(
 
 DateTimeVal CastFunctions::cast_to_datetime_val(
         FunctionContext* ctx, const StringVal& val) {
+    std::cout << "cast_to_datetime_val " << std::string((char*)val.ptr, val.len) << std::endl;
     if (val.is_null) {
         return DateTimeVal::null();
     }

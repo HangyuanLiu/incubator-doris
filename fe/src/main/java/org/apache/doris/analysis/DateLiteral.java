@@ -40,6 +40,7 @@ import org.apache.logging.log4j.Logger;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDateTime;
+import org.joda.time.LocalTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.DateTimeFormatterBuilder;
 
@@ -207,7 +208,15 @@ public class DateLiteral extends LiteralExpr {
                     dateTime = DATE_TIME_FORMATTER.parseLocalDateTime(s);
                 }
             } else if (type == Type.TIME) {
-                dateTime = TIME_FORMATTER.parseLocalDateTime(s);
+                LocalTime time = TIME_FORMATTER.parseLocalTime(s);
+                year = month = day = 0;
+                hour = time.getHourOfDay();
+                minute = time.getMinuteOfHour();
+                second = time.getSecondOfMinute();
+
+                System.out.println("DatetimeLiteral : " + time.toString());
+                this.type = type;
+                return;
             } else {
                 throw new AnalysisException("");
             }
@@ -305,8 +314,12 @@ public class DateLiteral extends LiteralExpr {
     private String convertToString(PrimitiveType type) {
         if (type == PrimitiveType.DATE) {
             return String.format("%04d-%02d-%02d", year, month, day);
+        } else if (type == PrimitiveType.DATETIME){
+            return String.format("%04d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second);                    
+        } else if (type == PrimitiveType.TIME) {
+            return String.format("%02d:%02d:%02d", hour, minute, second);                    
         } else {
-            return String.format("%04d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second);
+            return null;                    
         }
     }
 

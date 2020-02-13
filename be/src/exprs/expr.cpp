@@ -839,7 +839,7 @@ StringVal Expr::get_string_val(ExprContext* context, TupleRow* row) {
 // virtual ArrayVal Expr::GetArrayVal(ExprContext* context, TupleRow*);
 DateTimeVal Expr::get_datetime_val(ExprContext* context, TupleRow* row) {
     DateTimeVal val;
-    // ((DateTimeValue*)get_value(row))->to_datetime_val(&val);
+    ((DateTimeValue*)get_value(row))->to_datetime_val(&val);
     return val;
 }
 

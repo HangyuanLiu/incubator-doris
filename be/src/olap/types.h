@@ -694,7 +694,7 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_DATETIME> : public BaseFieldtypeTraits<OL
 template<>
 struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_FIELD_TYPE_TIME> {
     static OLAPStatus from_string(void* buf, const std::string& scan_key) {
-        std::cout << "from_string" << std::endl;
+        std::cout << "from_string : " << scan_key << std::endl;
         tm time_tm;
         strptime(scan_key.c_str(), "%H:%M:%S", &time_tm);
         CppType value = time_tm.tm_hour * 10000L
@@ -704,7 +704,6 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_F
         return OLAP_SUCCESS;
     }
     static std::string to_string(const void* src) {
-        std::cout << "to_string" << std::endl;
         tm time_tm;
         CppType tmp = *reinterpret_cast<const CppType*>(src);
         CppType part1 = (tmp / 1000000L);
@@ -720,6 +719,7 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_F
 
         char buf[20] = {'\0'};
         strftime(buf, 20, "%H:%M:%S", &time_tm);
+        std::cout << "to_string" << std::string(buf) << std::endl;
         return std::string(buf);
     }
     static OLAPStatus convert_from(void* dest, const void* src, const TypeInfo* src_type, MemPool* memPool) {
@@ -728,9 +728,11 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_F
     }
     static void set_to_max(void* buf) {
         std::cout << "set_to_max" << std::endl;
+        *reinterpret_cast<CppType*>(buf) = 8385959;
     }
     static void set_to_min(void* buf) {
         std::cout << "set_to_min" << std::endl;
+        *reinterpret_cast<CppType*>(buf) = -8385959;
     }
 };
 

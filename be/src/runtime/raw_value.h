@@ -406,7 +406,8 @@ inline uint32_t RawValue::zlib_crc32(const void* v, const TypeDescriptor& type, 
     case TYPE_DOUBLE:
         return HashUtil::zlib_crc_hash(v, 8, seed);
     case TYPE_DATE:
-    case TYPE_DATETIME: {
+    case TYPE_DATETIME:
+    case TYPE_TIME: {
         const DateTimeValue* date_val = (const DateTimeValue*)v;
         char buf[64];
         char* end = date_val->to_string(buf);
