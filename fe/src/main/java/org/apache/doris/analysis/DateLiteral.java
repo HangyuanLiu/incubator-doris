@@ -86,7 +86,8 @@ public class DateLiteral extends LiteralExpr {
     //Date Literal persist type in meta
     private enum  DateLiteralType {
         DATETIME(0),
-        DATE(1);
+        DATE(1),
+        TIME(2);
 
         private final int value;
         private DateLiteralType(int value) {
@@ -208,6 +209,10 @@ public class DateLiteral extends LiteralExpr {
                     dateTime = DATE_TIME_FORMATTER.parseLocalDateTime(s);
                 }
             } else if (type == Type.TIME) {
+                if (s.startsWith("-")) {
+                    neg = true;
+                    s = s.substring(1);
+                }
                 LocalTime time = TIME_FORMATTER.parseLocalTime(s);
                 year = month = day = 0;
                 hour = time.getHourOfDay();
@@ -317,7 +322,7 @@ public class DateLiteral extends LiteralExpr {
         } else if (type == PrimitiveType.DATETIME){
             return String.format("%04d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second);                    
         } else if (type == PrimitiveType.TIME) {
-            return String.format("%02d:%02d:%02d", hour, minute, second);                    
+            return (neg ? "-" : "") + String.format("%02d:%02d:%02d", hour, minute, second);
         } else {
             return null;                    
         }
@@ -638,7 +643,7 @@ public class DateLiteral extends LiteralExpr {
     private long minute;
     private long second;
     private long microsecond;
-
+    private boolean neg = false;
 
     @Override
     public int hashCode() {

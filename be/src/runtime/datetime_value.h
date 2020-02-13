@@ -213,6 +213,7 @@ public:
         _minute = time / 100;
         _second = time % 100;
         _microsecond = 0;
+        return true;
     }
 
     uint64_t to_olap_time() const {

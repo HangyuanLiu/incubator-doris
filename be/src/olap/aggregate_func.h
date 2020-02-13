@@ -165,6 +165,7 @@ struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_NONE, OLAP_FIELD_TYPE_TIME> :
         std::cout <<"TIME INIT" << std::endl;
         dst->set_is_null(src_null);
         if (src_null) {
+            std::cout << "TIME INIT NULL" << std::endl;
             return;
         }
 
