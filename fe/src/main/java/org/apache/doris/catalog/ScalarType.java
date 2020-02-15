@@ -136,6 +136,7 @@ public class ScalarType extends Type {
             case DATETIME:
                 return DATETIME;
             case TIME:
+                System.out.println("create type time");
                 return TIME;
             case DECIMAL:
                 return (ScalarType) createDecimalType();
@@ -183,6 +184,7 @@ public class ScalarType extends Type {
             case "DATETIME":
                 return DATETIME;
             case "TIME":
+                System.out.println("create type time !");
                 return TIME;
             case "DECIMAL":
                 return (ScalarType) createDecimalType();
@@ -285,6 +287,9 @@ public class ScalarType extends Type {
     }
 
     public static ScalarType createDatetimeType(ScalarType type, int len) {
+        if (len == -1) {
+            System.out.println("create datetime len -1");
+        }
         switch (type.type) {
             case TIME:
                 ScalarType scalarType = new ScalarType(PrimitiveType.TIME);
@@ -390,6 +395,7 @@ public class ScalarType extends Type {
             case CHAR:
             case TIME:
             case HLL: {
+                          System.out.println("Scalar Type set " + len);
                 node.setType(TTypeNodeType.SCALAR);
                 TScalarType scalarType = new TScalarType();
                 scalarType.setType(type.toThrift());
