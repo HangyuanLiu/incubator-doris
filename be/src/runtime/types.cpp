@@ -37,7 +37,8 @@ TypeDescriptor::TypeDescriptor(const std::vector<TTypeNode>& types, int* idx) :
         DCHECK(node.__isset.scalar_type);
         const TScalarType scalar_type = node.scalar_type;
         type = thrift_to_type(scalar_type.type);
-        if (type == TYPE_CHAR || type == TYPE_VARCHAR || type == TYPE_HLL) {
+        if (type == TYPE_CHAR || type == TYPE_VARCHAR || type == TYPE_HLL || type == TYPE_TIME) {
+            std::cout << "TypeDes len : " << scalar_type.len << std::endl;
             DCHECK(scalar_type.__isset.len);
             len = scalar_type.len;
         } else if (type == TYPE_DECIMAL || type == TYPE_DECIMALV2) {
@@ -104,7 +105,7 @@ void TypeDescriptor::to_thrift(TTypeDesc* thrift_type) const {
         node.__set_scalar_type(TScalarType());
         TScalarType& scalar_type = node.scalar_type;
         scalar_type.__set_type(doris::to_thrift(type));
-        if (type == TYPE_CHAR || type == TYPE_VARCHAR || type == TYPE_HLL) {
+        if (type == TYPE_CHAR || type == TYPE_VARCHAR || type == TYPE_HLL || type == TYPE_TIME) {
             // DCHECK_NE(len, -1);
             scalar_type.__set_len(len);
         } else if (type == TYPE_DECIMAL || type == TYPE_DECIMALV2) {
@@ -122,7 +123,7 @@ void TypeDescriptor::to_protobuf(PTypeDesc* ptype) const {
     node->set_type(TTypeNodeType::SCALAR);
     auto scalar_type = node->mutable_scalar_type();
     scalar_type->set_type(doris::to_thrift(type));
-    if (type == TYPE_CHAR || type == TYPE_VARCHAR || type == TYPE_HLL) {
+    if (type == TYPE_CHAR || type == TYPE_VARCHAR || type == TYPE_HLL || type == TYPE_TIME) {
         scalar_type->set_len(len);
     } else if (type == TYPE_DECIMAL || type == TYPE_DECIMALV2) {
         DCHECK_NE(precision, -1);
@@ -145,7 +146,7 @@ TypeDescriptor::TypeDescriptor(
         DCHECK(node.has_scalar_type());
         const PScalarType& scalar_type = node.scalar_type();
         type = thrift_to_type((TPrimitiveType::type)scalar_type.type());
-        if (type == TYPE_CHAR || type == TYPE_VARCHAR || type == TYPE_HLL) {
+        if (type == TYPE_CHAR || type == TYPE_VARCHAR || type == TYPE_HLL || type == TYPE_TIME) {
             DCHECK(scalar_type.has_len());
             len = scalar_type.len();
         } else if (type == TYPE_DECIMAL || type == TYPE_DECIMALV2) {
@@ -172,6 +173,9 @@ std::string TypeDescriptor::debug_string() const {
         return ss.str();
     case TYPE_DECIMALV2:
         ss << "DECIMALV2(" << precision << ", " << scale << ")";
+        return ss.str();
+    case TYPE_TIME:
+        ss << "TIME(" << len << ")";
         return ss.str();
     default:
         return type_to_string(type);

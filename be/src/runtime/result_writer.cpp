@@ -114,8 +114,11 @@ Status ResultWriter::add_one_row(TupleRow* row) {
             break;
         }
         */
+            std::cout << "time len : " << _output_expr_ctxs[i]->root()->type().len << std::endl;
+            std::cout << "time len : " << _output_expr_ctxs[i]->root()->type().debug_string() << std::endl;
         case TYPE_DATE:
         case TYPE_DATETIME: {
+
             char buf[64];
             const DateTimeValue* time_val = (const DateTimeValue*)(item);
             std::cout << time_val->to_int64() << std::endl;

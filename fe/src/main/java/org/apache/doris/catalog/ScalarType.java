@@ -88,6 +88,8 @@ public class ScalarType extends Type {
 
     public static ScalarType createType(PrimitiveType type, int len, int precision, int scale) {
         switch (type) {
+            case TIME:
+                return createDatetimeType(TIME, len);
             case CHAR:
                 return createCharType(len);
             case VARCHAR:
@@ -282,6 +284,16 @@ public class ScalarType extends Type {
         return type;
     }
 
+    public static ScalarType createDatetimeType(ScalarType type, int len) {
+        switch (type.type) {
+            case TIME:
+                ScalarType scalarType = new ScalarType(PrimitiveType.TIME);
+                scalarType.len = len;
+                return scalarType;
+        }
+        return null;
+    }
+
     @Override
     public String toString() {
         if (type == PrimitiveType.CHAR) {
@@ -304,6 +316,12 @@ public class ScalarType extends Type {
                 return "VARCHAR(*)";
             }
             return "VARCHAR(" + len + ")";
+        } else if (type == PrimitiveType.TIME) {
+            if (len == -1) {
+                return "TIME";                        
+            } else {
+                return "TIME(" + len + ")";                        
+            }    
         }
         return type.toString();
     }
@@ -324,6 +342,13 @@ public class ScalarType extends Type {
             case DECIMALV2:
                 stringBuilder.append("decimal").append("(").append(precision).append(", ").append(scale).append(")");
                 break;
+            case TIME:
+                if (len != -1) {
+                    stringBuilder.append("time").append("(").append(len).append(")");
+                } else {
+                    stringBuilder.append(type.toString().toLowerCase());
+                }
+                break;
             case BOOLEAN:
                 return "tinyint(1)";
             case TINYINT:
@@ -342,7 +367,6 @@ public class ScalarType extends Type {
             case DATETIME:
             case HLL:
             case BITMAP:
-            case TIME:
                 stringBuilder.append(type.toString().toLowerCase());
                 break;
             default:
@@ -364,6 +388,7 @@ public class ScalarType extends Type {
         switch(type) {
             case VARCHAR:
             case CHAR:
+            case TIME:
             case HLL: {
                 node.setType(TTypeNodeType.SCALAR);
                 TScalarType scalarType = new TScalarType();

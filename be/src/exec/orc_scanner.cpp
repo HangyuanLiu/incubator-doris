@@ -271,6 +271,7 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
                             break;
                         }
                         default: {
+                            std::cout << "type " << _row_reader->getSelectedType().getSubtype(_position_in_orc_original[column_ipos])->getKind() << std::endl;
                             std::stringstream str_error;
                             str_error << "The field name(" << slot_desc->col_name() << ") type not support. ";
                             LOG(WARNING) << str_error.str();

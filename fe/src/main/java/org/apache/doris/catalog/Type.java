@@ -513,6 +513,9 @@ public abstract class Type {
                             && scalarType.isSetPrecision());
                     type = ScalarType.createDecimalV2Type(scalarType.getPrecision(),
                             scalarType.getScale());
+                } else if (scalarType.getType() == TPrimitiveType.TIME) {
+                    Preconditions.checkState(scalarType.isSetLen());
+                    type = ScalarType.createDatetimeType(Type.TIME, scalarType.len);
                 } else {
                     type = ScalarType.createType(
                             PrimitiveType.fromThrift(scalarType.getType()));

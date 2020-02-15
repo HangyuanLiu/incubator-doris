@@ -67,6 +67,7 @@ inline bool is_enumeration_type(PrimitiveType type) {
     case TYPE_CHAR:
     case TYPE_VARCHAR:
     case TYPE_DATETIME:
+    case TYPE_TIME:
     case TYPE_DECIMAL:
     case TYPE_DECIMALV2:
     case TYPE_BOOLEAN:
@@ -211,6 +212,7 @@ inline int get_slot_size(PrimitiveType type) {
 
     case TYPE_DATE:
     case TYPE_DATETIME:
+    case TYPE_TIME:
         // This is the size of the slot, the actual size of the data is 12.
         return 16;
 

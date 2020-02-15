@@ -489,6 +489,16 @@ Status OlapScanNode::normalize_conjuncts() {
             normalize_predicate(range, slots[slot_idx]);
             break;
         }
+        case TYPE_TIME: {
+            DateTimeValue max_value = DateTimeValue::time_max_value();
+            DateTimeValue min_value = DateTimeValue::time_min_value();
+            ColumnValueRange<DateTimeValue> range(slots[slot_idx]->col_name(),
+                                                  slots[slot_idx]->type().type,
+                                                  min_value,
+                                                  max_value);
+            normalize_predicate(range, slots[slot_idx]);
+            break;
+        }
 
         case TYPE_DECIMAL: {
             DecimalValue min = DecimalValue::get_min_decimal();

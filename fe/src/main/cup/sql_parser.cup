@@ -3542,6 +3542,11 @@ type ::=
   {: RESULT = Type.DATETIME; :}
   | KW_TIME
   {: RESULT = Type.TIME; :}
+  | KW_TIME LPAREN INTEGER_LITERAL:len RPAREN
+  {: ScalarType type = ScalarType.createDatetimeType(Type.TIME, len.intValue());
+     type.setAssignedStrLenInColDefinition();
+     RESULT = type;
+  :}
   | KW_TIMESTAMP
   {: RESULT = Type.TIMESTAMP; :}
   | KW_BITMAP
