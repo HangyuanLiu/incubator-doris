@@ -168,6 +168,7 @@ Status ResultWriter::add_one_row(TupleRow* row) {
             DecimalV2Value decimal_val(reinterpret_cast<const PackedInt128*>(item)->value);
             std::string decimal_str;
             int output_scale = _output_expr_ctxs[i]->root()->output_scale();
+            std::cout << "output_scale : " << output_scale << std::endl;
 
             if (output_scale > 0 && output_scale <= 30) {
                 decimal_str = decimal_val.to_string(output_scale);

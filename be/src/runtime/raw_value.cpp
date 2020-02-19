@@ -159,6 +159,7 @@ void RawValue::print_value(const void* value, const TypeDescriptor& type, int sc
     case TYPE_DATE:
     case TYPE_DATETIME:
     case TYPE_TIME:
+        std::cout << "print raw value " << type.debug_string() << std::endl;
         *stream << *reinterpret_cast<const DateTimeValue*>(value);
         break;
 

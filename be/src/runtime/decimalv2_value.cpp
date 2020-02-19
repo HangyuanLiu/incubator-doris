@@ -248,6 +248,7 @@ int DecimalV2Value::parse_from_str(const char* decimal_str, int32_t length) {
 }
 
 std::string DecimalV2Value::to_string(int round_scale) const {
+    std::cout << "SCALE " << SCALE << ", PRECISION " << PRECISION << std::endl;
     if (_value == 0) return std::string(1, '0');
 
     int last_char_idx = PRECISION + 2 + (_value < 0);  

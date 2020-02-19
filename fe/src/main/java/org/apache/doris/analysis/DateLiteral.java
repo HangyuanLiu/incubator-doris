@@ -220,6 +220,7 @@ public class DateLiteral extends LiteralExpr {
                 hour = time.getHourOfDay();
                 minute = time.getMinuteOfHour();
                 second = time.getSecondOfMinute();
+                microsecond = time.getMillisOfSecond();
 
                 System.out.println("DatetimeLiteral : " + time.toString());
                 this.type = type;
