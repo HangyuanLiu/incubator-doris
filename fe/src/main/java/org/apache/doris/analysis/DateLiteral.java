@@ -38,6 +38,7 @@ import org.apache.doris.thrift.TExprNodeType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeFieldType;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDateTime;
 import org.joda.time.LocalTime;
@@ -74,7 +75,7 @@ public class DateLiteral extends LiteralExpr {
             DATE_TIME_FORMATTER_TWO_DIGIT = formatBuilder("%y-%m-%d %H:%i:%s").toFormatter();
             DATE_FORMATTER_TWO_DIGIT = formatBuilder("%y-%m-%d").toFormatter();
 
-            TIME_FORMATTER = formatBuilder("%H:%i:%s").toFormatter();
+            TIME_FORMATTER = formatBuilder("%H:%i:%s.%f").toFormatter();
         } catch (AnalysisException e) {
             LOG.error("invalid date format", e);
             System.exit(-1);
@@ -213,6 +214,7 @@ public class DateLiteral extends LiteralExpr {
                     neg = true;
                     s = s.substring(1);
                 }
+                System.out.println("parse " + s);
                 LocalTime time = TIME_FORMATTER.parseLocalTime(s);
                 year = month = day = 0;
                 hour = time.getHourOfDay();
@@ -322,6 +324,9 @@ public class DateLiteral extends LiteralExpr {
         } else if (type == PrimitiveType.DATETIME){
             return String.format("%04d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second);                    
         } else if (type == PrimitiveType.TIME) {
+            if (microsecond > 0) {
+                return (neg ? "-" : "") + String.format("%02d:%02d:%02d.%03d", hour, minute, second, microsecond);                               
+            }
             return (neg ? "-" : "") + String.format("%02d:%02d:%02d", hour, minute, second);
         } else {
             return null;                    
@@ -554,6 +559,9 @@ public class DateLiteral extends LiteralExpr {
                         builder.appendTwoDigitYear(2020);
                         break;
                     case 'f': // %f Microseconds (000000..999999)
+                        builder.appendDecimal(DateTimeFieldType.millisOfSecond(), 0, 6);
+                        //builder.appendMillisOfSecond(6);
+                        break;
                     case 'w': // %w Day of the week (0=Sunday..6=Saturday)
                     case 'U': // %U Week (00..53), where Sunday is the first day of the week
                     case 'u': // %u Week (00..53), where Monday is the first day of the week
