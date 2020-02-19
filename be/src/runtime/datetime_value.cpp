@@ -118,14 +118,22 @@ bool DateTimeValue::from_time_str(const char* time_str, int len) {
     } else {
         _neg = false;
     }
-
-    std::vector<std::string> path_parts = strings::Split(std::string(time_str, len), ":", strings::SkipWhitespace());
+    std::vector<std::string>  vec = strings::Split(std::string(time_str, len), ".", strings::SkipWhitespace());
+    if(vec.size() == 2) {
+        while (vec[1].length() < 6) {
+            vec[1] = vec[1] + "0";
+        }
+        _microsecond = atoi(vec[1].c_str());
+    } else {
+        _microsecond = 0;
+    }
+    std::cout << "vec : " << vec[0] << "," << vec[1] << std::endl;
+    std::vector<std::string> path_parts = strings::Split(vec[0], ":", strings::SkipWhitespace());
 
     _hour = atoi(path_parts[0].c_str());
     _minute = atoi(path_parts[1].c_str());
     _second = atoi(path_parts[2].c_str());
     _year = _month = _day = 0;
-    _microsecond = 0;
     _type = TIME_TIME;
     return true;
 }
@@ -513,7 +521,8 @@ int64_t DateTimeValue::to_date_int64() const {
 
 int64_t DateTimeValue::to_time_int64() const {
     int sign = _neg == 0 ? 1 : -1;
-    return sign * (_hour * 10000 + _minute * 100 + _second);
+    int64_t ret = sign * ( (int64_t)(_hour * 10000 + _minute * 100 + _second) * 1000000 + _microsecond);
+    return ret;
 }
 
 int64_t DateTimeValue::to_int64() const {

@@ -695,17 +695,36 @@ template<>
 struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_FIELD_TYPE_TIME> {
     static OLAPStatus from_string(void* buf, const std::string& scan_key) {
         std::cout << "from_string : " << scan_key << std::endl;
+        
+        int pos = scan_key.find(".");
+        int microsecond = 0;
+        if(pos != std::string::npos) {
+            std::string mic = scan_key.substr(pos);
+            while(mic.length() < 6) {
+                mic = mic + "0";
+            }
+            microsecond = atoi(mic.c_str());
+        }
+        std::string datetime_str = scan_key.substr(0, pos);
+
         tm time_tm;
-        strptime(scan_key.c_str(), "%H:%M:%S", &time_tm);
+        strptime(datetime_str.c_str(), "%H:%M:%S", &time_tm);
         CppType value = time_tm.tm_hour * 10000L
             + time_tm.tm_min * 100L
             + time_tm.tm_sec;
+        value = value * 1000000 + microsecond;
+        std::cout << "from string value : " << value << std::endl;
         *reinterpret_cast<CppType*>(buf) = value;
         return OLAP_SUCCESS;
     }
     static std::string to_string(const void* src) {
+        
         tm time_tm;
         CppType tmp = *reinterpret_cast<const CppType*>(src);
+        
+        int microsecond = tmp % 1000000;
+        tmp = tmp / 1000000;
+
         CppType part1 = (tmp / 1000000L);
         CppType part2 = (tmp - part1 * 1000000L);
 
@@ -719,8 +738,15 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_F
 
         char buf[20] = {'\0'};
         strftime(buf, 20, "%H:%M:%S", &time_tm);
-        std::cout << "to_string" << std::string(buf) << std::endl;
-        return std::string(buf);
+
+        std::string ret;
+        if (microsecond > 0) {
+            ret = std::string(buf) + "." + std::to_string(microsecond);
+        } else {
+            ret = std::string(buf);
+        }
+        std::cout << "to_string : " << ret << std::endl;
+        return ret;
     }
     static OLAPStatus convert_from(void* dest, const void* src, const TypeInfo* src_type, MemPool* memPool) {
         std::cout << "convert_from" << std::endl;

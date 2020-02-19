@@ -207,6 +207,8 @@ public:
         _neg = false;
         _type = TIME_TIME;
         _year = _month = _day = 0;
+        _microsecond = time % 1000000;
+        time = time / 1000000;
 
         _hour = time / 10000;
         time %= 10000;
@@ -217,8 +219,10 @@ public:
     }
 
     uint64_t to_olap_time() const {
-        std::cout << "to_olap_time : " << _hour * 10000 + _minute * 100 + _second << std::endl;
-        return _hour * 10000 + _minute * 100 + _second;
+        int sign = _neg == 0 ? 1 : -1;
+        int64_t ret = sign * ( (int64_t)(_hour * 10000 + _minute * 100 + _second) * 1000000 + _microsecond);
+        std::cout << "to_olap_time : " << ret << std::endl;
+        return ret;
     }
 
     bool from_date_format_str(const char* format, int format_len,
@@ -515,7 +519,9 @@ private:
         //_neg = 0;
         _type = TIME_DATETIME;
 
-        std::cout << _year << "," << (int16_t)_month << "," << (int16_t)_day << "," << (int16_t)_hour << "," << (int16_t)_minute << "," << (int16_t)_second << std::endl;
+        std::cout << _year << "," << (int16_t)_month << "," << (int16_t)_day << ","
+        << (int16_t)_hour << "," << (int16_t)_minute << "," << (int16_t)_second <<
+        _microsecond << std::endl;
     }
 
     int64_t make_packed_time(int64_t time, int64_t second_part) const {
