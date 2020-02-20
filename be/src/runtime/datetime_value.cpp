@@ -142,6 +142,7 @@ bool DateTimeValue::from_time_str(const char* time_str, int len) {
 // YYYY-MM-DD HH-MM-DD.FFFFFF AM in default format
 // 0    1  2  3  4  5  6      7
 bool DateTimeValue::from_date_str(const char* date_str, int len) {
+    std::cout << "from_date_str : " << std::string(date_str, len) << std::endl;
     const char* ptr = date_str;
     const char* end = date_str + len;
     // ONLY 2, 6 can follow by a sapce
@@ -342,6 +343,7 @@ int64_t DateTimeValue::standardlize_timevalue(int64_t value) {
 }
 
 bool DateTimeValue::from_date_int64(int64_t value) {
+    std::cout << "from_date_int64" << std::endl;
     _neg = false;
     value = standardlize_timevalue(value);
     if (value <= 0) {
@@ -493,14 +495,21 @@ char* DateTimeValue::to_time_string(char* to) const {
 }
 
 char* DateTimeValue::to_string(char* to) const {
+    std::cout << "to_string" << std::endl;
     switch (_type) {
     case TIME_TIME:
+        {
+        std::cout <<"TIME : ";
+        char* s = to;
         to = to_time_string(to);
+        std::cout << std::string(s) << std::endl;
         break;
+        }
     case TIME_DATE:
         to = to_date_string(to);
         break;
     case TIME_DATETIME:
+        std::cout <<  "DATETIME" << std::endl;
         to = to_datetime_string(to);
         break;
     default:

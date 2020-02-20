@@ -699,11 +699,12 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_F
         int pos = scan_key.find(".");
         int microsecond = 0;
         if(pos != std::string::npos) {
-            std::string mic = scan_key.substr(pos);
+            std::string mic = scan_key.substr(pos + 1);
             while(mic.length() < 6) {
                 mic = mic + "0";
             }
             microsecond = atoi(mic.c_str());
+            std::cout << mic << std::endl;
         }
         std::string datetime_str = scan_key.substr(0, pos);
 
@@ -754,11 +755,11 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_F
     }
     static void set_to_max(void* buf) {
         std::cout << "set_to_max" << std::endl;
-        *reinterpret_cast<CppType*>(buf) = 8385959;
+        *reinterpret_cast<CppType*>(buf) = 8385959000000;
     }
     static void set_to_min(void* buf) {
         std::cout << "set_to_min" << std::endl;
-        *reinterpret_cast<CppType*>(buf) = -8385959;
+        *reinterpret_cast<CppType*>(buf) = 0;
     }
 };
 

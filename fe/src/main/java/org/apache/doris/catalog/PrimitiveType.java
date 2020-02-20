@@ -53,7 +53,7 @@ public enum PrimitiveType {
     DECIMALV2("DECIMALV2", 16, TPrimitiveType.DECIMALV2),
     
     HLL("HLL", 16, TPrimitiveType.HLL),
-    TIME("TIME", 8, TPrimitiveType.TIME),
+    TIME("TIME", 16, TPrimitiveType.TIME),
     TIMESTAMP("TIMESTAMP", 8, TPrimitiveType.TIMESTAMP),
     // we use OBJECT type represent BITMAP type in Backend
     BITMAP("BITMAP", 16, TPrimitiveType.OBJECT),

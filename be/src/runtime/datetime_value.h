@@ -214,11 +214,11 @@ public:
         time %= 10000;
         _minute = time / 100;
         _second = time % 100;
-        _microsecond = 0;
         return true;
     }
 
     uint64_t to_olap_time() const {
+        std::cout << "microsecond : " << _microsecond << std::endl;
         int sign = _neg == 0 ? 1 : -1;
         int64_t ret = sign * ( (int64_t)(_hour * 10000 + _minute * 100 + _second) * 1000000 + _microsecond);
         std::cout << "to_olap_time : " << ret << std::endl;
@@ -429,9 +429,11 @@ public:
     void to_datetime_val(doris_udf::DateTimeVal* tv) const {
         tv->packed_time = to_int64_datetime_packed();
         tv->type = _type;
+                std::cout << "to_datetime_val : " << tv->packed_time << ", type : " << tv->type <<std::endl;
     }
 
     static DateTimeValue from_datetime_val(const doris_udf::DateTimeVal& tv) {
+                std::cout << "from datetime_val : " << tv.packed_time << "," << tv.type << std::endl;
         DateTimeValue value;
         value.from_packed_time(tv.packed_time);
         if (tv.type == TIME_DATE) {
@@ -439,6 +441,7 @@ public:
         } else if (tv.type == TIME_TIME) {
             value.cast_to_time();
         }
+                std::cout << "from datetime_val " << value.debug_string() << std::endl;
         return value;
     }
 
@@ -576,6 +579,7 @@ private:
                               const char** sub_val_end);
 
 
+    uint64_t _microsecond;
     // 1 bits for neg. 3 bits for type. 12bit for hour
     uint16_t _neg:1;        // Used for time value.
     uint16_t _type:3;       // Which type of this value.
@@ -586,7 +590,6 @@ private:
     uint8_t _month;
     uint8_t _day;
     // TODO(zc): used for nothing
-    uint64_t _microsecond;
 
     DateTimeValue(uint8_t neg, uint8_t type, uint16_t hour,
                   uint8_t minute, uint8_t second, uint32_t microsecond, 

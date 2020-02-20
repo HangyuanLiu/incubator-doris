@@ -219,6 +219,7 @@ public:
 
         case TYPE_DATE:
         case TYPE_DATETIME:
+        case TYPE_TIME:
             return sizeof(doris_udf::DateTimeVal);
 
         case TYPE_DECIMAL:

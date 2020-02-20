@@ -276,8 +276,11 @@ void RawValue::write(const void* value, void* dst, const TypeDescriptor& type, M
     case TYPE_TIME:
     case TYPE_DATE:
     case TYPE_DATETIME:
-        *reinterpret_cast<DateTimeValue*>(dst) =
-            *reinterpret_cast<const DateTimeValue*>(value);
+                              std::cout << "copy " << std::endl;
+                                      *reinterpret_cast<DateTimeValue*>(dst) =
+                                                      *reinterpret_cast<const DateTimeValue*>(value);
+                                                  std::cout << reinterpret_cast<DateTimeValue*>(dst)->to_int64() << std::endl;
+                                                              std::cout << reinterpret_cast<const DateTimeValue*>(value)->to_int64() << std::endl;
         break;
 
     case TYPE_DECIMAL:
