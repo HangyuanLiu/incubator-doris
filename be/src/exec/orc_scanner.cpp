@@ -245,9 +245,19 @@ Status ORCScanner::get_next(Tuple* tuple, MemPool* tuple_pool, bool* eof) {
                             } else {
                                 decimal_str = ((orc::Decimal128VectorBatch*) cvb)->values[_current_line_of_group].toString();
                             }
-                            //Orc api will fill in 0 at the end, so size must greater than scale
-                            std::string v = decimal_str.substr(0, decimal_str.size() - scale) + "." 
-                                + decimal_str.substr(decimal_str.size() - scale);
+                            std::string v;
+                            if (decimal_str.size() <= scale) {
+                                v = "0.";
+                                int fill_zero = scale - decimal_str.size();
+                                while (fill_zero--) {
+                                    v += "0";
+                                }
+                                v += decimal_str;
+                            } else {
+                                //Orc api will fill in 0 at the end, so size must greater than scale
+                                v = decimal_str.substr(0, decimal_str.size() - scale) + "."
+                                        + decimal_str.substr(decimal_str.size() - scale);
+                            }
                             str_slot->ptr = reinterpret_cast<char*>(tuple_pool->allocate(v.size()));
                             memcpy(str_slot->ptr, v.c_str(), v.size());
                             str_slot->len = v.size();
