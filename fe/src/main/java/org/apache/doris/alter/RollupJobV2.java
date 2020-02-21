@@ -42,10 +42,10 @@ import org.apache.doris.task.AgentTaskExecutor;
 import org.apache.doris.task.AgentTaskQueue;
 import org.apache.doris.task.AlterReplicaTask;
 import org.apache.doris.task.CreateReplicaTask;
+import org.apache.doris.thrift.TStorageFormat;
 import org.apache.doris.thrift.TStorageMedium;
 import org.apache.doris.thrift.TStorageType;
 import org.apache.doris.thrift.TTaskType;
-import org.apache.doris.thrift.TStorageFormat;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -204,7 +204,8 @@ public class RollupJobV2 extends AlterJobV2 {
                                 Partition.PARTITION_INIT_VERSION, Partition.PARTITION_INIT_VERSION_HASH,
                                 rollupKeysType, TStorageType.COLUMN, storageMedium,
                                 rollupSchema, tbl.getCopiedBfColumns(), tbl.getBfFpp(), countDownLatch,
-                                tbl.getCopiedIndexes());
+                                tbl.getCopiedIndexes(),
+                                tbl.isInMemory());
                         createReplicaTask.setBaseTablet(tabletIdMap.get(rollupTabletId), baseSchemaHash);
                         if (this.storageFormat != null) {
                             createReplicaTask.setStorageFormat(this.storageFormat);
@@ -305,14 +306,6 @@ public class RollupJobV2 extends AlterJobV2 {
         if (db == null) {
             throw new AlterCancelException("Databasee " + dbId + " does not exist");
         }
-
-        // TODO(wangbo): 2020/2/4
-        //   In the case that the [WaitingTxnJob|PendingJob] is checkpointed and replayMethod won't be called
-        //   For example,
-        //          1. create and pending job A
-        //          2. restart fe twice before job A running(for checkpoint job A)
-        //          3. For job A,replayPendingJob method won't be called,so we lose metadata in memory
-        //   So Make sure the tablet meta exists in olapTable and TabletInvertedIndex before doris run
 
         db.readLock();
         try {

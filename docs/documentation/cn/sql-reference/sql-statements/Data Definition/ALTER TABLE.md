@@ -59,7 +59,11 @@ under the License.
         语法：
             MODIFY PARTITION partition_name SET ("key" = "value", ...)
         说明：
-            1) 当前支持修改分区的 storage_medium、storage_cooldown_time 和 replication_num 三个属性。
+            1) 当前支持修改分区的下列属性：
+                - storage_medium
+                - storage_cooldown_time
+                - replication_num 
+                — in_memory
             2) 对于单分区表，partition_name 同表名。
         
     rollup 支持如下几种创建方式：
@@ -140,6 +144,7 @@ under the License.
             4) 分区列不能做任何修改
             5) 目前支持以下类型的转换（精度损失由用户保证）
                 TINYINT/SMALLINT/INT/BIGINT 转换成 TINYINT/SMALLINT/INT/BIGINT/DOUBLE。
+                TINTINT/SMALLINT/INT/BIGINT/LARGEINT/FLOAT/DOUBLE/DECIMAL 转换成 VARCHAR
                 LARGEINT 转换成 DOUBLE
                 VARCHAR 支持修改最大长度
                 VARCHAR 转换成 TINTINT/SMALLINT/INT/BIGINT/LARGEINT/FLOAT/DOUBLE
@@ -181,7 +186,7 @@ under the License.
     bitmap index 支持如下几种修改方式
     1. 创建bitmap 索引
         语法：
-            ADD INDEX index_name [USING BITMAP] (column [, ...],) [COMMENT 'balabala'];
+            ADD INDEX index_name (column [, ...],) [USING BITMAP] [COMMENT 'balabala'];
         注意：
             1. 目前仅支持bitmap 索引
             1. BITMAP 索引仅在单列上创建
@@ -304,6 +309,9 @@ under the License.
         
         如果需要在未添加动态分区属性的表中添加动态分区属性，则需要指定所有的动态分区属性
         ALTER TABLE example_db.my_table set ("dynamic_partition.enable" = "true", dynamic_partition.time_unit" = "DAY", "dynamic_partition.end" = "3", "dynamic_partition.prefix" = "p", "dynamic_partition.buckets" = "32");
+    15. 修改表的 in_memory 属性
+
+        ALTER TABLE example_db.my_table set ("in_memory" = "true");
         
         
     [rename]
@@ -317,7 +325,7 @@ under the License.
         ALTER TABLE example_table RENAME PARTITION p1 p2;
     [index]
     1. 在table1 上为siteid 创建bitmap 索引
-        ALTER TABLE table1 ADD INDEX index_name  [USING BITMAP] (siteid) COMMENT 'balabala';
+        ALTER TABLE table1 ADD INDEX index_name (siteid) [USING BITMAP] COMMENT 'balabala';
     2. 删除table1 上的siteid列的bitmap 索引
         ALTER TABLE table1 DROP INDEX index_name;
 
