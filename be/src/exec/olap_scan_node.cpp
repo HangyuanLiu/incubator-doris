@@ -831,6 +831,13 @@ Status OlapScanNode::normalize_in_predicate(SlotDescriptor* slot, ColumnValueRan
                         range->add_fixed_value(*reinterpret_cast<T*>(&date_value));
                         break;
                     }
+                    case TYPE_TIME: {
+                        DateTimeValue time_value =
+                                *reinterpret_cast<const DateTimeValue*>(iter->get_value());
+                        time_value.cast_to_time();
+                        range->add_fixed_value(*reinterpret_cast<T*>(&time_value));
+                        break;
+                    }
                     case TYPE_DECIMAL:
                     case TYPE_DECIMALV2:
                     case TYPE_LARGEINT:
@@ -900,9 +907,16 @@ Status OlapScanNode::normalize_in_predicate(SlotDescriptor* slot, ColumnValueRan
                     }
                     case TYPE_DATE: {
                         DateTimeValue date_value =
-                            *reinterpret_cast<DateTimeValue*>(value);
+                                *reinterpret_cast<DateTimeValue*>(value);
                         date_value.cast_to_date();
                         range->add_fixed_value(*reinterpret_cast<T*>(&date_value));
+                        break;
+                    }
+                    case TYPE_TIME: {
+                        DateTimeValue time_value =
+                                *reinterpret_cast<DateTimeValue *>(value);
+                        time_value.cast_to_time();
+                        range->add_fixed_value(*reinterpret_cast<T*>(&time_value));
                         break;
                     }
                     case TYPE_DECIMAL:
@@ -1022,6 +1036,12 @@ Status OlapScanNode::normalize_binary_predicate(SlotDescriptor* slot, ColumnValu
                     range->add_range(to_olap_filter_type(pred->op(), child_idx),
                                      *reinterpret_cast<T*>(&date_value));
                     break;
+                }
+                case TYPE_TIME: {
+                    DateTimeValue time_value = *reinterpret_cast<DateTimeValue*>(value);
+                    time_value.cast_to_time();
+                    range->add_range(to_olap_filter_type(pred->op(), child_idx),
+                                     *reinterpret_cast<T*>(&time_value));
                 }
                 case TYPE_DECIMAL:
                 case TYPE_DECIMALV2:
