@@ -715,11 +715,14 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_F
         }
         std::string datetime_str = scan_key.substr(0, pos);
 
-        tm time_tm;
-        strptime(datetime_str.c_str(), "%H:%M:%S", &time_tm);
-        CppType value = time_tm.tm_hour * 10000L
-            + time_tm.tm_min * 100L
-            + time_tm.tm_sec;
+        int f = datetime_str.find(":");
+        int l = datetime_str.rfind(":");
+
+        CppType value =
+                datetime_str.substr(0, f) * 10000L
+                + datetime_str.substr(f + 1, l) * 100L
+                + datetime_str.substr(l + 1);
+
         value = value * 1000000 + microsecond;
         std::cout << "from string value : " << value << std::endl;
         *reinterpret_cast<CppType*>(buf) = value;

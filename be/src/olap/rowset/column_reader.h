@@ -386,6 +386,40 @@ public:
                 }
                 break;
             }
+            case OLAP_FIELD_TYPE_TIME: {
+                _values =
+                        reinterpret_cast<void*>(mem_pool->allocate(size * sizeof(uint64_t)));
+                //TODO(lhy)
+                std::cout << "_default_value : " << _default_value << std::endl;
+
+                int pos = _default_value.find(".");
+                int microsecond = 0;
+                if(pos != std::string::npos) {
+                    std::string mic = _default_value.substr(pos + 1);
+                    while(mic.length() < 6) {
+                        mic = mic + "0";
+                    }
+                    microsecond = atoi(mic.c_str());
+                    std::cout << mic << std::endl;
+                }
+                std::string datetime_str = _default_value.substr(0, pos);
+
+                int f = datetime_str.find(":");
+                int l = datetime_str.rfind(":");
+
+                uint64 value =
+                        datetime_str.substr(0, f) * 10000L
+                        + datetime_str.substr(f + 1, l) * 100L
+                        + datetime_str.substr(l + 1);
+
+                value = value * 1000000 + microsecond;
+                std::cout << "from string value : " << value << std::endl;
+
+                for (int i = 0; i < size; ++i) {
+                    ((uint64_t*)_values)[i] = value;
+                }
+                break;
+            }
             default: break;
         }
         _stats = stats;

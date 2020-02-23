@@ -244,6 +244,7 @@ Status Literal::get_codegend_compute_fn(RuntimeState* state, llvm::Function** fn
         v.set_from_raw_ptr(raw_ptr);
         break;
     }
+    case TYPE_TIME:
     case TYPE_DATE:
     case TYPE_DATETIME: {
         Type* raw_ptr_type = codegen->decimal_val_type()->getPointerTo();

@@ -902,6 +902,7 @@ llvm::Function* Expr::get_static_get_val_wrapper(
         return codegen->get_function(IRFunction::EXPR_GET_STRING_VAL);
     case TYPE_DATE:
     case TYPE_DATETIME:
+    case TYPE_TIME:
         return codegen->get_function(IRFunction::EXPR_GET_DATETIME_VAL);
     case TYPE_DECIMAL:
         return codegen->get_function(IRFunction::EXPR_GET_DECIMAL_VAL);

@@ -76,8 +76,7 @@ AnyVal* create_any_val(ObjectPool* pool, const TypeDescriptor& type) {
     case TYPE_FLOAT:
         return pool->add(new FloatVal);
 
-    case TYPE_TIME:
-        return pool->add(new DateTimeVal);
+
 
     case TYPE_DOUBLE:
         return pool->add(new DoubleVal);
@@ -94,9 +93,8 @@ AnyVal* create_any_val(ObjectPool* pool, const TypeDescriptor& type) {
     case TYPE_DECIMALV2:
         return pool->add(new DecimalV2Val);
 
+    case TYPE_TIME:
     case TYPE_DATE:
-        return pool->add(new DateTimeVal);
-
     case TYPE_DATETIME:
         return pool->add(new DateTimeVal);
     default:
@@ -129,11 +127,11 @@ FunctionContext::TypeDesc AnyValUtil::column_type_to_type_desc(const TypeDescrip
     case TYPE_FLOAT:
         out.type = FunctionContext::TYPE_FLOAT;
         break;
-    case TYPE_TIME:
-        out.type = FunctionContext::TYPE_TIME;
-        break;
     case TYPE_DOUBLE:
         out.type = FunctionContext::TYPE_DOUBLE;
+        break;
+    case TYPE_TIME:
+        out.type = FunctionContext::TYPE_TIME;
         break;
     case TYPE_DATE:
         out.type = FunctionContext::TYPE_DATE;

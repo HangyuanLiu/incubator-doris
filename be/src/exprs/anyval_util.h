@@ -252,6 +252,7 @@ public:
           return alignof(StringVal);
         case TYPE_DATETIME: 
         case TYPE_DATE:
+        case TYPE_TIME:
           return alignof(DateTimeVal);
         case TYPE_DECIMAL: return alignof(DecimalVal);
         case TYPE_DECIMALV2: return alignof(DecimalV2Val);
