@@ -701,7 +701,7 @@ public class EditLog {
                     }
                     break;
                 }
-                case OperationType.OP_BATCH_ALTER_JOB_V2: {
+                case OperationType.OP_BATCH_ADD_ROLLUP: {
                     BatchAlterJobPersistInfo batchAlterJobV2 = (BatchAlterJobPersistInfo)journal.getData();
                     for (AlterJobV2 alterJobV2 : batchAlterJobV2.getAlterJobV2List()) {
                         catalog.getRollupHandler().replayAlterJobV2(alterJobV2);
@@ -714,6 +714,7 @@ public class EditLog {
                     break;
                 }
                 case OperationType.OP_DYNAMIC_PARTITION:
+                case OperationType.OP_MODIFY_IN_MEMORY:
                 case OperationType.OP_MODIFY_REPLICATION_NUM: {
                     ModifyTablePropertyOperationLog modifyTablePropertyOperationLog = (ModifyTablePropertyOperationLog) journal.getData();
                     catalog.replayModifyTableProperty(opCode, modifyTablePropertyOperationLog);
@@ -1222,7 +1223,7 @@ public class EditLog {
     }
 
     public void logBatchAlterJob(BatchAlterJobPersistInfo batchAlterJobV2) {
-        logEdit(OperationType.OP_BATCH_ALTER_JOB_V2, batchAlterJobV2);
+        logEdit(OperationType.OP_BATCH_ADD_ROLLUP, batchAlterJobV2);
     }
 
     public void logModifyDistributionType(TableInfo tableInfo) {
@@ -1235,5 +1236,9 @@ public class EditLog {
 
     public void logModifyReplicationNum(ModifyTablePropertyOperationLog info) {
         logEdit(OperationType.OP_MODIFY_REPLICATION_NUM, info);
+    }
+
+    public void logModifyInMemory(ModifyTablePropertyOperationLog info) {
+        logEdit(OperationType.OP_MODIFY_IN_MEMORY, info);
     }
 }

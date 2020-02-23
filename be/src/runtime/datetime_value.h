@@ -579,7 +579,6 @@ private:
                               const char** sub_val_end);
 
 
-    uint64_t _microsecond;
     // 1 bits for neg. 3 bits for type. 12bit for hour
     uint16_t _neg:1;        // Used for time value.
     uint16_t _type:3;       // Which type of this value.
@@ -590,6 +589,7 @@ private:
     uint8_t _month;
     uint8_t _day;
     // TODO(zc): used for nothing
+    uint64_t _microsecond;
 
     DateTimeValue(uint8_t neg, uint8_t type, uint16_t hour,
                   uint8_t minute, uint8_t second, uint32_t microsecond, 

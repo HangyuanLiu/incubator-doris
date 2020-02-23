@@ -500,7 +500,7 @@ public class JournalEntity implements Writable {
                 isRead = true;
                 break;
             }
-            case OperationType.OP_BATCH_ALTER_JOB_V2: {
+            case OperationType.OP_BATCH_ADD_ROLLUP: {
                 data = BatchAlterJobPersistInfo.read(in);
                 isRead = true;
                 break;
@@ -511,6 +511,7 @@ public class JournalEntity implements Writable {
                 break;
             }
             case OperationType.OP_DYNAMIC_PARTITION:
+            case OperationType.OP_MODIFY_IN_MEMORY:
             case OperationType.OP_MODIFY_REPLICATION_NUM: {
                 data = ModifyTablePropertyOperationLog.read(in);
                 isRead = true;
