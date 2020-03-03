@@ -477,6 +477,8 @@ Status OlapScanNode::normalize_conjuncts() {
         case TYPE_TIME: {
             DateTimeValue max_value = DateTimeValue::time_max_value();
             DateTimeValue min_value = DateTimeValue::time_min_value();
+                        std::cout << "normalize_conjuncts" << max_value.to_int64() << "," << min_value.to_int64() << std::endl;
+
             ColumnValueRange<DateTimeValue> range(slots[slot_idx]->col_name(),
                                                   slots[slot_idx]->type().type,
                                                   min_value,

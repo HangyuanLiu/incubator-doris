@@ -713,7 +713,15 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_F
             microsecond = atoi(mic.c_str());
             std::cout << mic << std::endl;
         }
-        std::string datetime_str = scan_key.substr(0, pos);
+
+        int neg = 0;
+        std::string datetime_str;
+        if (scan_key[0] == '-') {
+            datetime_str = scan_key.substr(1, pos);
+            neg = 1;                    
+        } else {
+            datetime_str = scan_key.substr(0, pos);
+        }
 
         int f = datetime_str.find(":");
         int l = datetime_str.rfind(":");
@@ -724,37 +732,40 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_TIME> : public BaseFieldtypeTraits<OLAP_F
                 + datetime_str.substr(l + 1);
 
         value = value * 1000000 + microsecond;
+        value = (neg == 1) ? -value : value;
         std::cout << "from string value : " << value << std::endl;
         *reinterpret_cast<CppType*>(buf) = value;
         return OLAP_SUCCESS;
     }
-    static std::string to_string(const void* src) {
-        
-        tm time_tm;
+    static std::string to_string(const void* src) {       
         CppType tmp = *reinterpret_cast<const CppType*>(src);
+        std::cout << "to_string : " << tmp << std::endl;
+        int neg = 0;
+        if (tmp < 0) {
+            tmp = -tmp;
+            neg = 1;
+        }
         
         int microsecond = tmp % 1000000;
         tmp = tmp / 1000000;
 
-        CppType part1 = (tmp / 1000000L);
-        CppType part2 = (tmp - part1 * 1000000L);
-
-        time_tm.tm_year = static_cast<int>((part1 / 10000L) % 10000) - 1900;
-        time_tm.tm_mon = static_cast<int>((part1 / 100) % 100) - 1;
-        time_tm.tm_mday = static_cast<int>(part1 % 100);
-
-        time_tm.tm_hour = static_cast<int>((part2 / 10000L) % 10000);
-        time_tm.tm_min = static_cast<int>((part2 / 100) % 100);
-        time_tm.tm_sec = static_cast<int>(part2 % 100);
-
-        char buf[20] = {'\0'};
-        strftime(buf, 20, "%H:%M:%S", &time_tm);
-
+        int hour = static_cast<int>(tmp / 10000L);
+        int min = static_cast<int>((tmp / 100) % 100);
+        int sec = static_cast<int>(tmp % 100);
+        
+        std::stringstream time_ss;
+        time_ss << std::setw(2) << std::setfill('0') << hour
+            << ":" << std::setw(2) << std::setfill('0') << min
+            << ":" << std::setw(2) << std::setfill('0') << sec;
+        
         std::string ret;
         if (microsecond > 0) {
-            ret = std::string(buf) + "." + std::to_string(microsecond);
+            ret = time_ss.str() + "." + std::to_string(microsecond);
         } else {
-            ret = std::string(buf);
+            ret = time_ss.str();
+        }
+        if (neg) {
+            ret = std::string("-") + ret;
         }
         std::cout << "to_string : " << ret << std::endl;
         return ret;

@@ -36,6 +36,7 @@ public class TypeDef implements ParseNode {
   }
 
   public static TypeDef create(PrimitiveType type) {
+      System.out.println("TypeDef");
     return new TypeDef(ScalarType.createType(type));
   }
   public static TypeDef createDecimal(int precision, int scale) {

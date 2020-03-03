@@ -202,9 +202,13 @@ public:
         return val;
     }
 
-    bool from_olap_time(uint64_t time) {
+    bool from_olap_time(int64_t time) {
         std::cout << "from olap time : " << time << std::endl;
         _neg = false;
+        if (time < 0) {
+            _neg = true;
+            time = -time;
+        }
         _type = TIME_TIME;
         _year = _month = _day = 0;
         _microsecond = time % 1000000;

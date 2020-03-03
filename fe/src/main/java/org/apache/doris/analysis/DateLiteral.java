@@ -215,6 +215,11 @@ public class DateLiteral extends LiteralExpr {
                     s = s.substring(1);
                 }
                 System.out.println("parse " + s);
+                if (s.contains(".")) {
+                    TIME_FORMATTER = formatBuilder("%H:%i:%s.%f").toFormatter();
+                } else {
+                    TIME_FORMATTER = formatBuilder("%H:%i:%s").toFormatter();
+                }
                 LocalTime time = TIME_FORMATTER.parseLocalTime(s);
                 year = month = day = 0;
                 hour = time.getHourOfDay();

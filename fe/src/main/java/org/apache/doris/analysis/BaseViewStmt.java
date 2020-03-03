@@ -80,6 +80,8 @@ public class BaseViewStmt extends DdlStmt {
      * and throws an exception if they do.
      */
     protected void createColumnAndViewDefs(Analyzer analyzer) throws AnalysisException, UserException {
+                System.out.println("createColumnAndViewDefs");
+            
         if (cols != null) {
             if (cols.size() != viewDefStmt.getColLabels().size()) {
                 ErrorReport.reportAnalysisException(ErrorCode.ERR_VIEW_WRONG_LIST);

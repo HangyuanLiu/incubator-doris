@@ -158,11 +158,31 @@ void RawValue::print_value(const void* value, const TypeDescriptor& type, int sc
 
     case TYPE_DATE:
     case TYPE_DATETIME:
-    case TYPE_TIME:
-        std::cout << "print raw value " << type.debug_string() << std::endl;
         *stream << *reinterpret_cast<const DateTimeValue*>(value);
-        std::cout << "raw value : " << stream->str() << std::endl;
         break;
+    case TYPE_TIME: {
+        std::stringstream ss;
+        ss << *reinterpret_cast<const DateTimeValue *>(value);
+        std::string time_str = ss.str();
+        std::cout << "original raw value : " << time_str << std::endl;
+
+        int pos = time_str.find(".");
+        if (pos == std::string::npos) {
+            if (type.len != -1) {
+                time_str = time_str + "." + std::string(type.len, '0');
+            }
+        } else {
+            int len = time_str.length() - pos;
+            if (len > type.len) {
+                time_str = time_str.substr(0, time_str.length() - (len - type.len));
+            } else if (len < type.len) {
+                time_str = time_str + std::string(type.len, '0');
+            }
+        }
+        std::cout << "raw value : " << time_str << std::endl;
+        *stream << time_str;
+        break;
+    }
 
     case TYPE_DECIMAL:
         *stream << *reinterpret_cast<const DecimalValue*>(value);

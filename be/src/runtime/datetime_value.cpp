@@ -114,11 +114,12 @@ bool DateTimeValue::from_time_str(const char* time_str, int len) {
         ptr++;
     }
     if (*ptr == '-') {
+        ptr++;
         _neg = true;
     } else {
         _neg = false;
     }
-    std::vector<std::string>  vec = strings::Split(std::string(time_str, len), ".", strings::SkipWhitespace());
+    std::vector<std::string>  vec = strings::Split(std::string(ptr, end - ptr), ".", strings::SkipWhitespace());
     if(vec.size() == 2) {
         while (vec[1].length() < 6) {
             vec[1] = vec[1] + "0";
@@ -135,6 +136,7 @@ bool DateTimeValue::from_time_str(const char* time_str, int len) {
     _second = atoi(path_parts[2].c_str());
     _year = _month = _day = 0;
     _type = TIME_TIME;
+    std::cout << "from_time_str : " << _hour << "," << _minute << "," << _second << std::endl;
     return true;
 }
 
@@ -466,7 +468,13 @@ char* DateTimeValue::append_time_string(char *to) const {
         uint32_t third = _microsecond % 100;
         *to++ = (char) ('0' + first / 10);
         *to++ = (char) ('0' + first % 10);
+        if (second == 0 && third == 0) {
+            return to;
+        }
         *to++ = (char) ('0' + second / 10);
+        if (third == 0 && second % 10 == 0) {
+            return to;
+        }
         *to++ = (char) ('0' + second % 10);
         *to++ = (char) ('0' + third / 10);
         *to++ = (char) ('0' + third % 10);

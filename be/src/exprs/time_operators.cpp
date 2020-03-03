@@ -56,11 +56,15 @@ void TimeOperators::init() {
 CAST_FROM_TIME();
 
 StringVal TimeOperators::cast_to_string_val(
-            FunctionContext* ctx, const DoubleVal& val) {
+            FunctionContext* ctx, const DateTimeVal& val) {
     if (val.is_null) {
         return StringVal::null();
     }
-    return AnyValUtil::from_string_temp(ctx, time_str_from_double(val.val));
+    DateTimeValue dtv = DateTimeValue::from_datetime_val(val);
+    std::stringstream s;
+    s << dtv;
+    std::cout << "cast to string : " << s.str() << std::endl;
+    return AnyValUtil::from_string_temp(ctx, s.str());
 }
 
 DateTimeVal TimeOperators::cast_to_datetime_val(

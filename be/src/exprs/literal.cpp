@@ -89,7 +89,7 @@ Literal::Literal(const TExprNode& node) :
             node.date_literal.value.c_str(), node.date_literal.value.size());
         break;
     case TYPE_TIME:
-        std::cout << "Literal from date string : " << node.date_literal.value << std::endl;
+        std::cout << "Literal from date string : " << node.date_literal.value << ",type len:" << _type.len << std::endl;
         _value.datetime_val.from_time_str(
             node.date_literal.value.c_str(), node.date_literal.value.size());
         break;

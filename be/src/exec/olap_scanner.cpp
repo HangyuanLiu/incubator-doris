@@ -431,7 +431,7 @@ void OlapScanner::_convert_row_to_tuple(Tuple* tuple) {
         case TYPE_TIME: {
             std::cout << "type desc " << slot_desc->type().debug_string() << std::endl;
             DateTimeValue *slot = tuple->get_datetime_slot(slot_desc->tuple_offset());
-            uint64_t value = *reinterpret_cast<uint64_t*>(ptr);
+            int64_t value = *reinterpret_cast<int64_t*>(ptr);
             std::cout << "olap scanner : " << value << std::endl;
             if(!slot->from_olap_time(value)) {
                 std::cout << "olap scanner is null" << std::endl;

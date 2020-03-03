@@ -40,7 +40,7 @@ public:
     static LargeIntVal cast_to_large_int_val(FunctionContext*, const DoubleVal&);
     static FloatVal cast_to_float_val(FunctionContext*, const DoubleVal&);
     static DoubleVal cast_to_double_val(FunctionContext*, const DoubleVal&);
-    static StringVal cast_to_string_val(FunctionContext*, const DoubleVal&);
+    static StringVal cast_to_string_val(FunctionContext*, const DateTimeVal&);
     static DateTimeVal cast_to_datetime_val(FunctionContext*, const DoubleVal&);
     static DecimalVal cast_to_decimal_val(FunctionContext*, const DoubleVal&);
 };

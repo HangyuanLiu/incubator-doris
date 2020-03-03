@@ -94,6 +94,8 @@ public class Column implements Writable {
 
     public Column(String name, Type type, boolean isKey, AggregateType aggregateType, boolean isAllowNull,
                   String defaultValue, String comment) {
+
+        System.out.println("Column");
         this.name = name;
         if (this.name == null) {
             this.name = "";
@@ -155,7 +157,9 @@ public class Column implements Writable {
 
     public PrimitiveType getDataType() { return type.getPrimitiveType(); }
 
-    public Type getType() { return ScalarType.createType(type.getPrimitiveType()); }
+    public Type getType() {
+        System.out.print("Column getType");
+        return ScalarType.createType(type.getPrimitiveType()); }
 
     public Type getOriginType() { return type; }
 
