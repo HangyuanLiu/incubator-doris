@@ -288,6 +288,9 @@ BigIntVal BitmapFunctions::bitmap_get_value(FunctionContext* ctx, const StringVa
 }
 
 void BitmapFunctions::bitmap_union(FunctionContext* ctx, const StringVal& src, StringVal* dst) {
+    if (src.is_null) {
+                return;               
+    }
     auto dst_bitmap = reinterpret_cast<BitmapValue*>(dst->ptr);
     // zero size means the src input is a agg object
     if (src.len == 0) {

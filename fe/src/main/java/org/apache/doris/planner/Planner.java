@@ -27,6 +27,7 @@ import org.apache.doris.analysis.SlotId;
 import org.apache.doris.analysis.StatementBase;
 import org.apache.doris.analysis.TupleDescriptor;
 import org.apache.doris.catalog.PrimitiveType;
+import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.common.UserException;
 import org.apache.doris.thrift.TExplainLevel;
 import org.apache.doris.thrift.TQueryOptions;
@@ -80,7 +81,13 @@ public class Planner {
      */
     private void setResultExprScale(Analyzer analyzer, ArrayList<Expr> outputExprs) {
         for (TupleDescriptor tupleDesc : analyzer.getDescTbl().getTupleDescs()) {
+                        System.out.println("setResultExprScale : " + tupleDesc.debugString());
+
             for (SlotDescriptor slotDesc : tupleDesc.getSlots()) {
+                if (slotDesc.getType().isScalarType()) {
+                                        System.out.println(((ScalarType) slotDesc.getType()).getLength());
+                                                        
+                }
                 for (Expr expr : outputExprs) {
                     List<SlotId> slotList = Lists.newArrayList();
                     expr.getIds(null, slotList);
@@ -153,6 +160,8 @@ public class Planner {
         //analyzer.markRefdSlots(analyzer, singleNodePlan, resultExprs, null);
 
         setResultExprScale(analyzer, queryStmt.getResultExprs());
+                System.out.println("result expr" + queryStmt.getResultExprs().get(0).debugString());
+
 
         // compute mem layout *before* finalize(); finalize() may reference
         // TupleDescriptor.avgSerializedSize

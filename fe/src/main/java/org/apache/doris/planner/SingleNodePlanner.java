@@ -148,6 +148,8 @@ public class SingleNodePlanner {
         PlanNode singleNodePlan = createQueryPlan(queryStmt, analyzer,
                 ctx_.getQueryOptions().getDefault_order_by_limit());
         Preconditions.checkNotNull(singleNodePlan);
+                System.out.println("single plan debug" + singleNodePlan.debugString());
+
         return singleNodePlan;
     }
 
@@ -667,9 +669,11 @@ public class SingleNodePlanner {
             rowTuples.addAll(tblRef.getMaterializedTupleIds());
         }
 
+        System.out.println("base tbl smap" + selectStmt.getBaseTblSmap().debugString());
         if (analyzer.hasEmptySpjResultSet()) {
             final PlanNode emptySetNode = new EmptySetNode(ctx_.getNextNodeId(), rowTuples);
             emptySetNode.init(analyzer);
+
             emptySetNode.setOutputSmap(selectStmt.getBaseTblSmap());
             return createAggregationPlan(selectStmt, analyzer, emptySetNode);
         }
@@ -833,6 +837,8 @@ public class SingleNodePlanner {
             slotDesc.setIsMaterialized(true);
         }
         tupleDesc.computeMemLayout();
+                System.out.println("createResultTupleDescriptor : " + tupleDesc.debugString());
+
         return tupleDesc;
     }
 

@@ -371,6 +371,7 @@ inline void AggFnEvaluator::set_output_slot(const AnyVal* src,
     dst->set_not_null(dst_slot_desc->null_indicator_offset());
     void* slot = dst->get_slot(dst_slot_desc->tuple_offset());
 
+    std::cout << "set output slot " << dst_slot_desc->type().debug_string() << std::endl;
     switch (dst_slot_desc->type().type) {
     case TYPE_NULL:
         return;

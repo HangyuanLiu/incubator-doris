@@ -68,9 +68,7 @@ void MemTable::insert(const Tuple* tuple) {
         // Will insert directly, so use memory from _table_mem_pool
         _tuple_buf = _table_mem_pool->allocate(_schema_size);
         ContiguousRow row(_schema, _tuple_buf);
-        std::cout << "Tuple : " << Tuple::to_string(tuple, *_tuple_desc) <<"TupleE"<< std::endl;
         _tuple_to_row(tuple, &row, _table_mem_pool.get());
-        std::cout << "Tuple : " << Tuple::to_string(tuple, *_tuple_desc) << "TupleE"<<std::endl;
         _skip_list->Insert((TableKey)_tuple_buf, &overwritten);
         DCHECK(!overwritten) << "Duplicate key model meet overwrite in SkipList";
         return;
@@ -82,9 +80,7 @@ void MemTable::insert(const Tuple* tuple) {
     // otherwise, we need to copy it into _table_mem_pool before we can insert it.
     _tuple_buf = _buffer_mem_pool->allocate(_schema_size);
     ContiguousRow src_row(_schema, _tuple_buf);
-        std::cout << "Tuple : " << Tuple::to_string(tuple, *_tuple_desc) << std::endl;
     _tuple_to_row(tuple, &src_row, _buffer_mem_pool.get());
-        std::cout << "Tuple : " << Tuple::to_string(tuple, *_tuple_desc) << std::endl;
 
     bool is_exist = _skip_list->Find((TableKey)_tuple_buf, &_hint);
     if (is_exist) {

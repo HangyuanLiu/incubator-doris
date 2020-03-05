@@ -1674,6 +1674,8 @@ public class Analyzer {
 
         for (TupleDescriptor tupleDesc: this.getDescTbl().getTupleDescs()) {
             for (SlotDescriptor slotDesc: tupleDesc.getSlots()) {
+                                System.out.println(slotDesc.debugString());
+
                 if (slotIds.contains(slotDesc.getId())) {
                     slotDesc.setIsMaterialized(true);
                 }

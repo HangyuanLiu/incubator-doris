@@ -104,6 +104,8 @@ AnyVal* create_any_val(ObjectPool* pool, const TypeDescriptor& type) {
 }
 
 FunctionContext::TypeDesc AnyValUtil::column_type_to_type_desc(const TypeDescriptor& type) {
+        std::cout << "anyval : " << type.debug_string() << std::endl;
+
     FunctionContext::TypeDesc out;
     switch (type.type) {
     case TYPE_BOOLEAN:
