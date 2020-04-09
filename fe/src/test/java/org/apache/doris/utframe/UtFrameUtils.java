@@ -17,11 +17,12 @@
 
 package org.apache.doris.utframe;
 
-import org.apache.doris.analysis.Analyzer;
-import org.apache.doris.analysis.SqlParser;
-import org.apache.doris.analysis.SqlScanner;
-import org.apache.doris.analysis.StatementBase;
-import org.apache.doris.analysis.UserIdentity;
+import org.antlr.v4.runtime.ANTLRInputStream;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.apache.doris.analysis.*;
+import org.apache.doris.analysis.antlr4.CaseChangingCharStream;
+import org.apache.doris.analysis.antlr4.MySqlLexer;
+import org.apache.doris.analysis.antlr4.MySqlParser;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.DdlException;
@@ -71,6 +72,24 @@ public class UtFrameUtils {
         ctx.setThreadLocalInfo();
         return ctx;
     }
+
+    // Parse an origin stmt and analyze it. Return a StatementBase instance.
+    public static StatementBase antlrParseAndAnalyzeStmt(String originStmt, ConnectContext ctx)
+            throws Exception {
+        ANTLRInputStream input = new ANTLRInputStream(originStmt);
+        CaseChangingCharStream stream = new CaseChangingCharStream(input, true);
+        MySqlLexer lexer = new MySqlLexer(stream);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        MySqlParser parser = new MySqlParser(tokens);
+        Analyzer analyzer = new Analyzer(ctx.getCatalog(), ctx);
+
+        ASTBuilder visitor = new ASTBuilder();
+        ParseNode stmt = visitor.visit(parser.root());
+
+        stmt.analyze(analyzer);
+        return (StatementBase) stmt;
+    }
+
 
     // Parse an origin stmt and analyze it. Return a StatementBase instance.
     public static StatementBase parseAndAnalyzeStmt(String originStmt, ConnectContext ctx)

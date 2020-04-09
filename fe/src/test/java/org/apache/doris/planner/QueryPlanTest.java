@@ -371,4 +371,18 @@ public class QueryPlanTest {
         Assert.assertEquals(showCreateDbStmt.toSql(), showCreateSchemaStmt.toSql());
     }
 
+    @Test
+    public void testDateTypeCastSyntax() throws Exception {
+        String castSql = "select * from test.baseall where k11 < cast('2020-03-26' as date)";
+        SelectStmt selectStmt =
+                (SelectStmt) UtFrameUtils.parseAndAnalyzeStmt(castSql, connectContext);
+        Expr rightExpr = selectStmt.getWhereClause().getChildren().get(1);
+        Assert.assertTrue(rightExpr.getType().equals(Type.DATETIME));
+
+        String castSql2 = "select str_to_date('11/09/2011', '%m/%d/%Y');";
+        String explainString = UtFrameUtils.getSQLPlanOrErrorMsg(connectContext, "explain " + castSql2);
+        Assert.assertTrue(explainString.contains("2011-11-09"));
+        Assert.assertFalse(explainString.contains("2011-11-09 00:00:00"));
+    }
+
 }
