@@ -165,7 +165,9 @@ enum TTaskType {
     STREAM_LOAD,
     UPDATE_TABLET_META_INFO,
     // this type of task will replace both ROLLUP and SCHEMA_CHANGE
-    ALTER
+    ALTER,
+    INSTALL_PLUGIN,
+    UNINSTALL_PLUGIN
 }
 
 enum TStmtType {
@@ -316,7 +318,7 @@ enum TTableType {
     MYSQL_TABLE,
     OLAP_TABLE,
     SCHEMA_TABLE,
-    KUDU_TABLE,
+    KUDU_TABLE, // Deprecated
     BROKER_TABLE,
     ES_TABLE
 }

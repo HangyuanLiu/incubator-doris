@@ -70,6 +70,7 @@ set(EXEC_FILES
     spill_sort_node.cc
     union_node.cpp
     union_node_ir.cpp
+    set_operation_node.cpp
     intersect_node.cpp
     except_node.cpp
     repeat_node.cpp
@@ -87,10 +88,6 @@ set(EXEC_FILES
     partitioned_hash_table_ir.cc
     partitioned_aggregation_node.cc
     partitioned_aggregation_node_ir.cc
-    new_partitioned_hash_table.cc
-    new_partitioned_hash_table_ir.cc
-    new_partitioned_aggregation_node.cc
-    new_partitioned_aggregation_node_ir.cc
     local_file_writer.cpp
     broker_writer.cpp
     parquet_scanner.cpp
@@ -110,14 +107,6 @@ endif()
 if (WITH_LZO)
     set(EXEC_FILES ${EXEC_FILES}
         lzo_decompressor.cpp 
-    )
-endif()
-
-if(EXISTS "${BASE_DIR}/src/exec/kudu_util.cpp")
-    set(EXEC_FILES ${EXEC_FILES}
-        #kudu_scan_node.cpp
-        #kudu_scanner.cpp
-        #kudu_util.cpp
     )
 endif()
 

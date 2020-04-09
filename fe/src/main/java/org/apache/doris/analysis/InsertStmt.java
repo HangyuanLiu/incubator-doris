@@ -89,7 +89,7 @@ public class InsertStmt extends DdlStmt {
     // parsed from targetPartitionNames. empty means no partition specified
     private List<Long> targetPartitionIds = Lists.newArrayList();
     private final List<String> targetColumnNames;
-    private final QueryStmt queryStmt;
+    private QueryStmt queryStmt;
     private final List<String> planHints;
     private Boolean isRepartition;
     private boolean isStreaming = false;
@@ -204,6 +204,10 @@ public class InsertStmt extends DdlStmt {
         return queryStmt;
     }
 
+    public void setQueryStmt(QueryStmt queryStmt) {
+        this.queryStmt = queryStmt;
+    }
+
 
     @Override
     public void rewriteExprs(ExprRewriter rewriter) throws AnalysisException {
@@ -288,7 +292,8 @@ public class InsertStmt extends DdlStmt {
             if (targetTable instanceof OlapTable) {
                 LoadJobSourceType sourceType = LoadJobSourceType.INSERT_STREAMING;
                 transactionId = Catalog.getCurrentGlobalTransactionMgr().beginTransaction(db.getId(),
-                        label, "FE: " + FrontendOptions.getLocalHostAddress(), sourceType, timeoutSecond);
+                        Lists.newArrayList(targetTable.getId()), label, "FE: " + FrontendOptions.getLocalHostAddress(),
+                        sourceType, timeoutSecond);
             }
             isTransactionBegin = true;
         }

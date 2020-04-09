@@ -104,7 +104,7 @@ void NodeChannel::open() {
 
     // This ref is for RPC's reference
     _open_closure->ref();
-    _open_closure->cntl.set_timeout_ms(_rpc_timeout_ms);
+    _open_closure->cntl.set_timeout_ms(config::tablet_writer_open_rpc_timeout_sec * 1000);
     _stub->tablet_writer_open(&_open_closure->cntl,
                               &request,
                               &_open_closure->result,
@@ -818,27 +818,6 @@ int OlapTableSink::_validate_data(RuntimeState* state, RowBatch* batch, Bitmap* 
                         << ", value=" << dec_val.to_string()
                         << ", precision=" << desc->type().precision
                         << ", scale=" << desc->type().scale;
-#if BE_TEST
-                    LOG(INFO) << ss.str();
-#else
-                    state->append_error_msg_to_file("", ss.str());
-#endif
-                    filtered_rows++;
-                    row_valid = false;
-                    filter_bitmap->Set(row_no, true);
-                    continue;
-                }
-                break;
-            }
-            case TYPE_DATE:
-            case TYPE_DATETIME: {
-                static DateTimeValue s_min_value = DateTimeValue(19000101000000UL);
-                // static DateTimeValue s_max_value = DateTimeValue(99991231235959UL);
-                DateTimeValue* date_val = (DateTimeValue*)slot;
-                if (*date_val < s_min_value) {
-                    std::stringstream ss;
-                    ss << "datetime value is not valid, column=" << desc->col_name()
-                        << ", value=" << date_val->debug_string();
 #if BE_TEST
                     LOG(INFO) << ss.str();
 #else

@@ -351,12 +351,29 @@ public class DistributedPlanner {
         List<String> reason = Lists.newArrayList();
         if (canColocateJoin(node, leftChildFragment, rightChildFragment, reason)) {
             node.setColocate(true, "");
+
             //node.setDistributionMode(HashJoinNode.DistributionMode.PARTITIONED);
-            node.setChild(0, leftChildFragment.getPlanRoot());
-            node.setChild(1, rightChildFragment.getPlanRoot());
-            leftChildFragment.setPlanRoot(node);
-            fragments.remove(rightChildFragment);
-            return leftChildFragment;
+            PlanFragment resultFragment = leftChildFragment;
+            PlanFragment rightFragment = rightChildFragment;
+
+            if (leftChildFragment.getPlanRoot() instanceof AggregationNode) {
+                node.setChild(0, leftChildFragment.getPlanRoot().getChild(0).getChild(0));
+                fragments.remove(leftChildFragment);
+                resultFragment = leftChildFragment.getChild(0);
+            } else {
+                node.setChild(0, leftChildFragment.getPlanRoot());
+            }
+            if (rightChildFragment.getPlanRoot() instanceof AggregationNode) {
+                node.setChild(1, rightChildFragment.getPlanRoot().getChild(0).getChild(0));
+                fragments.remove(rightChildFragment);
+                rightFragment = rightChildFragment.getChild(0);
+            } else {
+                node.setChild(1, rightChildFragment.getPlanRoot());
+            }
+
+            resultFragment.setPlanRoot(node);
+            fragments.remove(rightFragment);
+            return resultFragment;
         } else {
             node.setColocate(false, reason.get(0));
         }
@@ -440,8 +457,44 @@ public class DistributedPlanner {
         PlanNode leftRoot = leftChildFragment.getPlanRoot();
         PlanNode rightRoot = rightChildFragment.getPlanRoot();
 
+        if (leftRoot instanceof AggregationNode) {
+            leftRoot = leftRoot.getChild(0).getChild(0);
+            //leftChildFragment.setPlanRoot(leftRoot);
+            if (leftRoot.getChild(0) instanceof OlapScanNode) {
+                HashDistributionInfo distributionInfo =
+                        (HashDistributionInfo)((OlapScanNode) leftRoot.getChild(0)).getOlapTable().getDefaultDistributionInfo();
+                SlotDescriptor slot = ((AggregationNode) leftRoot).getAggInfo().getGroupingExprs().get(0).unwrapSlotRef().getDesc();
+                if (!distributionInfo.getDistributionColumns().contains(slot.getColumn())) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        if (rightRoot instanceof AggregationNode) {
+            rightRoot = rightRoot.getChild(0).getChild(0);
+            //rightChildFragment.setPlanRoot(rightRoot);
+            if (rightRoot.getChild(0) instanceof OlapScanNode) {
+                HashDistributionInfo distributionInfo =
+                        (HashDistributionInfo)((OlapScanNode) rightRoot.getChild(0)).getOlapTable().getDefaultDistributionInfo();
+                SlotDescriptor slot = ((AggregationNode) rightRoot).getAggInfo().getGroupingExprs().get(0).unwrapSlotRef().getDesc();
+                if (!distributionInfo.getDistributionColumns().contains(slot.getColumn())) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
         //leftRoot should be ScanNode or HashJoinNode, rightRoot should be ScanNode
-        if (leftRoot instanceof OlapScanNode && rightRoot instanceof OlapScanNode) {
+        //if ((leftRoot instanceof OlapScanNode && rightRoot instanceof OlapScanNode)) {
+
+        if ((leftRoot instanceof OlapScanNode && rightRoot instanceof AggregationNode) ||
+        (rightRoot instanceof OlapScanNode && leftRoot instanceof AggregationNode) ||
+        (leftRoot instanceof OlapScanNode && rightRoot instanceof OlapScanNode) ||
+        (leftRoot instanceof AggregationNode && rightRoot instanceof AggregationNode)
+        ) {
             return canColocateJoin(node, leftRoot, rightRoot, cannotReason);
         }
 
@@ -468,8 +521,20 @@ public class DistributedPlanner {
     //the eqJoinConjuncts must contain the distributionColumns
     private boolean canColocateJoin(HashJoinNode node, PlanNode leftRoot, PlanNode rightRoot,
             List<String> cannotReason) {
-        OlapTable leftTable = ((OlapScanNode) leftRoot).getOlapTable();
-        OlapTable rightTable = ((OlapScanNode) rightRoot).getOlapTable();
+        //OlapTable leftTable = ((OlapScanNode) leftRoot).getOlapTable();
+        //OlapTable rightTable = ((OlapScanNode) rightRoot).getOlapTable();
+        OlapTable leftTable;
+        if (leftRoot instanceof AggregationNode) {
+            leftTable = ((OlapScanNode) (leftRoot.getChild(0))).getOlapTable();
+        } else {
+            leftTable = ((OlapScanNode) leftRoot).getOlapTable();
+        }
+        OlapTable rightTable;
+        if (rightRoot instanceof AggregationNode) {
+            rightTable = ((OlapScanNode) (rightRoot.getChild(0))).getOlapTable();
+        } else {
+            rightTable = ((OlapScanNode) rightRoot).getOlapTable();
+        }
 
         ColocateTableIndex colocateIndex = Catalog.getCurrentColocateIndex();
 
@@ -502,7 +567,14 @@ public class DistributedPlanner {
                 }
 
                 SlotDescriptor leftSlot = lhsJoinExpr.unwrapSlotRef().getDesc();
+                if (leftSlot.getColumn() == null) {
+                    leftSlot = leftSlot.getSourceExprs().get(0).unwrapSlotRef().getDesc();
+                }
+
                 SlotDescriptor rightSlot = rhsJoinExpr.unwrapSlotRef().getDesc();
+                if (rightSlot.getColumn() == null) {
+                    rightSlot = rightSlot.getSourceExprs().get(0).unwrapSlotRef().getDesc();
+                }
 
                 //3 the eqJoinConjuncts must contain the distributionColumns
                 if (leftColumns.contains(leftSlot.getColumn()) && rightColumns.contains(rightSlot.getColumn())) {

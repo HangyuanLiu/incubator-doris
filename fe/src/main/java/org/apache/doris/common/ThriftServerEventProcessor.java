@@ -88,7 +88,8 @@ public class ThriftServerEventProcessor implements TServerEventHandler {
             return null;
         }
         TNetworkAddress clientAddress = new TNetworkAddress(
-                inetSocketAddress.getHostString(),
+                //inetSocketAddress.getHostString(),
+                "host.docker.internal",
                 inetSocketAddress.getPort());
 
         thriftServer.addConnect(clientAddress);

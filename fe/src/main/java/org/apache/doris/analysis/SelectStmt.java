@@ -21,7 +21,6 @@ import org.apache.doris.catalog.AggregateFunction;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.Database;
-import org.apache.doris.catalog.FunctionSet;
 import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.catalog.Table.TableType;
 import org.apache.doris.catalog.Type;
@@ -52,9 +51,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -95,12 +94,20 @@ public class SelectStmt extends QueryStmt {
     // if we have grouping extensions like cube or rollup or grouping sets
     private GroupingInfo groupingInfo;
 
+    // having clause which has been analyzed
+    // For example: select k1, sum(k2) a from t group by k1 having a>1;
+    // this parameter: sum(t.k2) > 1
+    private Expr havingClauseAfterAnaylzed;
+
     // END: Members that need to be reset()
     // ///////////////////////////////////////
 
     // SQL string of this SelectStmt before inline-view expression substitution.
     // Set in analyze().
     protected String sqlString_;
+
+    // Table alias generator used during query rewriting.
+    private TableAliasGenerator tableAliasGenerator = null;
 
     public SelectStmt(ValueList valueList, ArrayList<OrderByElement> orderByElement, LimitElement limitElement) {
         super(orderByElement, limitElement);
@@ -168,6 +175,7 @@ public class SelectStmt extends QueryStmt {
         if (havingClause != null) {
             havingClause.reset();
         }
+        havingClauseAfterAnaylzed = null;
         havingPred = null;
         aggInfo = null;
         analyticInfo = null;
@@ -191,6 +199,10 @@ public class SelectStmt extends QueryStmt {
         return selectList;
     }
 
+    public void setSelectList(SelectList selectList) {
+        this.selectList = selectList;
+    }
+
     public ValueList getValueList() {
         return valueList;
     }
@@ -200,6 +212,10 @@ public class SelectStmt extends QueryStmt {
      */
     public Expr getHavingPred() {
         return havingPred;
+    }
+
+    public Expr getHavingClauseAfterAnaylzed() {
+        return havingClauseAfterAnaylzed;
     }
 
     public List<TableRef> getTableRefs() {
@@ -236,6 +252,10 @@ public class SelectStmt extends QueryStmt {
 
     public boolean hasHavingClause() {
         return havingClause != null;
+    }
+
+    public void removeHavingClause() {
+        havingClause = null;
     }
 
     @Override
@@ -301,14 +321,15 @@ public class SelectStmt extends QueryStmt {
         return columnAliasGenerator;
     }
 
-    // Table alias generator used during query rewriting.
-    private TableAliasGenerator tableAliasGenerator = null;
-
     public TableAliasGenerator getTableAliasGenerator() {
         if (tableAliasGenerator == null) {
             tableAliasGenerator = new TableAliasGenerator(analyzer, null);
         }
         return tableAliasGenerator;
+    }
+
+    public void setTableAliasGenerator(TableAliasGenerator tableAliasGenerator) {
+        this.tableAliasGenerator = tableAliasGenerator;
     }
 
     public void analyze(Analyzer analyzer) throws AnalysisException, UserException {
@@ -340,7 +361,8 @@ public class SelectStmt extends QueryStmt {
                 // Analyze the resultExpr before generating a label to ensure enforcement
                 // of expr child and depth limits (toColumn() label may call toSql()).
                 item.getExpr().analyze(analyzer);
-                if (item.getExpr().contains(Predicates.instanceOf(Subquery.class))) {
+                if (!(item.getExpr() instanceof CaseExpr) &&
+                        item.getExpr().contains(Predicates.instanceOf(Subquery.class))) {
                     throw new AnalysisException("Subquery is not supported in the select list.");
                 }
                 Expr expr = rewriteCountDistinctForBitmapOrHLL(item.getExpr(), analyzer);
@@ -593,7 +615,7 @@ public class SelectStmt extends QueryStmt {
 
         // New pair of table ref and row count
         for (TableRef tblRef : fromClause_) {
-            if (tblRef.getJoinOp() != JoinOperator.INNER_JOIN) {
+            if (tblRef.getJoinOp() != JoinOperator.INNER_JOIN || tblRef.hasJoinHints()) {
                 // Unsupported reorder outer join
                 return;
             }
@@ -615,12 +637,7 @@ public class SelectStmt extends QueryStmt {
         }
 
         // order oldRefList by row count
-        Collections.sort(candidates, new Comparator<Pair<TableRef, Long>>() {
-            public int compare(Pair<TableRef, Long> a, Pair<TableRef, Long> b) {
-                long diff = b.second - a.second;
-                return (diff < 0 ? -1 : (diff > 0 ? 1 : 0));
-            }
-        });
+        Collections.sort(candidates, (a, b) -> b.second.compareTo(a.second));
 
         for (Pair<TableRef, Long> candidate : candidates) {
             if (reorderTable(analyzer, candidate.first)) {
@@ -674,7 +691,7 @@ public class SelectStmt extends QueryStmt {
                 TableRef candidateTableRef = tableRefMap.get(tid);
                 if (candidateTableRef != null) {
 
-                    // When sorting table according to the rows, you must ensure 
+                    // When sorting table according to the rows, you must ensure
                     // that all tables On-conjuncts referenced has been added or
                     // is being added.
                     Preconditions.checkState(tid == candidateTableRef.getId());
@@ -728,39 +745,6 @@ public class SelectStmt extends QueryStmt {
     }
 
     /**
-     * This select block might contain inline views.
-     * Substitute all exprs (result of the analysis) of this select block referencing any
-     * of our inlined views, including everything registered with the analyzer.
-     * Expressions created during parsing (such as whereClause) are not touched.
-     *
-     * @throws AnalysisException
-     */
-    public void seondSubstituteInlineViewExprs(ExprSubstitutionMap sMap) throws AnalysisException {
-        // we might not have anything to substitute
-        if (sMap.size() == 0) {
-            return;
-        }
-
-        // select
-        // Expr.substituteList(resultExprs, sMap);
-
-        // aggregation (group by and aggregation expr)
-        if (aggInfo != null) {
-            aggInfo.substitute(sMap, analyzer);
-        }
-
-        // having
-        if (havingPred != null) {
-            havingPred.substitute(sMap);
-        }
-
-        // ordering
-        //if (sortInfo != null) {
-        // sortInfo.substitute(sMap);
-        //}
-    }
-
-    /**
      * Expand "*" select list item.
      */
     private void expandStar(Analyzer analyzer) throws AnalysisException {
@@ -800,36 +784,6 @@ public class SelectStmt extends QueryStmt {
         }
     }
 
-    // for bitmap type, we rewrite count distinct to bitmap_union_count
-    // for hll type, we rewrite count distinct to hll_union_agg
-    private Expr rewriteCountDistinctForBitmapOrHLL(Expr expr, Analyzer analyzer) {
-        if (ConnectContext.get() == null || !ConnectContext.get().getSessionVariable().isRewriteCountDistinct()) {
-            return expr;
-        }
-
-        for (int i = 0; i < expr.getChildren().size(); ++i) {
-            expr.setChild(i, rewriteCountDistinctForBitmapOrHLL(expr.getChild(i), analyzer));
-        }
-
-        if (!(expr instanceof FunctionCallExpr)) {
-            return expr;
-        }
-
-        FunctionCallExpr functionCallExpr = (FunctionCallExpr) expr;
-        if (functionCallExpr.isCountDistinctBitmapOrHLL()) {
-            FunctionParams newParams = new FunctionParams(false, functionCallExpr.getParams().exprs());
-            if (expr.getChild(0).type.isBitmapType()) {
-                FunctionCallExpr bitmapExpr = new FunctionCallExpr(FunctionSet.BITMAP_UNION_COUNT, newParams);
-                bitmapExpr.analyzeNoThrow(analyzer);
-                return bitmapExpr;
-            } else  {
-                FunctionCallExpr hllExpr = new FunctionCallExpr("hll_union_agg", newParams);
-                hllExpr.analyzeNoThrow(analyzer);
-                return hllExpr;
-            }
-        }
-        return expr;
-    }
     /**
      * Analyze aggregation-relevant components of the select block (Group By clause,
      * select list, Order By clause),
@@ -839,19 +793,33 @@ public class SelectStmt extends QueryStmt {
     private void analyzeAggregation(Analyzer analyzer) throws AnalysisException {
         // check having clause
         if (havingClause != null) {
-            if (havingClause.contains(Predicates.instanceOf(Subquery.class))) {
-                throw new AnalysisException(
-                        "Subqueries are not supported in the HAVING clause.");
-            }
             Expr ambiguousAlias = getFirstAmbiguousAlias(havingClause);
             if (ambiguousAlias != null) {
                 ErrorReport.reportAnalysisException(ErrorCode.ERR_NON_UNIQ_ERROR, ambiguousAlias.toColumnLabel());
             }
-            // substitute aliases in place (ordinals not allowed in having clause)
-            havingPred = havingClause.substitute(aliasSMap, analyzer, false);
-            havingPred.checkReturnsBool("HAVING clause", true);
+            /*
+             * The having clause need to be substitute by aliasSMap.
+             * And it is analyzed after substitute.
+             * For example:
+             * Query: select k1 a, sum(k2) b from table group by k1 having a > 1;
+             * Having clause: a > 1
+             * aliasSMap: <a, table.k1> <b, sum(table.k2)>
+             * After substitute: a > 1 changed to table.k1 > 1
+             * Analyzer: check column and other subquery in having clause
+             * having predicate: table.k1 > 1
+             */
+            /*
+             * TODO(ml): support substitute outer column in correlated subquery
+             * For example: select k1 key, sum(k1) sum_k1 from table a group by k1
+             *              having k1 >
+             *                     (select min(k1) from table b where a.key=b.k2);
+             * TODO: the a.key should be replaced by a.k1 instead of unknown column 'key' in 'a'
+             */
+            havingClauseAfterAnaylzed = havingClause.substitute(aliasSMap, analyzer, false);
+            havingClauseAfterAnaylzed = rewriteCountDistinctForBitmapOrHLL(havingClauseAfterAnaylzed, analyzer);
+            havingClauseAfterAnaylzed.checkReturnsBool("HAVING clause", true);
             // can't contain analytic exprs
-            Expr analyticExpr = havingPred.findFirstOf(AnalyticExpr.class);
+            Expr analyticExpr = havingClauseAfterAnaylzed.findFirstOf(AnalyticExpr.class);
             if (analyticExpr != null) {
                 throw new AnalysisException(
                         "HAVING clause must not contain analytic expressions: "
@@ -861,13 +829,13 @@ public class SelectStmt extends QueryStmt {
 
         if (groupByClause == null && !selectList.isDistinct()
                 && !TreeNode.contains(resultExprs, Expr.isAggregatePredicate())
-                && (havingPred == null || !havingPred.contains(Expr.isAggregatePredicate()))
+                && (havingClauseAfterAnaylzed == null || !havingClauseAfterAnaylzed.contains(Expr.isAggregatePredicate()))
                 && (sortInfo == null || !TreeNode.contains(sortInfo.getOrderingExprs(),
                 Expr.isAggregatePredicate()))) {
             // We're not computing aggregates but we still need to register the HAVING
             // clause which could, e.g., contain a constant expression evaluating to false.
-            if (havingPred != null) {
-                analyzer.registerConjuncts(havingPred, true);
+            if (havingClauseAfterAnaylzed != null) {
+                analyzer.registerConjuncts(havingClauseAfterAnaylzed, true);
             }
             return;
         }
@@ -888,7 +856,7 @@ public class SelectStmt extends QueryStmt {
         if (selectList.isDistinct()
                 && (groupByClause != null
                             || TreeNode.contains(resultExprs, Expr.isAggregatePredicate())
-                            || (havingPred != null && havingPred.contains(Expr.isAggregatePredicate())))) {
+                            || (havingClauseAfterAnaylzed != null && havingClauseAfterAnaylzed.contains(Expr.isAggregatePredicate())))) {
             throw new AnalysisException("cannot combine SELECT DISTINCT with aggregate functions or GROUP BY");
         }
 
@@ -909,8 +877,8 @@ public class SelectStmt extends QueryStmt {
         // of this statement.
         ArrayList<FunctionCallExpr> aggExprs = Lists.newArrayList();
         TreeNode.collect(resultExprs, Expr.isAggregatePredicate(), aggExprs);
-        if (havingPred != null) {
-            havingPred.collect(Expr.isAggregatePredicate(), aggExprs);
+        if (havingClauseAfterAnaylzed != null) {
+            havingClauseAfterAnaylzed.collect(Expr.isAggregatePredicate(), aggExprs);
         }
         if (sortInfo != null) {
             // TODO: Avoid evaluating aggs in ignored order-bys
@@ -974,16 +942,24 @@ public class SelectStmt extends QueryStmt {
             LOG.debug("desctbl: " + analyzer.getDescTbl().debugString());
             LOG.debug("resultexprs: " + Expr.debugString(resultExprs));
         }
+        /*
+         * All of columns of result and having clause are replaced by new slot ref which is bound by top tuple of agg info.
+         * For example:
+         * ResultExprs: SlotRef(k1), FunctionCall(sum(SlotRef(k2)))
+         * Having predicate: FunctionCall(sum(SlotRef(k2))) > subquery
+         * CombinedSMap: <SlotRef(k1) tuple 0, SlotRef(k1) of tuple 3>,
+         *               <FunctionCall(SlotRef(k2)) tuple 0, SlotRef(sum(k2)) of tuple 3>
+         *
+         * After rewritten:
+         * ResultExprs: SlotRef(k1) of tuple 3, SlotRef(sum(k2)) of tuple 3
+         * Having predicate: SlotRef(sum(k2)) of tuple 3 > subquery
+         */
         resultExprs = Expr.substituteList(resultExprs, combinedSmap, analyzer, false);
         if (LOG.isDebugEnabled()) {
             LOG.debug("post-agg selectListExprs: " + Expr.debugString(resultExprs));
         }
-        if (havingPred != null) {
-            // Make sure the predicate in the HAVING clause does not contain a
-            // subquery.
-            Preconditions.checkState(!havingPred.contains(
-                    Predicates.instanceOf(Subquery.class)));
-            havingPred = havingPred.substitute(combinedSmap, analyzer, false);
+        if (havingClauseAfterAnaylzed != null) {
+            havingPred = havingClauseAfterAnaylzed.substitute(combinedSmap, analyzer, false);
             analyzer.registerConjuncts(havingPred, true, finalAggInfo.getOutputTupleId().asList());
             if (LOG.isDebugEnabled()) {
                 LOG.debug("post-agg havingPred: " + havingPred.debugString());
@@ -1030,11 +1006,6 @@ public class SelectStmt extends QueryStmt {
                                 "clause?): " + havingClause.toSql());
             }
         }
-    }
-
-    private void createGroupingInfo(Analyzer analyzer) throws AnalysisException {
-        groupingInfo = new GroupingInfo(analyzer, groupByClause.getGroupingType());
-
     }
 
     /**
@@ -1217,21 +1188,23 @@ public class SelectStmt extends QueryStmt {
     @Override
     public void rewriteExprs(ExprRewriter rewriter) throws AnalysisException {
         Preconditions.checkState(isAnalyzed());
-        selectList.rewriteExprs(rewriter, analyzer);
+        rewriteSelectList(rewriter);
         for (TableRef ref : fromClause_) {
             ref.rewriteExprs(rewriter, analyzer);
         }
+        // Also rewrite exprs in the statements of subqueries.
+        List<Subquery> subqueryExprs = Lists.newArrayList();
         if (whereClause != null) {
             whereClause = rewriter.rewrite(whereClause, analyzer);
-            // Also rewrite exprs in the statements of subqueries.
-            List<Subquery> subqueryExprs = Lists.newArrayList();
             whereClause.collect(Subquery.class, subqueryExprs);
-            for (Subquery s : subqueryExprs) {
-                s.getStatement().rewriteExprs(rewriter);
-            }
+
         }
         if (havingClause != null) {
             havingClause = rewriter.rewrite(havingClause, analyzer);
+            havingClauseAfterAnaylzed.collect(Subquery.class, subqueryExprs);
+        }
+        for (Subquery subquery : subqueryExprs) {
+            subquery.getStatement().rewriteExprs(rewriter);
         }
         if (groupByClause != null) {
             ArrayList<Expr> groupingExprs = groupByClause.getGroupingExprs();
@@ -1244,6 +1217,83 @@ public class SelectStmt extends QueryStmt {
                 orderByElem.setExpr(rewriter.rewrite(orderByElem.getExpr(), analyzer));
             }
         }
+    }
+
+    private void rewriteSelectList(ExprRewriter rewriter) throws AnalysisException {
+        for (SelectListItem item : selectList.getItems()) {
+            if (!(item.getExpr() instanceof CaseExpr)) {
+                continue;
+            }
+            if (!item.getExpr().contains(Predicates.instanceOf(Subquery.class))) {
+                continue;
+            }
+            item.setExpr(rewriteSubquery(item.getExpr(), analyzer));
+        }
+
+        selectList.rewriteExprs(rewriter, analyzer);
+    }
+
+    /** rewrite subquery in case when to an inline view
+     *  subquery in case when statement like
+     *
+     * SELECT CASE
+     *         WHEN (
+     *             SELECT COUNT(*) / 2
+     *             FROM t
+     *         ) > k4 THEN (
+     *             SELECT AVG(k4)
+     *             FROM t
+     *         )
+     *         ELSE (
+     *             SELECT SUM(k4)
+     *             FROM t
+     *         )
+     *     END AS kk4
+     * FROM t;
+     * this statement will be rewrite to
+     *
+     * SELECT CASE
+     *         WHEN t1.a > k4 THEN t2.a
+     *         ELSE t3.a
+     *     END AS kk4
+     * FROM t, (
+     *         SELECT COUNT(*) / 2 AS a
+     *         FROM t
+     *     ) t1,  (
+     *         SELECT AVG(k4) AS a
+     *         FROM t
+     *     ) t2,  (
+     *         SELECT SUM(k4) AS a
+     *         FROM t
+     *     ) t3;
+     */
+    private Expr rewriteSubquery(Expr expr, Analyzer analyzer)
+            throws AnalysisException {
+        if (expr instanceof Subquery) {
+            if (!(((Subquery) expr).getStatement() instanceof SelectStmt)) {
+                throw new AnalysisException("Only support select subquery in case statement.");
+            }
+            SelectStmt subquery = (SelectStmt) ((Subquery) expr).getStatement();
+            if (subquery.resultExprs.size() != 1) {
+                throw new AnalysisException("Only support select subquery produce one column in case statement.");
+            }
+            subquery.reset();
+            String alias = getTableAliasGenerator().getNextAlias();
+            String colAlias = getColumnAliasGenerator().getNextAlias();
+            InlineViewRef inlineViewRef = new InlineViewRef(alias, subquery, Arrays.asList(colAlias));
+            try {
+                inlineViewRef.analyze(analyzer);
+            } catch (UserException e) {
+                throw new AnalysisException(e.getMessage());
+            }
+            fromClause_.add(inlineViewRef);
+            expr = new SlotRef(inlineViewRef.getAliasAsName(), colAlias);
+        } else if (CollectionUtils.isNotEmpty(expr.getChildren())) {
+            for (int i = 0; i < expr.getChildren().size(); ++i) {
+                expr.setChild(i, rewriteSubquery(expr.getChild(i), analyzer));
+            }
+        }
+        return expr;
     }
 
     @Override

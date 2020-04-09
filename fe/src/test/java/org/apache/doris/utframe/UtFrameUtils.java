@@ -25,6 +25,7 @@ import org.apache.doris.analysis.antlr4.MySqlLexer;
 import org.apache.doris.analysis.antlr4.MySqlParser;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.common.AnalysisException;
+import org.apache.doris.common.Config;
 import org.apache.doris.common.DdlException;
 import org.apache.doris.common.Pair;
 import org.apache.doris.common.util.SqlParserUtils;
@@ -145,6 +146,7 @@ public class UtFrameUtils {
         if (Strings.isNullOrEmpty(dorisHome)) {
             dorisHome = Files.createTempDirectory("DORIS_HOME").toAbsolutePath().toString();
         }
+        Config.plugin_dir = dorisHome + "/plugins";
 
         int fe_http_port = findValidPort();
         int fe_rpc_port = findValidPort();

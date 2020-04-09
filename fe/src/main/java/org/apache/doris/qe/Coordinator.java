@@ -322,7 +322,8 @@ public class Coordinator {
 
         }
 
-        coordAddress = new TNetworkAddress(localIP, Config.rpc_port);
+        //coordAddress = new TNetworkAddress(localIP, Config.rpc_port);
+        coordAddress = new TNetworkAddress("host.docker.internal", Config.rpc_port);
 
         int fragmentSize = fragments.size();
         queryProfile = new RuntimeProfile("Execution Profile " + DebugUtil.printId(queryId));
