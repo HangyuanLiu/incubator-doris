@@ -17,10 +17,11 @@
 
 package org.apache.doris.planner;
 
-
 import org.apache.doris.analysis.CreateDbStmt;
 import org.apache.doris.analysis.CreateTableStmt;
 import org.apache.doris.analysis.DropDbStmt;
+import org.apache.doris.analysis.Expr;
+import org.apache.doris.analysis.SelectStmt;
 import org.apache.doris.analysis.ShowCreateDbStmt;
 import org.apache.doris.analysis.StatementBase;
 import org.apache.doris.catalog.Catalog;
@@ -55,6 +56,35 @@ public class QueryPlanTest {
         String createDbStmtStr = "create database test;";
         CreateDbStmt createDbStmt = (CreateDbStmt) UtFrameUtils.parseAndAnalyzeStmt(createDbStmtStr, connectContext);
         Catalog.getCurrentCatalog().createDb(createDbStmt);
+        
+        createTable("create table test.test1\n" + 
+                "(\n" + 
+                "    query_id varchar(48) comment \"Unique query id\",\n" + 
+                "    time datetime not null comment \"Query start time\",\n" + 
+                "    client_ip varchar(32) comment \"Client IP\",\n" + 
+                "    user varchar(64) comment \"User name\",\n" + 
+                "    db varchar(96) comment \"Database of this query\",\n" + 
+                "    state varchar(8) comment \"Query result state. EOF, ERR, OK\",\n" + 
+                "    query_time bigint comment \"Query execution time in millisecond\",\n" + 
+                "    scan_bytes bigint comment \"Total scan bytes of this query\",\n" + 
+                "    scan_rows bigint comment \"Total scan rows of this query\",\n" + 
+                "    return_rows bigint comment \"Returned rows of this query\",\n" + 
+                "    stmt_id int comment \"An incremental id of statement\",\n" + 
+                "    is_query tinyint comment \"Is this statemt a query. 1 or 0\",\n" + 
+                "    frontend_ip varchar(32) comment \"Frontend ip of executing this statement\",\n" + 
+                "    stmt varchar(2048) comment \"The original statement, trimed if longer than 2048 bytes\"\n" + 
+                ")\n" + 
+                "partition by range(time) ()\n" + 
+                "distributed by hash(query_id) buckets 1\n" + 
+                "properties(\n" + 
+                "    \"dynamic_partition.time_unit\" = \"DAY\",\n" + 
+                "    \"dynamic_partition.start\" = \"-30\",\n" + 
+                "    \"dynamic_partition.end\" = \"3\",\n" + 
+                "    \"dynamic_partition.prefix\" = \"p\",\n" + 
+                "    \"dynamic_partition.buckets\" = \"1\",\n" + 
+                "    \"dynamic_partition.enable\" = \"true\",\n" + 
+                "    \"replication_num\" = \"1\"\n" + 
+                ");");
 
         createTable("CREATE TABLE test.bitmap_table (\n" +
                 "  `id` int(11) NULL COMMENT \"\",\n" +
@@ -124,6 +154,38 @@ public class QueryPlanTest {
                 "DISTRIBUTED BY HASH(`k1`) BUCKETS 5\n" + 
                 "PROPERTIES (\n" + 
                 "\"replication_num\" = \"1\"\n" + 
+                ");");
+
+        createTable("CREATE TABLE test.`dynamic_partition` (\n" +
+                "  `k1` date NULL COMMENT \"\",\n" +
+                "  `k2` smallint(6) NULL COMMENT \"\",\n" +
+                "  `k3` int(11) NULL COMMENT \"\",\n" +
+                "  `k4` bigint(20) NULL COMMENT \"\",\n" +
+                "  `k5` decimal(9, 3) NULL COMMENT \"\",\n" +
+                "  `k6` char(5) NULL COMMENT \"\",\n" +
+                "  `k10` date NULL COMMENT \"\",\n" +
+                "  `k11` datetime NULL COMMENT \"\",\n" +
+                "  `k7` varchar(20) NULL COMMENT \"\",\n" +
+                "  `k8` double MAX NULL COMMENT \"\",\n" +
+                "  `k9` float SUM NULL COMMENT \"\"\n" +
+                ") ENGINE=OLAP\n" +
+                "AGGREGATE KEY(`k1`, `k2`, `k3`, `k4`, `k5`, `k6`, `k10`, `k11`, `k7`)\n" +
+                "COMMENT \"OLAP\"\n" +
+                "PARTITION BY RANGE (k1)\n" +
+                "(\n" +
+                "PARTITION p1 VALUES LESS THAN (\"2014-01-01\"),\n" +
+                "PARTITION p2 VALUES LESS THAN (\"2014-06-01\"),\n" +
+                "PARTITION p3 VALUES LESS THAN (\"2014-12-01\")\n" +
+                ")\n" +
+                "DISTRIBUTED BY HASH(`k1`) BUCKETS 5\n" +
+                "PROPERTIES (\n" +
+                "\"replication_num\" = \"1\",\n" +
+                "\"dynamic_partition.enable\" = \"true\",\n" +
+                "\"dynamic_partition.start\" = \"-3\",\n" +
+                "\"dynamic_partition.end\" = \"3\",\n" +
+                "\"dynamic_partition.time_unit\" = \"day\",\n" +
+                "\"dynamic_partition.prefix\" = \"p\",\n" +
+                "\"dynamic_partition.buckets\" = \"1\"\n" +
                 ");");
     }
 
@@ -339,6 +401,17 @@ public class QueryPlanTest {
         explainString = UtFrameUtils.getSQLPlanOrErrorMsg(connectContext, "explain " + sql);
         Assert.assertTrue(explainString.contains("hll_union_agg"));
 
+        sql = "select count(distinct id2) from test.bitmap_table group by id order by count(distinct id2)";
+        explainString = UtFrameUtils.getSQLPlanOrErrorMsg(connectContext, "explain " + sql);
+        Assert.assertTrue(explainString.contains("bitmap_union_count"));
+
+        sql = "select count(distinct id2) from test.bitmap_table having count(distinct id2) > 0";
+        explainString = UtFrameUtils.getSQLPlanOrErrorMsg(connectContext, "explain " + sql);
+        Assert.assertTrue(explainString.contains("bitmap_union_count"));
+
+        sql = "select count(distinct id2) from test.bitmap_table order by count(distinct id2)";
+        explainString = UtFrameUtils.getSQLPlanOrErrorMsg(connectContext, "explain " + sql);
+        Assert.assertTrue(explainString.contains("bitmap_union_count"));
 
         ConnectContext.get().getSessionVariable().setRewriteCountDistinct(false);
         sql = "select count(distinct id2) from test.bitmap_table";
@@ -373,4 +446,17 @@ public class QueryPlanTest {
         Assert.assertEquals(showCreateDbStmt.toSql(), showCreateSchemaStmt.toSql());
     }
 
+    @Test
+    public void testDateTypeCastSyntax() throws Exception {
+        String castSql = "select * from test.baseall where k11 < cast('2020-03-26' as date)";
+        SelectStmt selectStmt =
+                (SelectStmt) UtFrameUtils.parseAndAnalyzeStmt(castSql, connectContext);
+        Expr rightExpr = selectStmt.getWhereClause().getChildren().get(1);
+        Assert.assertTrue(rightExpr.getType().equals(Type.DATETIME));
+
+        String castSql2 = "select str_to_date('11/09/2011', '%m/%d/%Y');";
+        String explainString = UtFrameUtils.getSQLPlanOrErrorMsg(connectContext, "explain " + castSql2);
+        Assert.assertTrue(explainString.contains("2011-11-09"));
+        Assert.assertFalse(explainString.contains("2011-11-09 00:00:00"));
+    }
 }

@@ -33,6 +33,7 @@
 #include <rapidjson/document.h>
 #include <thrift/protocol/TDebugProtocol.h>
 
+#include "env/env.h"
 #include "olap/base_compaction.h"
 #include "olap/cumulative_compaction.h"
 #include "olap/lru_cache.h"
@@ -50,7 +51,7 @@
 #include "olap/rowset/column_data_writer.h"
 #include "olap/olap_snapshot_converter.h"
 #include "olap/rowset/unique_rowset_id_generator.h"
-#include "olap/fs/fs_util.h"
+#include "olap/fs/file_block_manager.h"
 #include "util/time.h"
 #include "util/doris_metrics.h"
 #include "util/pretty_printer.h"
@@ -113,7 +114,7 @@ StorageEngine::StorageEngine(const EngineOptions& options)
         _is_all_cluster_id_exist(true),
         _index_stream_lru_cache(NULL),
         _tablet_manager(new TabletManager(config::tablet_map_shard_size)),
-        _txn_manager(new TxnManager()),
+        _txn_manager(new TxnManager(config::txn_map_shard_size, config::txn_shard_size)),
         _rowset_id_generator(new UniqueRowsetIdGenerator(options.backend_uid)),
         _memtable_flush_executor(nullptr),
         _block_manager(nullptr),
@@ -147,16 +148,8 @@ void StorageEngine::load_data_dirs(const std::vector<DataDir*>& data_dirs) {
 
 OLAPStatus StorageEngine::_open() {
     // init store_map
-    for (auto& path : _options.store_paths) {
-        DataDir* store = new DataDir(path.path, path.capacity_bytes, path.storage_medium,
-                                     _tablet_manager.get(), _txn_manager.get());
-        auto st = store->init();
-        if (!st.ok()) {
-            LOG(WARNING) << "Store load failed, path=" << path.path;
-            return OLAP_ERR_INVALID_ROOT_PATH;
-        }
-        _store_map.emplace(path.path, store);
-    }
+    RETURN_NOT_OK(_init_store_map());
+
     _effective_cluster_id = config::cluster_id;
     RETURN_NOT_OK_LOG(_check_all_root_path_cluster_id(), "fail to check cluster info.");
 
@@ -177,10 +170,43 @@ OLAPStatus StorageEngine::_open() {
 
     fs::BlockManagerOptions bm_opts;
     bm_opts.read_only = false;
-    _block_manager.reset(fs::fs_util::file_block_mgr(Env::Default(), bm_opts));
+    _block_manager.reset(new fs::FileBlockManager(Env::Default(), std::move(bm_opts)));
 
     _parse_default_rowset_type();
 
+    return OLAP_SUCCESS;
+}
+
+OLAPStatus StorageEngine::_init_store_map() {
+    std::vector<DataDir*> tmp_stores;
+    std::vector<std::thread> threads;
+    std::atomic<bool> init_error{false};
+    for (auto& path : _options.store_paths) {
+        DataDir* store = new DataDir(path.path, path.capacity_bytes, path.storage_medium,
+                                     _tablet_manager.get(), _txn_manager.get());
+        tmp_stores.emplace_back(store);
+        threads.emplace_back([store, &init_error]() {
+            auto st = store->init();
+            if (!st.ok()) {
+                init_error = true;
+                LOG(WARNING) << "Store load failed, status="<< st.to_string() << ", path=" << store->path();
+            }
+        });
+    }
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    if (init_error) {
+        for (auto store : tmp_stores) {
+            delete store;
+        }
+        return OLAP_ERR_INVALID_ROOT_PATH;
+    }
+
+    for (auto store : tmp_stores) {
+        _store_map.emplace(store->path(), store);
+    }
     return OLAP_SUCCESS;
 }
 
@@ -712,36 +738,41 @@ void StorageEngine::_parse_default_rowset_type() {
 }
 
 void StorageEngine::start_delete_unused_rowset() {
-    _gc_mutex.lock();
+    MutexLock lock(&_gc_mutex);
     for (auto it = _unused_rowsets.begin(); it != _unused_rowsets.end();) {
         if (it->second.use_count() != 1) {
             ++it;
         } else if (it->second->need_delete_file()) {
             VLOG(3) << "start to remove rowset:" << it->second->rowset_id()
-                    << ", version:" << it->second->version().first << "-" << it->second->version().second;
+                    << ", version:" << it->second->version().first << "-"
+                    << it->second->version().second;
             OLAPStatus status = it->second->remove();
-            VLOG(3) << "remove rowset:" << it->second->rowset_id() << " finished. status:" << status;
+            VLOG(3) << "remove rowset:" << it->second->rowset_id()
+                    << " finished. status:" << status;
             it = _unused_rowsets.erase(it);
         }
     }
-    _gc_mutex.unlock();
 }
 
 void StorageEngine::add_unused_rowset(RowsetSharedPtr rowset) {
-    if (rowset == nullptr) { return; }
-    _gc_mutex.lock();
+    if (rowset == nullptr) {
+        return;
+    }
+
     VLOG(3) << "add unused rowset, rowset id:" << rowset->rowset_id()
-            << ", version:" << rowset->version().first
-            << "-" << rowset->version().second
+            << ", version:" << rowset->version().first << "-" << rowset->version().second
             << ", unique id:" << rowset->unique_id();
-    auto it = _unused_rowsets.find(rowset->unique_id());
+
+    auto rowset_id = rowset->rowset_id().to_string();
+
+    MutexLock lock(&_gc_mutex);
+    auto it = _unused_rowsets.find(rowset_id);
     if (it == _unused_rowsets.end()) {
         rowset->set_need_delete_file();
         rowset->close();
-        _unused_rowsets[rowset->unique_id()] = rowset;
+        _unused_rowsets[rowset_id] = rowset;
         release_rowset_id(rowset->rowset_id());
     }
-    _gc_mutex.unlock();
 }
 
 // TODO(zc): refactor this funciton
@@ -917,15 +948,9 @@ OLAPStatus StorageEngine::execute_task(EngineTask* task) {
 
 // check whether any unused rowsets's id equal to rowset_id
 bool StorageEngine::check_rowset_id_in_unused_rowsets(const RowsetId& rowset_id) {
-    _gc_mutex.lock();
-    for (auto& _unused_rowset_pair : _unused_rowsets) {
-        if (_unused_rowset_pair.second->rowset_id() == rowset_id) {
-            _gc_mutex.unlock();
-            return true;
-        }
-    }
-    _gc_mutex.unlock();
-    return false;
+    MutexLock lock(&_gc_mutex);
+    auto search = _unused_rowsets.find(rowset_id.to_string());
+    return search != _unused_rowsets.end();
 }
 
 }  // namespace doris

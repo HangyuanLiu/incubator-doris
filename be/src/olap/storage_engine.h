@@ -200,6 +200,8 @@ private:
     // Clear status(tables, ...)
     void _clear();
 
+    OLAPStatus _init_store_map();
+
     void _update_storage_medium_type_count();
 
     // Some check methods
@@ -296,6 +298,7 @@ private:
     static StorageEngine* _s_instance;
 
     Mutex _gc_mutex;
+    // map<rowset_id(str), RowsetSharedPtr>, if we use RowsetId as the key, we need custom hash func
     std::unordered_map<std::string, RowsetSharedPtr> _unused_rowsets;
 
     bool _stop_bg_worker = false;

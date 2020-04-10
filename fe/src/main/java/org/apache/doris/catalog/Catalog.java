@@ -52,7 +52,6 @@ import org.apache.doris.analysis.CreateUserStmt;
 import org.apache.doris.analysis.CreateViewStmt;
 import org.apache.doris.analysis.DecommissionBackendClause;
 import org.apache.doris.analysis.DistributionDesc;
-import org.apache.doris.catalog.MaterializedIndex.IndexExtState;
 import org.apache.doris.analysis.DropClusterStmt;
 import org.apache.doris.analysis.DropDbStmt;
 import org.apache.doris.analysis.DropFunctionStmt;
@@ -60,6 +59,7 @@ import org.apache.doris.analysis.DropMaterializedViewStmt;
 import org.apache.doris.analysis.DropPartitionClause;
 import org.apache.doris.analysis.DropTableStmt;
 import org.apache.doris.analysis.FunctionName;
+import org.apache.doris.analysis.InstallPluginStmt;
 import org.apache.doris.analysis.KeysDesc;
 import org.apache.doris.analysis.LinkDbStmt;
 import org.apache.doris.analysis.MigrateDbStmt;
@@ -78,12 +78,14 @@ import org.apache.doris.analysis.TableName;
 import org.apache.doris.analysis.TableRef;
 import org.apache.doris.analysis.TableRenameClause;
 import org.apache.doris.analysis.TruncateTableStmt;
+import org.apache.doris.analysis.UninstallPluginStmt;
 import org.apache.doris.analysis.UserDesc;
 import org.apache.doris.analysis.UserIdentity;
 import org.apache.doris.backup.BackupHandler;
 import org.apache.doris.catalog.ColocateTableIndex.GroupId;
 import org.apache.doris.catalog.Database.DbState;
 import org.apache.doris.catalog.DistributionInfo.DistributionInfoType;
+import org.apache.doris.catalog.MaterializedIndex.IndexExtState;
 import org.apache.doris.catalog.MaterializedIndex.IndexState;
 import org.apache.doris.catalog.OlapTable.OlapTableState;
 import org.apache.doris.catalog.Replica.ReplicaState;
@@ -176,6 +178,9 @@ import org.apache.doris.persist.StorageInfo;
 import org.apache.doris.persist.TableInfo;
 import org.apache.doris.persist.TablePropertyInfo;
 import org.apache.doris.persist.TruncateTableInfo;
+import org.apache.doris.plugin.PluginInfo;
+import org.apache.doris.plugin.PluginMgr;
+import org.apache.doris.qe.AuditEventProcessor;
 import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.qe.JournalObservable;
 import org.apache.doris.qe.SessionVariable;
@@ -380,6 +385,10 @@ public class Catalog {
     private SmallFileMgr smallFileMgr;
 
     private DynamicPartitionScheduler dynamicPartitionScheduler;
+    
+    private PluginMgr pluginMgr;
+
+    private AuditEventProcessor auditEventProcessor;
 
     public List<Frontend> getFrontends(FrontendNodeType nodeType) {
         if (nodeType == null) {
@@ -513,6 +522,9 @@ public class Catalog {
         this.metaDir = Config.meta_dir;
         this.bdbDir = this.metaDir + BDB_DIR;
         this.imageDir = this.metaDir + IMAGE_DIR;
+
+        this.pluginMgr = new PluginMgr();
+        this.auditEventProcessor = new AuditEventProcessor(this.pluginMgr);
     }
 
     public static void destroyCheckpoint() {
@@ -558,6 +570,10 @@ public class Catalog {
         return globalTransactionMgr;
     }
 
+    public PluginMgr getPluginMgr() {
+        return pluginMgr;
+    }
+
     public PaloAuth getAuth() {
         return auth;
     }
@@ -572,6 +588,10 @@ public class Catalog {
 
     public ConcurrentHashMap<String, Database> getFullNameToDb() {
         return fullNameToDb;
+    }
+
+    public AuditEventProcessor getAuditEventProcessor() {
+        return auditEventProcessor;
     }
 
     // use this to get correct ClusterInfoService instance
@@ -604,6 +624,14 @@ public class Catalog {
 
     public static final boolean isCheckpointThread() {
         return Thread.currentThread().getId() == checkpointThreadId;
+    }
+
+    public static PluginMgr getCurrentPluginMgr() {
+        return getCurrentCatalog().getPluginMgr();
+    }
+
+    public static AuditEventProcessor getCurrentAuditEventProcessor() {
+        return getCurrentCatalog().getAuditEventProcessor();
     }
 
     // Use tryLock to avoid potential dead lock
@@ -685,6 +713,10 @@ public class Catalog {
             LOG.error("Invalid edit log type: {}", Config.edit_log_type);
             System.exit(-1);
         }
+
+        // init plugin manager
+        pluginMgr.init();
+        auditEventProcessor.start();
 
         // 2. get cluster id and role (Observer or Follower)
         getClusterIdAndRole();
@@ -1401,6 +1433,7 @@ public class Catalog {
             checksum = loadRoutineLoadJobs(dis, checksum);
             checksum = loadLoadJobsV2(dis, checksum);
             checksum = loadSmallFiles(dis, checksum);
+            checksum = loadPlugins(dis, checksum);
 
             long remoteChecksum = dis.readLong();
             Preconditions.checkState(remoteChecksum == checksum, remoteChecksum + " vs. " + checksum);
@@ -1834,6 +1867,7 @@ public class Catalog {
             checksum = saveRoutineLoadJobs(dos, checksum);
             checksum = saveLoadJobsV2(dos, checksum);
             checksum = saveSmallFiles(dos, checksum);
+            checksum = savePlugins(dos, checksum);
             dos.writeLong(checksum);
         }
 
@@ -3208,7 +3242,7 @@ public class Catalog {
         }
     }
 
-    public void modifyPartition(Database db, OlapTable olapTable, String partitionName, Map<String, String> properties)
+    public void modifyPartitionProperty(Database db, OlapTable olapTable, String partitionName, Map<String, String> properties)
             throws DdlException {
         Preconditions.checkArgument(db.isWriteLockHeldByCurrentThread());
         if (olapTable.getState() != OlapTableState.NORMAL) {
@@ -3540,7 +3574,7 @@ public class Catalog {
             DataProperty dataProperty = null;
             try {
                 dataProperty = PropertyAnalyzer.analyzeDataProperty(stmt.getProperties(),
-                        DataProperty.DEFAULT_HDD_DATA_PROPERTY);
+                        DataProperty.DEFAULT_DATA_PROPERTY);
             } catch (AnalysisException e) {
                 throw new DdlException(e.getMessage());
             }
@@ -3590,7 +3624,6 @@ public class Catalog {
         int schemaHash = Util.schemaHash(schemaVersion, baseSchema, bfColumns, bfFpp);
         olapTable.setIndexMeta(baseIndexId, tableName, baseSchema, schemaVersion, schemaHash,
                 shortKeyColumnCount, baseIndexStorageType, keysType);
-
 
         for (AlterClause alterClause : stmt.getRollupAlterClauseList()) {
             AddRollupClause addRollupClause = (AddRollupClause)alterClause;
@@ -3652,7 +3685,7 @@ public class Catalog {
                 try {
                     // just for remove entries in stmt.getProperties(),
                     // and then check if there still has unknown properties
-                    PropertyAnalyzer.analyzeDataProperty(stmt.getProperties(), DataProperty.DEFAULT_HDD_DATA_PROPERTY);
+                    PropertyAnalyzer.analyzeDataProperty(stmt.getProperties(), DataProperty.DEFAULT_DATA_PROPERTY);
                     DynamicPartitionUtil.checkAndSetDynamicPartitionProperty(olapTable, properties);
 
                     if (properties != null && !properties.isEmpty()) {
@@ -4498,8 +4531,7 @@ public class Catalog {
                         if (dataProperty.getStorageMedium() == TStorageMedium.SSD
                                 && dataProperty.getCooldownTimeMs() < currentTimeMs) {
                             // expire. change to HDD.
-                            partitionInfo.setDataProperty(partition.getId(),
-                                    DataProperty.DEFAULT_HDD_DATA_PROPERTY);
+                            partitionInfo.setDataProperty(partition.getId(), new DataProperty(TStorageMedium.HDD));
                             storageMediumMap.put(partitionId, TStorageMedium.HDD);
                             LOG.debug("partition[{}-{}-{}] storage medium changed from SSD to HDD",
                                     dbId, tableId, partitionId);
@@ -4508,7 +4540,7 @@ public class Catalog {
                             ModifyPartitionInfo info =
                                     new ModifyPartitionInfo(db.getId(), olapTable.getId(),
                                             partition.getId(),
-                                            DataProperty.DEFAULT_HDD_DATA_PROPERTY,
+                                            DataProperty.DEFAULT_DATA_PROPERTY,
                                             (short) -1,
                                             partitionInfo.getIsInMemory(partition.getId()));
                             editLog.logModifyPartition(info);
@@ -6381,6 +6413,47 @@ public class Catalog {
             LOG.warn("should not happen. {}", e);
         } finally {
             db.writeUnlock();
+        }
+    }
+
+    public void installPlugin(InstallPluginStmt stmt) throws UserException, IOException {
+        pluginMgr.installPlugin(stmt);
+    }
+
+    public long savePlugins(DataOutputStream dos, long checksum) throws IOException {
+        Catalog.getCurrentPluginMgr().write(dos);
+        return checksum;
+    }
+
+    public long loadPlugins(DataInputStream dis, long checksum) throws IOException {
+        if (Catalog.getCurrentCatalogJournalVersion() >= FeMetaVersion.VERSION_78) {
+            Catalog.getCurrentPluginMgr().readFields(dis);
+        }
+
+        return checksum;
+    }
+
+    public void replayInstallPlugin(PluginInfo pluginInfo)  {
+        try {
+            pluginMgr.replayLoadDynamicPlugin(pluginInfo);
+        } catch (Exception e) {
+            LOG.warn("replay install plugin failed.", e);
+        }
+    }
+
+    public void uninstallPlugin(UninstallPluginStmt stmt) throws IOException, UserException {
+        PluginInfo info = pluginMgr.uninstallPlugin(stmt.getPluginName());
+        if (null != info) {
+            editLog.logUninstallPlugin(info);
+        }
+        LOG.info("uninstall plugin = " + stmt.getPluginName());
+    }
+
+    public void replayUninstallPlugin(PluginInfo pluginInfo)  {
+        try {
+            pluginMgr.uninstallPlugin(pluginInfo.getName());
+        } catch (Exception e) {
+            LOG.warn("replay uninstall plugin failed.", e);
         }
     }
 

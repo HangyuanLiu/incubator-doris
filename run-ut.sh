@@ -130,6 +130,7 @@ if [ -d ${DORIS_TEST_BINARY_DIR}/util/test_data ]; then
     rm -rf ${DORIS_TEST_BINARY_DIR}/util/test_data
 fi
 cp -r ${DORIS_HOME}/be/test/util/test_data ${DORIS_TEST_BINARY_DIR}/util/
+cp -r ${DORIS_HOME}/be/test/plugin/plugin_test ${DORIS_TEST_BINARY_DIR}/plugin/
 
 # Running Util Unittest
 ${DORIS_TEST_BINARY_DIR}/util/bit_util_test
@@ -168,7 +169,6 @@ ${DORIS_TEST_BINARY_DIR}/util/utf8_check_test
 ${DORIS_TEST_BINARY_DIR}/util/cgroup_util_test
 ${DORIS_TEST_BINARY_DIR}/util/path_util_test
 ${DORIS_TEST_BINARY_DIR}/util/file_cache_test
-${DORIS_TEST_BINARY_DIR}/util/file_manager_test
 ${DORIS_TEST_BINARY_DIR}/util/parse_util_test
 ${DORIS_TEST_BINARY_DIR}/util/countdown_latch_test
 ${DORIS_TEST_BINARY_DIR}/util/monotime_test
@@ -177,6 +177,7 @@ ${DORIS_TEST_BINARY_DIR}/util/thread_test
 ${DORIS_TEST_BINARY_DIR}/util/threadpool_test
 
 # Running common Unittest
+${DORIS_TEST_BINARY_DIR}/common/config_test
 ${DORIS_TEST_BINARY_DIR}/common/resource_tls_test
 
 ## Running exprs unit test
@@ -277,6 +278,7 @@ ${DORIS_TEST_BINARY_DIR}/olap/rowset/rowset_meta_test
 ${DORIS_TEST_BINARY_DIR}/olap/rowset/alpha_rowset_test
 ${DORIS_TEST_BINARY_DIR}/olap/rowset/beta_rowset_test
 ${DORIS_TEST_BINARY_DIR}/olap/rowset/rowset_converter_test
+${DORIS_TEST_BINARY_DIR}/olap/rowset/unique_rowset_id_generator_test
 ${DORIS_TEST_BINARY_DIR}/olap/rowset/segment_v2/encoding_info_test
 ${DORIS_TEST_BINARY_DIR}/olap/rowset/segment_v2/ordinal_page_index_test
 ${DORIS_TEST_BINARY_DIR}/olap/rowset/segment_v2/bitshuffle_page_test
@@ -307,6 +309,11 @@ ${DORIS_TEST_BINARY_DIR}/olap/selection_vector_test
 ${DORIS_TEST_BINARY_DIR}/runtime/kafka_consumer_pipe_test
 ${DORIS_TEST_BINARY_DIR}/runtime/routine_load_task_executor_test
 ${DORIS_TEST_BINARY_DIR}/runtime/heartbeat_flags_test
+
+# Runing plugin test
+${DORIS_TEST_BINARY_DIR}/plugin/plugin_loader_test
+${DORIS_TEST_BINARY_DIR}/plugin/plugin_mgr_test
+${DORIS_TEST_BINARY_DIR}/plugin/plugin_zip_test
 
 # Running agent unittest
 # Prepare agent testdata
