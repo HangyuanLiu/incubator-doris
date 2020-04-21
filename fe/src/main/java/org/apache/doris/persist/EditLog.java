@@ -45,6 +45,7 @@ import org.apache.doris.journal.JournalEntity;
 import org.apache.doris.journal.bdbje.BDBJEJournal;
 import org.apache.doris.journal.bdbje.Timestamp;
 import org.apache.doris.load.AsyncDeleteJob;
+import org.apache.doris.load.DeleteHandler;
 import org.apache.doris.load.DeleteInfo;
 import org.apache.doris.load.ExportJob;
 import org.apache.doris.load.ExportMgr;
@@ -150,7 +151,7 @@ public class EditLog {
                     DatabaseInfo dbInfo = (DatabaseInfo) journal.getData();
                     String dbName = dbInfo.getDbName();
                     LOG.info("Begin to unprotect alter db info {}", dbName);
-                    catalog.replayAlterDatabaseQuota(dbName, dbInfo.getQuota());
+                    catalog.replayAlterDatabaseQuota(dbName, dbInfo.getQuota(), dbInfo.getQuotaType());
                     break;
                 }
                 case OperationType.OP_ERASE_DB: {
@@ -380,6 +381,12 @@ public class EditLog {
                     DeleteInfo info = (DeleteInfo) journal.getData();
                     Load load = catalog.getLoadInstance();
                     load.replayDelete(info, catalog);
+                    break;
+                }
+                case OperationType.OP_FINISH_DELETE: {
+                    DeleteInfo info = (DeleteInfo) journal.getData();
+                    DeleteHandler deleteHandler = catalog.getDeleteHandler();
+                    deleteHandler.replayDelete(info, catalog);
                     break;
                 }
                 case OperationType.OP_FINISH_ASYNC_DELETE: {
@@ -999,6 +1006,10 @@ public class EditLog {
 
     public void logFinishSyncDelete(DeleteInfo info) {
         logEdit(OperationType.OP_FINISH_SYNC_DELETE, info);
+    }
+
+    public void logFinishDelete(DeleteInfo info) {
+        logEdit(OperationType.OP_FINISH_DELETE, info);
     }
 
     public void logFinishAsyncDelete(AsyncDeleteJob job) {

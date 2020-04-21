@@ -234,6 +234,7 @@ public class StmtExecutor {
             }
 
             if (parsedStmt instanceof QueryStmt) {
+                context.getState().setIsQuery(true);
                 int retryTime = Config.max_query_retry_time;
                 for (int i = 0; i < retryTime; i ++) {
                     try {
@@ -867,6 +868,8 @@ public class StmtExecutor {
         try {
             DdlExecutor.execute(context.getCatalog(), (DdlStmt) parsedStmt, originStmt);
             context.getState().setOk();
+        } catch (QueryStateException e) {
+            context.setState(e.getQueryState());
         } catch (UserException e) {
             // Return message to info client what happened.
             context.getState().setError(e.getMessage());

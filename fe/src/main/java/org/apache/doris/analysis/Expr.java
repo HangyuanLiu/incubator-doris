@@ -1227,7 +1227,6 @@ abstract public class Expr extends TreeNode<Expr> implements ParseNode, Cloneabl
      * Create an expression equivalent to 'this' but returning targetType;
      * possibly by inserting an implicit cast,
      * or by returning an altogether new expression
-     * or by returning 'this' with a modified return type'.
      *
      * @param targetType type to be cast to
      * @return cast expression, or converted literal,
@@ -1441,7 +1440,7 @@ abstract public class Expr extends TreeNode<Expr> implements ParseNode, Cloneabl
      * Negates a boolean Expr.
      */
     public Expr negate() {
-        Preconditions.checkState(type == Type.BOOLEAN);
+        Preconditions.checkState(type.equals(Type.BOOLEAN));
         return new CompoundPredicate(CompoundPredicate.Operator.NOT, this, null);
     }
 
@@ -1458,7 +1457,8 @@ abstract public class Expr extends TreeNode<Expr> implements ParseNode, Cloneabl
         }
         List<Subquery> subqueries = Lists.newArrayList();
         collect(Subquery.class, subqueries);
-        Preconditions.checkState(subqueries.size() == 1);
+        Preconditions.checkState(subqueries.size() == 1,
+                "only support one subquery in " + this.toSql());
         return subqueries.get(0);
     }
 

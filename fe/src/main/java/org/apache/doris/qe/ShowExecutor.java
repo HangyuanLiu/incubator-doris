@@ -108,6 +108,7 @@ import org.apache.doris.common.util.ListComparator;
 import org.apache.doris.common.util.LogBuilder;
 import org.apache.doris.common.util.LogKey;
 import org.apache.doris.common.util.OrderByPair;
+import org.apache.doris.load.DeleteHandler;
 import org.apache.doris.load.ExportJob;
 import org.apache.doris.load.ExportMgr;
 import org.apache.doris.load.Load;
@@ -117,8 +118,6 @@ import org.apache.doris.load.LoadJob;
 import org.apache.doris.load.LoadJob.JobState;
 import org.apache.doris.load.routineload.RoutineLoadJob;
 import org.apache.doris.mysql.privilege.PrivPredicate;
-import org.apache.doris.plugin.PluginInfo;
-import org.apache.doris.plugin.PluginLoader;
 import org.apache.doris.system.Backend;
 import org.apache.doris.system.SystemInfoService;
 import org.apache.doris.transaction.GlobalTransactionMgr;
@@ -1053,8 +1052,10 @@ public class ShowExecutor {
         }
         long dbId = db.getId();
 
+        DeleteHandler deleteHandler = catalog.getDeleteHandler();
         Load load = catalog.getLoadInstance();
-        List<List<Comparable>> deleteInfos = load.getDeleteInfosByDb(dbId, true);
+        List<List<Comparable>> deleteInfos = deleteHandler.getDeleteInfosByDb(dbId, true);
+        deleteInfos.addAll(load.getDeleteInfosByDb(dbId, true));
         List<List<String>> rows = Lists.newArrayList();
         for (List<Comparable> deleteInfo : deleteInfos) {
             List<String> oneInfo = new ArrayList<String>(deleteInfo.size());
@@ -1523,37 +1524,7 @@ public class ShowExecutor {
 
     private void handleShowPlugins() throws AnalysisException {
         ShowPluginsStmt pluginsStmt = (ShowPluginsStmt) stmt;
-
-        List<PluginLoader> plugins = Catalog.getCurrentPluginMgr().getAllPluginLoader();
-
-        List<List<String>> rows = Lists.newArrayListWithCapacity(plugins.size());
-
-        for (PluginLoader p : plugins) {
-            try {
-                PluginInfo pi = p.getPluginInfo();
-
-                List<String> r = Lists.newArrayListWithCapacity(stmt.getMetaData().getColumnCount());
-                r.add(pi.getName());
-                r.add(pi.getType().name());
-                r.add(pi.getDescription());
-                r.add(pi.getVersion().toString());
-                r.add(pi.getJavaVersion().toString());
-                r.add(pi.getClassName());
-                r.add(pi.getSoName());
-                if (Strings.isNullOrEmpty(pi.getSource())) {
-                    r.add("Builtin");
-                } else {
-                    r.add(pi.getSource());
-                }
-
-                r.add(p.getStatus().name());
-
-                rows.add(r);
-            } catch (Exception e) {
-                LOG.warn("show plugins get plugin info failed.", e);
-            }
-        }
-
+        List<List<String>> rows = Catalog.getCurrentPluginMgr().getPluginShowInfos();
         resultSet = new ShowResultSet(pluginsStmt.getMetaData(), rows);
     }
 }

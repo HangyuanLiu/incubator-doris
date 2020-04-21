@@ -70,6 +70,7 @@ TabletManager::TabletManager(int32_t tablet_map_lock_shard_size)
     : _tablet_map_lock_shard_size(tablet_map_lock_shard_size),
       _last_update_stat_ms(0) {
     DCHECK_GT(_tablet_map_lock_shard_size, 0);
+    DCHECK_EQ(_tablet_map_lock_shard_size & (tablet_map_lock_shard_size - 1), 0);
     _tablet_map_lock_array = new RWMutex[_tablet_map_lock_shard_size];
     _tablet_map_array = new tablet_map_t[_tablet_map_lock_shard_size];
 }
@@ -183,9 +184,7 @@ OLAPStatus TabletManager::_add_tablet_to_map_unlocked(TTabletId tablet_id, Schem
     // Register tablet into DataDir, so that we can manage tablet from
     // the perspective of root path.
     // Example: unregister all tables when a bad disk found.
-    RETURN_NOT_OK_LOG(tablet->register_tablet_into_dir(), Substitute(
-            "fail to register tablet into StorageEngine. data_dir=$0",
-            tablet->data_dir()->path()));
+    tablet->register_tablet_into_dir();
     tablet_map_t& tablet_map = _get_tablet_map(tablet_id);
     tablet_map[tablet_id].table_arr.push_back(tablet);
     tablet_map[tablet_id].table_arr.sort(_cmp_tablet_by_create_time);
@@ -960,29 +959,43 @@ OLAPStatus TabletManager::report_all_tablets_info(std::map<TTabletId, TTablet>* 
 OLAPStatus TabletManager::start_trash_sweep() {
     {
         std::vector<int64_t> tablets_to_clean;
+        std::vector<TabletSharedPtr> all_tablets; // we use this vector to save all tablet ptr for saving lock time.
         for (int32 i = 0; i < _tablet_map_lock_shard_size; i++) {
-            WriteLock rlock(&_tablet_map_lock_array[i]);
             tablet_map_t& tablet_map = _tablet_map_array[i];
-            for (auto& item : tablet_map) {
-                // try to clean empty item
-                if (item.second.table_arr.empty()) {
-                    // try to get schema change lock if could get schema change lock, then nobody
-                    // own the lock could remove the item
-                    // it will core if schema change thread may hold the lock and this thread will deconstruct lock
-                    if (item.second.schema_change_lock.trylock() == OLAP_SUCCESS) {
-                        item.second.schema_change_lock.unlock();
+            {
+                ReadLock r_lock(&_tablet_map_lock_array[i]);
+                for (auto& item : tablet_map) {
+                    // try to clean empty item
+                    if (item.second.table_arr.empty()) {
                         tablets_to_clean.push_back(item.first);
                     }
-                }
-                for (TabletSharedPtr tablet : item.second.table_arr) {
-                    tablet->delete_expired_inc_rowsets();
+                    for (TabletSharedPtr tablet : item.second.table_arr) {
+                        all_tablets.push_back(tablet);
+                    }
                 }
             }
-            // clean empty tablet id item
-            for (const auto& tablet_id_to_clean : tablets_to_clean) {
-                if (tablet_map[tablet_id_to_clean].table_arr.empty()) {
-                    tablet_map.erase(tablet_id_to_clean);
+
+            for (const auto& tablet : all_tablets) {
+                tablet->delete_expired_inc_rowsets();
+            }
+            all_tablets.clear();
+
+            if (!tablets_to_clean.empty()) {
+                WriteLock w_lock(&_tablet_map_lock_array[i]);
+                // clean empty tablet id item
+                for (const auto& tablet_id_to_clean : tablets_to_clean) {
+                    auto& item = tablet_map[tablet_id_to_clean];
+                    if (item.table_arr.empty()) {
+                        // try to get schema change lock if could get schema change lock, then nobody
+                        // own the lock could remove the item
+                        // it will core if schema change thread may hold the lock and this thread will deconstruct lock
+                        if (item.schema_change_lock.trylock() == OLAP_SUCCESS) {
+                            item.schema_change_lock.unlock();
+                            tablet_map.erase(tablet_id_to_clean);
+                        }
+                    }
                 }
+                tablets_to_clean.clear(); // We should clear the vector before next loop
             }
         }
     }
@@ -1336,9 +1349,7 @@ OLAPStatus TabletManager::_drop_tablet_directly_unlocked(
         }
     }
 
-    RETURN_NOT_OK_LOG(dropped_tablet->deregister_tablet_from_dir(), Substitute(
-            "fail to unregister from root path. tablet=$0, schema_hash=$1",
-            tablet_id, schema_hash));
+    dropped_tablet->deregister_tablet_from_dir();
     return OLAP_SUCCESS;
 }
 

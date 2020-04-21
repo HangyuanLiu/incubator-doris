@@ -57,7 +57,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 
-/*
+/**
  * Heartbeat manager run as a daemon at a fix interval.
  * For now, it will send heartbeat to all Frontends, Backends and Brokers
  */
@@ -68,7 +68,7 @@ public class HeartbeatMgr extends MasterDaemon {
     private SystemInfoService nodeMgr;
     private HeartbeatFlags heartbeatFlags;
 
-    private static volatile AtomicReference<TMasterInfo> masterInfo = new AtomicReference<TMasterInfo>();
+    private static volatile AtomicReference<TMasterInfo> masterInfo = new AtomicReference<>();
 
     public HeartbeatMgr(SystemInfoService nodeMgr) {
         super("heartbeat mgr", FeConstants.heartbeat_interval_second * 1000);
@@ -89,7 +89,7 @@ public class HeartbeatMgr extends MasterDaemon {
         masterInfo.set(tMasterInfo);
     }
 
-    /*
+    /**
      * At each round:
      * 1. send heartbeat to all nodes
      * 2. collect the heartbeat response from all nodes, and handle them
@@ -178,6 +178,9 @@ public class HeartbeatMgr extends MasterDaemon {
                     if (hbResponse.getStatus() != HbStatus.OK) {
                         // invalid all connections cached in ClientPool
                         ClientPool.backendPool.clearPool(new TNetworkAddress(be.getHost(), be.getBePort()));
+                        if (!isReplay) {
+                            Catalog.getCurrentCatalog().getGlobalTransactionMgr().abortTxnWhenCoordinateBeDown(be.getHost(), 100);
+                        }
                     }
                     return isChanged;
                 }
@@ -295,7 +298,7 @@ public class HeartbeatMgr extends MasterDaemon {
                  */
                 JSONObject root = new JSONObject(result);
                 String status = root.getString("status");
-                if (!status.equals("OK")) {
+                if (!"OK".equals(status)) {
                     return new FrontendHbResponse(fe.getNodeName(), root.getString("msg"));
                 } else {
                     long replayedJournalId = root.getLong(BootstrapFinishAction.REPLAYED_JOURNAL_ID);
