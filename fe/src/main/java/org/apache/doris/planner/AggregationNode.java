@@ -38,6 +38,8 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 //import org.apache.doris.thrift.TAggregateFunctionCall;
 
 /**
@@ -222,7 +224,7 @@ public class AggregationNode extends PlanNode {
 
     @Override
     protected String debugString() {
-        return Objects.toStringHelper(this).add("aggInfo", aggInfo.debugString()).addValue(
+        return toStringHelper(this).add("aggInfo", aggInfo.debugString()).addValue(
           super.debugString()).toString();
     }
 

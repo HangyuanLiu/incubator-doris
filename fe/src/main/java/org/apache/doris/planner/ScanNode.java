@@ -30,6 +30,8 @@ import com.google.common.base.Objects;
 import java.util.List;
 import java.util.Map;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 /**
  * Representation of the common elements of all scan nodes.
  */
@@ -88,7 +90,7 @@ abstract public class ScanNode extends PlanNode {
 
     @Override
     public String toString() {
-        return Objects.toStringHelper(this).add("tid", desc.getId().asInt()).add("tblName",
+        return toStringHelper(this).add("tid", desc.getId().asInt()).add("tblName",
                 desc.getTable().getName()).add("keyRanges", "").addValue(
                 super.debugString()).toString();
     }

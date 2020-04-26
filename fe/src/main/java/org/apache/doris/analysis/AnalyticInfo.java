@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 /**
  * Encapsulates the analytic functions found in a single select block plus
  * the corresponding analytic result tuple and its substitution map.
@@ -173,7 +175,7 @@ public final class AnalyticInfo extends AggregateInfoBase {
     @Override
     public String debugString() {
         StringBuilder out = new StringBuilder(super.debugString());
-        out.append(Objects.toStringHelper(this)
+        out.append(toStringHelper(this)
                 .add("analytic_exprs", Expr.debugString(analyticExprs_))
                 .add("smap", analyticTupleSmap_.debugString())
                 .toString());

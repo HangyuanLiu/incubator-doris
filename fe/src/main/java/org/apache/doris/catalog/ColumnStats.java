@@ -33,6 +33,8 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 /**
  * Statistics for a single column.
  */
@@ -116,7 +118,7 @@ public class ColumnStats implements Writable {
 
     @Override
     public String toString() {
-        return Objects.toStringHelper(this.getClass()).add("avgSerializedSize",
+        return toStringHelper(this.getClass()).add("avgSerializedSize",
           avgSerializedSize).add("maxSize", maxSize).add("numDistinct", numDistinctValues).add(
           "numNulls", numNulls).toString();
     }

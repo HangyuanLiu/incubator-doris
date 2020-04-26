@@ -40,6 +40,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 /**
  * Computation of analytic exprs.
  */
@@ -148,7 +150,7 @@ public class AnalyticEvalNode extends PlanNode {
             orderByElementStrs.add(element.toSql());
         }
 
-        return Objects.toStringHelper(this)
+        return toStringHelper(this)
                .add("analyticFnCalls", Expr.debugString(analyticFnCalls))
                .add("partitionExprs", Expr.debugString(partitionExprs))
                .add("subtitutedPartitionExprs", Expr.debugString(substitutedPartitionExprs))

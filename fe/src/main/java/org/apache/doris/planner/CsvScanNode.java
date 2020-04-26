@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.MoreObjects;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -40,12 +41,12 @@ import org.apache.doris.thrift.TCsvScanNode;
 import org.apache.doris.thrift.TPlanNode;
 import org.apache.doris.thrift.TPlanNodeType;
 import org.apache.doris.thrift.TScanRangeLocations;
-import com.google.common.base.Objects;
-import com.google.common.base.Objects.ToStringHelper;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class CsvScanNode extends ScanNode {
     private static final Logger LOG = LogManager.getLogger(CsvScanNode.class);
@@ -186,7 +187,7 @@ public class CsvScanNode extends ScanNode {
 
     @Override
     protected String debugString() {
-        ToStringHelper helper = Objects.toStringHelper(this);
+        MoreObjects.ToStringHelper helper = toStringHelper(this);
         return helper.addValue(super.debugString()).toString();
     }
 

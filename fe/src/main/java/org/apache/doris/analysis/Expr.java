@@ -49,6 +49,8 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 /**
  * Root of the expr node hierarchy.
  */
@@ -1301,7 +1303,7 @@ abstract public class Expr extends TreeNode<Expr> implements ParseNode, Cloneabl
 
     @Override
     public String toString() {
-        return Objects.toStringHelper(this.getClass()).add("id", id).add("type", type).add("sel",
+        return toStringHelper(this.getClass()).add("id", id).add("type", type).add("sel",
           selectivity).add("#distinct", numDistinctValues).add("scale", outputScale).toString();
     }
 

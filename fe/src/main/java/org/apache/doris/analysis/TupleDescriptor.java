@@ -36,6 +36,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 public class TupleDescriptor {
     private static final Logger LOG = LogManager.getLogger(TupleDescriptor.class);
     private final TupleId id;
@@ -291,7 +293,7 @@ public class TupleDescriptor {
         for (SlotDescriptor slot : slots) {
             slotStrings.add(slot.debugString());
         }
-        return Objects.toStringHelper(this).add("id", id.asInt()).add("tbl", tblStr).add("byte_size", byteSize)
+        return toStringHelper(this).add("id", id.asInt()).add("tbl", tblStr).add("byte_size", byteSize)
                    .add("is_materialized", isMaterialized).add("slots", "[" + Joiner.on(", ").join(slotStrings) + "]")
                    .toString();
     }
@@ -304,7 +306,7 @@ public class TupleDescriptor {
         for (SlotDescriptor slot : slots) {
             slotStrings.add(slot.debugString());
         }
-        return Objects.toStringHelper(this)
+        return toStringHelper(this)
                 .add("id", id.asInt())
                 .add("name", debugName)
                 .add("tbl", tblStr)

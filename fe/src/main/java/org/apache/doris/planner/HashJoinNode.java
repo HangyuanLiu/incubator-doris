@@ -17,6 +17,7 @@
 
 package org.apache.doris.planner;
 
+import com.google.common.base.MoreObjects;
 import org.apache.doris.analysis.Analyzer;
 import org.apache.doris.analysis.BinaryPredicate;
 import org.apache.doris.analysis.Expr;
@@ -43,6 +44,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * Hash join between left child and right child.
@@ -220,12 +223,12 @@ public class HashJoinNode extends PlanNode {
 
     @Override
     protected String debugString() {
-        return Objects.toStringHelper(this).add("eqJoinConjuncts",
+        return toStringHelper(this).add("eqJoinConjuncts",
           eqJoinConjunctsDebugString()).addValue(super.debugString()).toString();
     }
 
     private String eqJoinConjunctsDebugString() {
-        Objects.ToStringHelper helper = Objects.toStringHelper(this);
+        MoreObjects.ToStringHelper helper = toStringHelper(this);
         for (BinaryPredicate expr : eqJoinConjuncts) {
             helper.add("lhs", expr.getChild(0)).add("rhs", expr.getChild(1));
         }

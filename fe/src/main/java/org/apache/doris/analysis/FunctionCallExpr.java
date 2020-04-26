@@ -48,6 +48,8 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 // TODO: for aggregations, we need to unify the code paths for builtins and UDAs.
 public class FunctionCallExpr extends Expr {
     private static final Logger LOG = LogManager.getLogger(FunctionCallExpr.class);
@@ -194,7 +196,7 @@ public class FunctionCallExpr extends Expr {
 
     @Override
     public String debugString() {
-        return Objects.toStringHelper(this)/*.add("op", aggOp)*/.add("name", fnName).add("isStar",
+        return toStringHelper(this)/*.add("op", aggOp)*/.add("name", fnName).add("isStar",
                 fnParams.isStar()).add("isDistinct", fnParams.isDistinct()).addValue(
                 super.debugString()).toString();
     }

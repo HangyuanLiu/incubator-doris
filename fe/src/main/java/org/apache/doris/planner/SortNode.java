@@ -42,6 +42,8 @@ import org.apache.logging.log4j.LogManager;
 import java.util.Iterator;
 import java.util.List;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 /**
  * Sorting.
  */
@@ -141,7 +143,7 @@ public class SortNode extends PlanNode {
         for (Boolean isAsc : info.getIsAscOrder()) {
             strings.add(isAsc ? "a" : "d");
         }
-        return Objects.toStringHelper(this).add("ordering_exprs",
+        return toStringHelper(this).add("ordering_exprs",
           Expr.debugString(info.getOrderingExprs())).add("is_asc",
           "[" + Joiner.on(" ").join(strings) + "]").addValue(super.debugString()).toString();
     }

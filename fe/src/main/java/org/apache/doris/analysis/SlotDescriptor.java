@@ -29,6 +29,8 @@ import com.google.common.collect.Lists;
 import java.util.Collections;
 import java.util.List;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 public class SlotDescriptor {
     private final SlotId id;
     private final TupleDescriptor parent;
@@ -257,7 +259,7 @@ public class SlotDescriptor {
         String colStr = (column == null ? "null" : column.getName());
         String typeStr = (type == null ? "null" : type.toString());
         String parentTupleId = (parent == null) ? "null" : parent.getId().toString();
-        return Objects.toStringHelper(this).add("id", id.asInt()).add("parent", parentTupleId)
+        return toStringHelper(this).add("id", id.asInt()).add("parent", parentTupleId)
                 .add("col", colStr).add("type", typeStr).add("materialized", isMaterialized)
                 .add("byteSize", byteSize).add("byteOffset", byteOffset)
                 .add("nullIndicatorByte", nullIndicatorByte)

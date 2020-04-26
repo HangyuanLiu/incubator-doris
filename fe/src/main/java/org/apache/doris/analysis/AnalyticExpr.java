@@ -39,6 +39,8 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 /**
  * Representation of an analytic function call with OVER clause.
  * All "subexpressions" (such as the actual function call parameters as well as the
@@ -177,7 +179,7 @@ public class AnalyticExpr extends Expr {
 
     @Override
     public String debugString() {
-        return Objects.toStringHelper(this)
+        return toStringHelper(this)
                .add("fn", getFnCall())
                .add("window", window)
                .addValue(super.debugString())

@@ -17,6 +17,9 @@
 
 package org.apache.doris.analysis;
 
+import org.apache.doris.sql.analyzer.StatementAstVisitor;
+import org.apache.doris.sql.tree.AstVisitor;
+import org.apache.doris.sql.tree.Node;
 import org.apache.doris.catalog.Type;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.ErrorCode;
@@ -185,4 +188,7 @@ public abstract class StatementBase implements ParseNode {
         return false;
     }
 
+    public <R, C> R accept(StatementAstVisitor<R, C> visitor, Node node, C context) {
+        return visitor.visitNode(this, node, context);
+    }
 }

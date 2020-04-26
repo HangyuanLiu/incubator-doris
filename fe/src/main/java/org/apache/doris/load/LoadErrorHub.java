@@ -17,6 +17,7 @@
 
 package org.apache.doris.load;
 
+import com.google.common.base.MoreObjects;
 import org.apache.doris.common.io.Text;
 import org.apache.doris.common.io.Writable;
 import org.apache.doris.thrift.TErrorHubType;
@@ -35,6 +36,8 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 public abstract class LoadErrorHub {
     private static final Logger LOG = LogManager.getLogger(LoadErrorHub.class);
@@ -109,7 +112,7 @@ public abstract class LoadErrorHub {
         }
 
         public String toString() {
-            Objects.ToStringHelper helper = Objects.toStringHelper(this);
+            MoreObjects.ToStringHelper helper = toStringHelper(this);
             helper.add("type", type.toString());
             switch (type) {
                 case MYSQL_TYPE:

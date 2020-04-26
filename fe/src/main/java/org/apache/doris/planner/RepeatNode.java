@@ -46,6 +46,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 /**
  * Used for grouping sets.
  * It will add some new rows and a column of groupingId according to grouping sets info.
@@ -177,7 +179,7 @@ public class RepeatNode extends PlanNode {
 
     @Override
     protected String debugString() {
-        return Objects.toStringHelper(this).add("Repeat", repeatSlotIdList.size()).addValue(
+        return toStringHelper(this).add("Repeat", repeatSlotIdList.size()).addValue(
                 super.debugString()).toString();
     }
 

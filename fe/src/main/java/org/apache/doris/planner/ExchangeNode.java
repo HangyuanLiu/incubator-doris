@@ -17,6 +17,7 @@
 
 package org.apache.doris.planner;
 
+import com.google.common.base.MoreObjects;
 import org.apache.doris.analysis.Analyzer;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.SortInfo;
@@ -27,13 +28,13 @@ import org.apache.doris.thrift.TPlanNode;
 import org.apache.doris.thrift.TPlanNodeType;
 import org.apache.doris.thrift.TSortInfo;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Objects.ToStringHelper;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * Receiver side of a 1:n data stream. Logically, an ExchangeNode consumes the data
@@ -122,7 +123,7 @@ public class ExchangeNode extends PlanNode {
 
     @Override
     protected String debugString() {
-        ToStringHelper helper = Objects.toStringHelper(this);
+        MoreObjects.ToStringHelper helper = toStringHelper(this);
         helper.addValue(super.debugString());
         helper.add("offset", offset);
         return helper.toString();

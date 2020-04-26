@@ -30,6 +30,8 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 /**
  * Base class for AggregateInfo and AnalyticInfo containing the intermediate and output
  * tuple descriptors as well as their smaps for evaluating aggregate functions.
@@ -213,7 +215,7 @@ public abstract class AggregateInfoBase {
 
     public String debugString() {
         StringBuilder out = new StringBuilder();
-        out.append(Objects.toStringHelper(this)
+        out.append(toStringHelper(this)
                 .add("grouping_exprs", Expr.debugString(groupingExprs_))
                 .add("aggregate_exprs", Expr.debugString(aggregateExprs_))
                 .add("intermediate_tuple", (intermediateTupleDesc_ == null)

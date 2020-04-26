@@ -22,9 +22,11 @@ import org.apache.doris.analysis.TableRef;
 import org.apache.doris.thrift.TExplainLevel;
 import org.apache.doris.thrift.TPlanNode;
 import org.apache.doris.thrift.TPlanNodeType;
-import com.google.common.base.Objects;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 
 /**
  * Cross join between left child and right child.
@@ -73,7 +75,7 @@ public class CrossJoinNode extends PlanNode {
 
     @Override
     protected String debugString() {
-        return Objects.toStringHelper(this).addValue(super.debugString()).toString();
+        return toStringHelper(this).addValue(super.debugString()).toString();
     }
 
     @Override

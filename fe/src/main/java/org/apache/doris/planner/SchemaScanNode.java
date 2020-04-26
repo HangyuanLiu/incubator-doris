@@ -17,6 +17,7 @@
 
 package org.apache.doris.planner;
 
+import com.google.common.base.MoreObjects;
 import org.apache.doris.analysis.Analyzer;
 import org.apache.doris.analysis.TupleDescriptor;
 import org.apache.doris.catalog.SchemaTable;
@@ -30,13 +31,12 @@ import org.apache.doris.thrift.TScanRangeLocations;
 import org.apache.doris.thrift.TSchemaScanNode;
 import org.apache.doris.thrift.TUserIdentity;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Objects.ToStringHelper;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.List;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * Full scan of an SCHEMA table.
@@ -63,7 +63,7 @@ public class SchemaScanNode extends ScanNode {
 
     @Override
     protected String debugString() {
-        ToStringHelper helper = Objects.toStringHelper(this);
+        MoreObjects.ToStringHelper helper = toStringHelper(this);
         return helper.addValue(super.debugString()).toString();
     }
 

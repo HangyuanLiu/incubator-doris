@@ -47,6 +47,9 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.doris.sql.analyzer.StatementAstVisitor;
+import org.apache.doris.sql.tree.Node;
+import org.apache.doris.sql.tree.QuerySpecification;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -71,7 +74,7 @@ public class SelectStmt extends QueryStmt {
     // ///////////////////////////////////////
     // BEGIN: Members that need to be reset()
 
-    protected SelectList selectList;
+    public SelectList selectList;
     private final ArrayList<String> colLabels; // lower case column labels
     protected final FromClause fromClause_;
     protected GroupByClause groupByClause;
@@ -495,6 +498,9 @@ public class SelectStmt extends QueryStmt {
         return result;
     }
 
+    public FromClause getFromClause() {
+        return fromClause_;
+    }
     private void whereClauseRewrite() {
         Expr deDuplicatedWhere = deduplicateOrs(whereClause);
         if (deDuplicatedWhere != null) {
@@ -1662,5 +1668,11 @@ public class SelectStmt extends QueryStmt {
             return false;
         }
         return this.id.equals(((SelectStmt) obj).id);
+    }
+
+    @Override
+    public <R, C> R accept(StatementAstVisitor<R, C> visitor, Node node, C context)
+    {
+        return visitor.visitQuerySpecification(this, (QuerySpecification)node, context);
     }
 }
