@@ -26,14 +26,7 @@ import org.apache.doris.sql.tree.Node;
 
 public class Main {
     public static void main(String argva[]) {
-        //String sql = "SELECT a FROM TABLE1 where a = 1;";
-        String sql = "select col from table1 where a = 1";
-        CaseInsensitiveStream stream = new CaseInsensitiveStream(CharStreams.fromString(sql));
-        SqlBaseLexer lexer = new SqlBaseLexer(stream);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        SqlBaseParser parser = new SqlBaseParser(tokens);
-        AstBuilder visitor = new AstBuilder(new ParsingOptions());
-        Node stmt = visitor.visit(parser.singleStatement());
+
     }
 }
 

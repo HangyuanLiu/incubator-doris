@@ -132,6 +132,11 @@ public abstract class AstVisitor<R, C>
         return visitExpression(node, context);
     }
 
+    protected R visitDereferenceExpression(DereferenceExpression node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitNullLiteral(NullLiteral node, C context)
     {
         return visitLiteral(node, context);
@@ -190,6 +195,11 @@ public abstract class AstVisitor<R, C>
     protected R visitJoin(Join node, C context)
     {
         return visitRelation(node, context);
+    }
+
+    protected R visitFieldReference(FieldReference node, C context)
+    {
+        return visitExpression(node, context);
     }
 
     protected R visitGroupBy(GroupBy node, C context)

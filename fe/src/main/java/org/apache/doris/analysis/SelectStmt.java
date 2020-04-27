@@ -47,9 +47,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.doris.sql.analyzer.StatementAstVisitor;
-import org.apache.doris.sql.tree.Node;
-import org.apache.doris.sql.tree.QuerySpecification;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -1668,11 +1665,5 @@ public class SelectStmt extends QueryStmt {
             return false;
         }
         return this.id.equals(((SelectStmt) obj).id);
-    }
-
-    @Override
-    public <R, C> R accept(StatementAstVisitor<R, C> visitor, Node node, C context)
-    {
-        return visitor.visitQuerySpecification(this, (QuerySpecification)node, context);
     }
 }

@@ -1,22 +1,36 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.doris.sql.analyzer;
 
-import org.apache.doris.catalog.Type;
+import org.apache.doris.sql.metadata.QualifiedObjectName;
+import org.apache.doris.sql.metadata.Type;
 import org.apache.doris.sql.tree.QualifiedName;
 
 import java.util.Optional;
+
 import static java.util.Objects.requireNonNull;
 
 public class Field
 {
+    private final Optional<QualifiedObjectName> originTable;
+    private final Optional<String> originColumnName;
+    private final Optional<QualifiedName> relationAlias;
+    private final Optional<String> name;
+    private final Type type;
+    private final boolean hidden;
+    private final boolean aliased;
 
-    //private final Optional<QualifiedObjectName> originTable;
-    //private final Optional<String> originColumnName;
-    //private final Optional<QualifiedName> relationAlias;
-    //private final Optional<String> name;
-    //private final Type type = null;
-    private final boolean hidden = false;
-    //private final boolean aliased;
-    /*
     public static Field newUnqualified(String name, Type type)
     {
         requireNonNull(name, "name is null");
@@ -93,12 +107,12 @@ public class Field
     {
         return type;
     }
-    */
+
     public boolean isHidden()
     {
         return hidden;
     }
-    /*
+
     public boolean isAliased()
     {
         return aliased;
@@ -108,8 +122,6 @@ public class Field
     {
         return !prefix.isPresent() || relationAlias.isPresent() && relationAlias.get().hasSuffix(prefix.get());
     }
-
-     */
 
     /*
       Namespaces can have names such as "x", "x.y" or "" if there's no name
@@ -132,8 +144,6 @@ public class Field
        "x"        "y.a"         n
        "x.y"      "y.a"         y
      */
-
-    /*
     public boolean canResolve(QualifiedName name)
     {
         if (!this.name.isPresent()) {
@@ -159,6 +169,4 @@ public class Field
 
         return result.toString();
     }
-
-     */
 }

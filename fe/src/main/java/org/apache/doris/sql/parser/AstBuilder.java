@@ -54,13 +54,13 @@ import static java.util.Objects.requireNonNull;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.stream.Collectors.toList;
 
-class AstBuilder
+public class AstBuilder
         extends SqlBaseBaseVisitor<Node>
 {
     private int parameterPosition;
     private final ParsingOptions parsingOptions;
 
-    AstBuilder(ParsingOptions parsingOptions)
+    public AstBuilder(ParsingOptions parsingOptions)
     {
         this.parsingOptions = requireNonNull(parsingOptions, "parsingOptions is null");
     }
