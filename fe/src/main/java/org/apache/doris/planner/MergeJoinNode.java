@@ -17,7 +17,6 @@
 
 package org.apache.doris.planner;
 
-import com.google.common.base.MoreObjects;
 import org.apache.doris.analysis.Analyzer;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.SlotId;
@@ -27,13 +26,14 @@ import org.apache.doris.thrift.TExplainLevel;
 import org.apache.doris.thrift.TMergeJoinNode;
 import org.apache.doris.thrift.TPlanNode;
 import org.apache.doris.thrift.TPlanNodeType;
+
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
-import org.apache.logging.log4j.Logger;
+
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.List;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * Merge join between left child and right child.
@@ -84,12 +84,12 @@ public class MergeJoinNode extends PlanNode {
 
     @Override
     protected String debugString() {
-        return toStringHelper(this).add("cmpConjuncts", cmpConjunctsDebugString()).addValue(
+        return MoreObjects.toStringHelper(this).add("cmpConjuncts", cmpConjunctsDebugString()).addValue(
           super.debugString()).toString();
     }
 
     private String cmpConjunctsDebugString() {
-        MoreObjects.ToStringHelper helper = toStringHelper(this);
+        MoreObjects.ToStringHelper helper = MoreObjects.toStringHelper(this);
         for (Pair<Expr, Expr> entry : cmpConjuncts) {
             helper.add("lhs", entry.first).add("rhs", entry.second);
         }

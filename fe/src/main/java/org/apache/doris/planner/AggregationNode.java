@@ -17,9 +17,6 @@
 
 package org.apache.doris.planner;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.doris.analysis.AggregateInfo;
 import org.apache.doris.analysis.Analyzer;
 import org.apache.doris.analysis.Expr;
@@ -31,14 +28,16 @@ import org.apache.doris.thrift.TExplainLevel;
 import org.apache.doris.thrift.TExpr;
 import org.apache.doris.thrift.TPlanNode;
 import org.apache.doris.thrift.TPlanNodeType;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.ArrayList;
+import java.util.List;
 
 //import org.apache.doris.thrift.TAggregateFunctionCall;
 
@@ -224,7 +223,7 @@ public class AggregationNode extends PlanNode {
 
     @Override
     protected String debugString() {
-        return toStringHelper(this).add("aggInfo", aggInfo.debugString()).addValue(
+        return MoreObjects.toStringHelper(this).add("aggInfo", aggInfo.debugString()).addValue(
           super.debugString()).toString();
     }
 

@@ -17,7 +17,6 @@
 
 package org.apache.doris.planner;
 
-import com.google.common.base.MoreObjects;
 import org.apache.doris.analysis.Analyzer;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.ExprSubstitutionMap;
@@ -34,6 +33,7 @@ import org.apache.doris.thrift.TPlanNodeType;
 import org.apache.doris.thrift.TScanRangeLocations;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
 
 import org.apache.logging.log4j.LogManager;
@@ -41,8 +41,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * Full scan of an MySQL table.
@@ -64,7 +62,7 @@ public class MysqlScanNode extends ScanNode {
 
     @Override
     protected String debugString() {
-        MoreObjects.ToStringHelper helper = toStringHelper(this);
+        MoreObjects.ToStringHelper helper = MoreObjects.toStringHelper(this);
         return helper.addValue(super.debugString()).toString();
     }
 

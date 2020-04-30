@@ -17,7 +17,6 @@
 
 package org.apache.doris.analysis;
 
-import com.google.common.base.MoreObjects;
 import org.apache.doris.catalog.Table;
 import org.apache.doris.catalog.Type;
 import org.apache.doris.common.AnalysisException;
@@ -26,6 +25,7 @@ import org.apache.doris.thrift.TExprNode;
 import org.apache.doris.thrift.TExprNodeType;
 import org.apache.doris.thrift.TSlotRef;
 
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 
@@ -39,8 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class SlotRef extends Expr {
     private static final Logger LOG = LogManager.getLogger(SlotRef.class);
@@ -141,7 +139,7 @@ public class SlotRef extends Expr {
 
     @Override
     public String debugString() {
-        MoreObjects.ToStringHelper helper = toStringHelper(this);
+        MoreObjects.ToStringHelper helper = MoreObjects.toStringHelper(this);
         helper.add("slotDesc", desc != null ? desc.debugString() : "null");
         helper.add("col", col);
         helper.add("label", label);

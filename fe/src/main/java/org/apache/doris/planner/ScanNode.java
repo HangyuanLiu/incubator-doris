@@ -25,12 +25,10 @@ import org.apache.doris.common.UserException;
 import org.apache.doris.thrift.TNetworkAddress;
 import org.apache.doris.thrift.TScanRangeLocations;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 
 import java.util.List;
 import java.util.Map;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * Representation of the common elements of all scan nodes.
@@ -90,7 +88,7 @@ abstract public class ScanNode extends PlanNode {
 
     @Override
     public String toString() {
-        return toStringHelper(this).add("tid", desc.getId().asInt()).add("tblName",
+        return MoreObjects.toStringHelper(this).add("tid", desc.getId().asInt()).add("tblName",
                 desc.getTable().getName()).add("keyRanges", "").addValue(
                 super.debugString()).toString();
     }

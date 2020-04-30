@@ -34,6 +34,7 @@ import org.apache.doris.thrift.TExprNode;
 import org.apache.doris.thrift.TExprNodeType;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
@@ -47,8 +48,6 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 // TODO: for aggregations, we need to unify the code paths for builtins and UDAs.
 public class FunctionCallExpr extends Expr {
@@ -196,7 +195,7 @@ public class FunctionCallExpr extends Expr {
 
     @Override
     public String debugString() {
-        return toStringHelper(this)/*.add("op", aggOp)*/.add("name", fnName).add("isStar",
+        return MoreObjects.toStringHelper(this)/*.add("op", aggOp)*/.add("name", fnName).add("isStar",
                 fnParams.isStar()).add("isDistinct", fnParams.isDistinct()).addValue(
                 super.debugString()).toString();
     }

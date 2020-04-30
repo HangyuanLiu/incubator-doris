@@ -47,6 +47,12 @@ private:
     std::unordered_map<std::string, IntGauge> metrics;
 };
 
+#define REGISTER_GAUGE_DORIS_METRIC(name, func) \
+  DorisMetrics::metrics()->register_metric(#name, &DorisMetrics::name); \
+  DorisMetrics::metrics()->register_hook(#name, [&]() { \
+      DorisMetrics::name.set_value(func());  \
+});
+
 class DorisMetrics {
 public:
     // counters
@@ -166,8 +172,25 @@ public:
 
     static IntCounter blocks_push_remote_duration_us;
 
+    // Size of some global containers
+    static UIntGauge rowset_count_generated_and_in_use;
+    static UIntGauge unused_rowsets_count;
+    static UIntGauge broker_count;
+    static UIntGauge data_stream_receiver_count;
+    static UIntGauge fragment_endpoint_count;
+    static UIntGauge active_scan_context_count;
+    static UIntGauge plan_fragment_count;
+    static UIntGauge load_channel_count;
+    static UIntGauge result_buffer_block_count;
+    static UIntGauge result_block_queue_count;
+    static UIntGauge routine_load_task_count;
+    static UIntGauge small_file_cache_count;
+    static UIntGauge stream_load_pipe_count;
+    static UIntGauge brpc_endpoint_stub_count;
+    static UIntGauge tablet_writer_count;
+
     ~DorisMetrics();
-    // call before calling metrics
+    // not thread-safe, call before calling metrics
     void initialize(
         const std::string& name,
         const std::vector<std::string>& paths = std::vector<std::string>(),
@@ -180,7 +203,7 @@ public:
     static SystemMetrics* system_metrics() { return _s_doris_metrics._system_metrics; }
 private:
     // Don't allow constrctor
-    DorisMetrics();
+    DorisMetrics() {}
 
     void update();
     void _update_process_thread_num();
@@ -191,8 +214,8 @@ private:
 
     static DorisMetrics _s_doris_metrics;
 
-    MetricRegistry* _metrics;
-    SystemMetrics* _system_metrics;
+    MetricRegistry* _metrics = nullptr;
+    SystemMetrics* _system_metrics = nullptr;
 };
 
 };

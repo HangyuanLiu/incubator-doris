@@ -28,7 +28,7 @@ import org.apache.doris.common.TreeNode;
 import org.apache.doris.thrift.TExprNode;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
@@ -38,8 +38,6 @@ import org.slf4j.LoggerFactory;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * Representation of an analytic function call with OVER clause.
@@ -179,7 +177,7 @@ public class AnalyticExpr extends Expr {
 
     @Override
     public String debugString() {
-        return toStringHelper(this)
+        return MoreObjects.toStringHelper(this)
                .add("fn", getFnCall())
                .add("window", window)
                .addValue(super.debugString())

@@ -33,7 +33,7 @@ import org.apache.doris.thrift.TPlanNode;
 import org.apache.doris.thrift.TPlanNodeType;
 import org.apache.doris.thrift.TRepeatNode;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -45,8 +45,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * Used for grouping sets.
@@ -179,7 +177,7 @@ public class RepeatNode extends PlanNode {
 
     @Override
     protected String debugString() {
-        return toStringHelper(this).add("Repeat", repeatSlotIdList.size()).addValue(
+        return MoreObjects.toStringHelper(this).add("Repeat", repeatSlotIdList.size()).addValue(
                 super.debugString()).toString();
     }
 
