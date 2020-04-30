@@ -37,6 +37,7 @@
 #include "olap/storage_engine.h"
 #include "olap/olap_cond.h"
 #include "runtime/exec_env.h"
+#include "util/doris_metrics.h"
 
 #ifndef BE_TEST
 #define BE_TEST
@@ -150,6 +151,10 @@ void create_tablet_meta(TabletSchema* tablet_schema, TabletMeta* tablet_meta) {
 class RowsetConverterTest : public testing::Test {
 public:
     virtual void SetUp() {
+        config::tablet_map_shard_size = 1;
+        config::txn_map_shard_size = 1;
+        config::txn_shard_size = 1;
+        DorisMetrics::instance()->initialize("ut");
         config::path_gc_check = false;
         char buffer[MAX_PATH_LEN];
         getcwd(buffer, MAX_PATH_LEN);
@@ -161,7 +166,9 @@ public:
 
         doris::EngineOptions options;
         options.store_paths = paths;
-        doris::StorageEngine::open(options, &k_engine);
+        if (k_engine == nullptr) {
+            doris::StorageEngine::open(options, &k_engine);
+        }
 
         ExecEnv* exec_env = doris::ExecEnv::GetInstance();
         exec_env->set_storage_engine(k_engine);
@@ -212,8 +219,6 @@ void RowsetConverterTest::process(RowsetTypePB src_type, RowsetTypePB dst_type) 
         _rowset_writer->add_row(row);
     }
     _rowset_writer->flush();
-    auto cache = new_lru_cache(config::file_descriptor_cache_capacity);
-    FileHandler::set_fd_cache(cache);
     RowsetSharedPtr src_rowset = _rowset_writer->build();
     ASSERT_TRUE(src_rowset != nullptr);
     RowsetId src_rowset_id;

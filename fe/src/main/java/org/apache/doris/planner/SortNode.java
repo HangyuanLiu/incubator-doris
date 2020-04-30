@@ -32,17 +32,15 @@ import org.apache.doris.thrift.TSortInfo;
 import org.apache.doris.thrift.TSortNode;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Iterator;
 import java.util.List;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * Sorting.
@@ -143,7 +141,7 @@ public class SortNode extends PlanNode {
         for (Boolean isAsc : info.getIsAscOrder()) {
             strings.add(isAsc ? "a" : "d");
         }
-        return toStringHelper(this).add("ordering_exprs",
+        return MoreObjects.toStringHelper(this).add("ordering_exprs",
           Expr.debugString(info.getOrderingExprs())).add("is_asc",
           "[" + Joiner.on(" ").join(strings) + "]").addValue(super.debugString()).toString();
     }

@@ -30,6 +30,7 @@ import org.apache.doris.thrift.TExprNode;
 import org.apache.doris.thrift.TExprOpcode;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -48,8 +49,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * Root of the expr node hierarchy.
@@ -1303,7 +1302,7 @@ abstract public class Expr extends TreeNode<Expr> implements ParseNode, Cloneabl
 
     @Override
     public String toString() {
-        return toStringHelper(this.getClass()).add("id", id).add("type", type).add("sel",
+        return MoreObjects.toStringHelper(this.getClass()).add("id", id).add("type", type).add("sel",
           selectivity).add("#distinct", numDistinctValues).add("scale", outputScale).toString();
     }
 

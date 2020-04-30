@@ -97,11 +97,6 @@ Status StorageEngine::open(const EngineOptions& options, StorageEngine** engine_
         LOG(WARNING) << "engine open failed, res=" << st;
         return Status::InternalError("open engine failed");
     }
-    st = engine->_start_bg_worker();
-    if (st != OLAP_SUCCESS) {
-        LOG(WARNING) << "engine start background failed, res=" << st;
-        return Status::InternalError("open engine failed");
-    }
     *engine_ptr = engine.release();
     LOG(INFO) << "success to init storage engine.";
     return Status::OK();
@@ -123,6 +118,10 @@ StorageEngine::StorageEngine(const EngineOptions& options)
     if (_s_instance == nullptr) {
         _s_instance = this;
     }
+    REGISTER_GAUGE_DORIS_METRIC(unused_rowsets_count, [this]() {
+        MutexLock lock(&_gc_mutex);
+        return _unused_rowsets.size();
+    });
 }
 
 StorageEngine::~StorageEngine() {
@@ -156,9 +155,6 @@ OLAPStatus StorageEngine::_open() {
     _update_storage_medium_type_count();
 
     RETURN_NOT_OK(_check_file_descriptor_number());
-
-    auto cache = new_lru_cache(config::file_descriptor_cache_capacity);
-    FileHandler::set_fd_cache(cache);
 
     _index_stream_lru_cache = new_lru_cache(config::index_stream_cache_capacity);
 
@@ -457,9 +453,6 @@ bool StorageEngine::_delete_tablets_on_unused_root_path() {
 }
 
 void StorageEngine::_clear() {
-    // 删除lru中所有内容,其实进程退出这么做本身意义不大,但对单测和更容易发现问题还是有很大意义的
-    delete FileHandler::get_fd_cache();
-    FileHandler::set_fd_cache(nullptr);
     SAFE_DELETE(_index_stream_lru_cache);
 
     std::lock_guard<std::mutex> l(_store_lock);

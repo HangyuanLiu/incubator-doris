@@ -23,6 +23,7 @@ import org.apache.doris.analysis.CreateTableStmt;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Database;
 import org.apache.doris.catalog.OlapTable;
+import org.apache.doris.catalog.Partition;
 import org.apache.doris.common.Config;
 import org.apache.doris.common.FeConstants;
 import org.apache.doris.qe.ConnectContext;
@@ -48,6 +49,7 @@ public class AlterTest {
         FeConstants.runningUnitTest = true;
         FeConstants.default_scheduler_interval_millisecond = 100;
         Config.dynamic_partition_enable = true;
+        Config.dynamic_partition_check_interval_seconds = 1;
         UtFrameUtils.createMinDorisCluster(runningDir);
 
         // create connect context
@@ -69,6 +71,28 @@ public class AlterTest {
                 "    PARTITION p2 values less than('2020-03-01')\n" + 
                 ")\n" + 
                 "DISTRIBUTED BY HASH(k2) BUCKETS 3\n" + 
+                "PROPERTIES('replication_num' = '1');");
+
+        createTable("CREATE TABLE test.tbl2\n" +
+                "(\n" +
+                "    k1 date,\n" +
+                "    v1 int sum\n" +
+                ")\n" +
+                "DISTRIBUTED BY HASH (k1) BUCKETS 3\n" +
+                "PROPERTIES('replication_num' = '1');");
+
+        createTable("CREATE TABLE test.tbl3\n" +
+                "(\n" +
+                "    k1 date,\n" +
+                "    k2 int,\n" +
+                "    v1 int sum\n" +
+                ")\n" +
+                "PARTITION BY RANGE(k1)\n" +
+                "(\n" +
+                "    PARTITION p1 values less than('2020-02-01'),\n" +
+                "    PARTITION p2 values less than('2020-03-01')\n" +
+                ")\n" +
+                "DISTRIBUTED BY HASH(k2) BUCKETS 3\n" +
                 "PROPERTIES('replication_num' = '1');");
     }
 
@@ -126,10 +150,10 @@ public class AlterTest {
         waitSchemaChangeJobDone(true);
         
         // enable dynamic partition
+        // not adding the `start` property so that it won't drop the origin partition p1, p2 and p3
         stmt = "alter table test.tbl1 set (\n" + 
                 "'dynamic_partition.enable' = 'true',\n" + 
-                "'dynamic_partition.time_unit' = 'DAY',\n" + 
-                "'dynamic_partition.start' = '-3',\n" + 
+                "'dynamic_partition.time_unit' = 'DAY',\n" +
                 "'dynamic_partition.end' = '3',\n" + 
                 "'dynamic_partition.prefix' = 'p',\n" + 
                 "'dynamic_partition.buckets' = '3'\n" + 
@@ -164,13 +188,50 @@ public class AlterTest {
         alterTable(stmt, false);
         Assert.assertEquals(Short.valueOf("3"), tbl.getDefaultReplicationNum());
 
+        // set range table's real replication num
+        Partition p1 = tbl.getPartition("p1");
+        Assert.assertEquals(Short.valueOf("1"), Short.valueOf(tbl.getPartitionInfo().getReplicationNum(p1.getId())));
+        stmt = "alter table test.tbl1 set ('replication_num' = '3');";
+        alterTable(stmt, true);
+        Assert.assertEquals(Short.valueOf("1"), Short.valueOf(tbl.getPartitionInfo().getReplicationNum(p1.getId())));
+
+        // set un-partitioned table's real replication num
+        OlapTable tbl2 = (OlapTable) db.getTable("tbl2");
+        Partition partition = tbl2.getPartition(tbl2.getName());
+        Assert.assertEquals(Short.valueOf("1"), Short.valueOf(tbl2.getPartitionInfo().getReplicationNum(partition.getId())));
+        stmt = "alter table test.tbl2 set ('replication_num' = '3');";
+        alterTable(stmt, false);
+        Assert.assertEquals(Short.valueOf("3"), Short.valueOf(tbl2.getPartitionInfo().getReplicationNum(partition.getId())));
+
+        Thread.sleep(5000); // sleep to wait dynamic partition scheduler run
         // add partition without set replication num
-        stmt = "alter table test.tbl1 add partition p4 values less than('2020-05-01')";
+        stmt = "alter table test.tbl1 add partition p4 values less than('2020-04-10')";
         alterTable(stmt, true);
 
         // add partition when dynamic partition is disable
-        stmt = "alter table test.tbl1 add partition p4 values less than('2020-05-01') ('replication_num' = '1')";
+        stmt = "alter table test.tbl1 add partition p4 values less than('2020-04-10') ('replication_num' = '1')";
         alterTable(stmt, false);
+    }
+
+    @Test
+    public void testDynamicPartitionDropAndAdd() throws Exception {
+        // test day range
+        String stmt = "alter table test.tbl3 set (\n" +
+                "'dynamic_partition.enable' = 'true',\n" +
+                "'dynamic_partition.time_unit' = 'DAY',\n" +
+                "'dynamic_partition.start' = '-3',\n" +
+                "'dynamic_partition.end' = '3',\n" +
+                "'dynamic_partition.prefix' = 'p',\n" +
+                "'dynamic_partition.buckets' = '3'\n" +
+                " );";
+        alterTable(stmt, false);
+        Thread.sleep(5000); // sleep to wait dynamic partition scheduler run
+
+        Database db = Catalog.getCurrentCatalog().getDb("default_cluster:test");
+        OlapTable tbl = (OlapTable) db.getTable("tbl3");
+        Assert.assertEquals(4, tbl.getPartitionNames().size());
+        Assert.assertNull(tbl.getPartition("p1"));
+        Assert.assertNull(tbl.getPartition("p2"));
     }
 
     private void waitSchemaChangeJobDone(boolean rollupJob) throws InterruptedException {

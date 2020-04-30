@@ -32,6 +32,8 @@
 #include "service/brpc.h"
 #include "util/brpc_stub_cache.h"
 #include "util/cpu_info.h"
+#include "util/debug/leakcheck_disabler.h"
+#include "util/doris_metrics.h"
 #include "runtime/descriptor_helper.h"
 #include "runtime/bufferpool/reservation_tracker.h"
 #include "runtime/exec_env.h"
@@ -48,6 +50,7 @@ public:
     OlapTableSinkTest() { }
     virtual ~OlapTableSinkTest() { }
     void SetUp() override {
+        DorisMetrics::instance()->initialize("ut");
         k_add_batch_status = Status::OK();
         _env = ExecEnv::GetInstance();
         _env->_thread_mgr = new ThreadResourceMgr();
@@ -58,15 +61,13 @@ public:
 
         config::tablet_writer_open_rpc_timeout_sec = 60;
     }
+
     void TearDown() override {
-        delete _env->_brpc_stub_cache;
-        _env->_brpc_stub_cache = nullptr;
-        delete _env->_load_stream_mgr;
-        _env->_load_stream_mgr = nullptr;
-        delete _env->_master_info;
-        _env->_master_info = nullptr;
-        delete _env->_thread_mgr;
-        _env->_thread_mgr = nullptr;
+        SAFE_DELETE(_env->_brpc_stub_cache);
+        SAFE_DELETE(_env->_load_stream_mgr);
+        SAFE_DELETE(_env->_master_info);
+        SAFE_DELETE(_env->_thread_mgr);
+        SAFE_DELETE(_env->_buffer_reservation);
     }
 private:
     ExecEnv* _env;
@@ -335,7 +336,10 @@ TEST_F(OlapTableSinkTest, normal) {
     auto service = new TestInternalService();
     server->AddService(service, brpc::SERVER_OWNS_SERVICE);
     brpc::ServerOptions options;
-    server->Start(4356, &options);
+    {
+        debug::ScopedLeakCheckDisabler disable_lsan;
+        server->Start(4356, &options);
+    }
 
     TUniqueId fragment_id;
     TQueryOptions query_options;
@@ -443,7 +447,10 @@ TEST_F(OlapTableSinkTest, convert) {
     auto service = new TestInternalService();
     server->AddService(service, brpc::SERVER_OWNS_SERVICE);
     brpc::ServerOptions options;
-    server->Start(4356, &options);
+    {
+        debug::ScopedLeakCheckDisabler disable_lsan;
+        server->Start(4356, &options);
+    }
 
     TUniqueId fragment_id;
     TQueryOptions query_options;
@@ -754,7 +761,10 @@ TEST_F(OlapTableSinkTest, add_batch_failed) {
     auto service = new TestInternalService();
     server->AddService(service, brpc::SERVER_OWNS_SERVICE);
     brpc::ServerOptions options;
-    server->Start(4356, &options);
+    {
+        debug::ScopedLeakCheckDisabler disable_lsan;
+        server->Start(4356, &options);
+    }
 
     TUniqueId fragment_id;
     TQueryOptions query_options;
@@ -849,7 +859,10 @@ TEST_F(OlapTableSinkTest, decimal) {
     auto service = new TestInternalService();
     server->AddService(service, brpc::SERVER_OWNS_SERVICE);
     brpc::ServerOptions options;
-    server->Start(4356, &options);
+    {
+        debug::ScopedLeakCheckDisabler disable_lsan;
+        server->Start(4356, &options);
+    }
 
     TUniqueId fragment_id;
     TQueryOptions query_options;

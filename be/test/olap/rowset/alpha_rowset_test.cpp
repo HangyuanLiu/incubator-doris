@@ -34,6 +34,7 @@
 #include "olap/rowset/alpha_rowset_reader.h"
 #include "olap/data_dir.h"
 #include "olap/storage_engine.h"
+#include "util/doris_metrics.h"
 
 #ifndef BE_TEST
 #define BE_TEST
@@ -49,6 +50,7 @@ namespace doris {
 static const uint32_t MAX_PATH_LEN = 1024;
 
 void set_up() {
+    DorisMetrics::instance()->initialize("ut");
     config::path_gc_check = false;
     char buffer[MAX_PATH_LEN];
     getcwd(buffer, MAX_PATH_LEN);
@@ -181,8 +183,6 @@ TEST_F(AlphaRowsetTest, TestAlphaRowsetWriter) {
     row.set_field_content(2, reinterpret_cast<char*>(&field_2), _mem_pool.get());
     _alpha_rowset_writer->add_row(row);
     _alpha_rowset_writer->flush();
-    auto cache = new_lru_cache(config::file_descriptor_cache_capacity);
-    FileHandler::set_fd_cache(cache);
     RowsetSharedPtr alpha_rowset = _alpha_rowset_writer->build();
     ASSERT_TRUE(alpha_rowset != nullptr);
     RowsetId rowset_id;
@@ -216,8 +216,6 @@ TEST_F(AlphaRowsetTest, TestAlphaRowsetReader) {
     ASSERT_EQ(OLAP_SUCCESS, res);
     res = _alpha_rowset_writer->flush();
     ASSERT_EQ(OLAP_SUCCESS, res);
-    auto cache = new_lru_cache(config::file_descriptor_cache_capacity);
-    FileHandler::set_fd_cache(cache);
     RowsetSharedPtr alpha_rowset = _alpha_rowset_writer->build();
     ASSERT_TRUE(alpha_rowset != nullptr);
     RowsetId rowset_id;
