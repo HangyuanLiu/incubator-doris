@@ -17,13 +17,8 @@
 
 package org.apache.doris.planner;
 
-import org.apache.doris.analysis.AggregateInfo;
-import org.apache.doris.analysis.BinaryPredicate;
-import org.apache.doris.analysis.Expr;
-import org.apache.doris.analysis.InsertStmt;
-import org.apache.doris.analysis.JoinOperator;
-import org.apache.doris.analysis.QueryStmt;
-import org.apache.doris.analysis.SlotDescriptor;
+import com.google.common.collect.Maps;
+import org.apache.doris.analysis.*;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.ColocateTableIndex;
 import org.apache.doris.catalog.ColocateTableIndex.GroupId;
@@ -46,6 +41,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * The distributed planner is responsible for creating an executable, distributed plan
@@ -766,6 +763,41 @@ public class DistributedPlanner {
         if (childFragment.getPlanRoot().getNumInstances() <= 1) {
             childFragment.addPlanRoot(node);
             return childFragment;
+        }
+
+        // can local aggregation
+        PlanNode scanChild = node.getChild(0);
+        if (scanChild instanceof OlapScanNode) {
+            ArrayList<String> allDisColumn = new ArrayList<>();
+
+            // build distribute columns
+            DistributionInfo distributionInfo = ((OlapScanNode) scanChild).getOlapTable().getDefaultDistributionInfo();
+            List<Column> disColumns = ((HashDistributionInfo) distributionInfo).getDistributionColumns();
+            for (Column c : disColumns) {
+                allDisColumn.add(c.getName());
+            }
+            // build partition column
+            // TODO
+            ((OlapScanNode) scanChild).getOlapTable().getPartition(0).toString()
+
+            ArrayList<Expr> groupingExprs = node.getAggInfo().getGroupingExprs();
+            for (Expr expr : groupingExprs) {
+                if (allDisColumn.size() == 0){
+                    childFragment.addPlanRoot(node);
+                    return childFragment;
+                }
+                if (expr instanceof SlotRef) {
+                    if(!allDisColumn.contains(((SlotRef) expr).getColumnName())) {
+                        break;
+                    } else {
+                        allDisColumn.remove(((SlotRef) expr).getColumnName());
+                    }
+                }
+            }
+            if (allDisColumn.size() == 0){
+                childFragment.addPlanRoot(node);
+                return childFragment;
+            }
         }
 
         // 2nd phase of DISTINCT aggregation
