@@ -1,6 +1,7 @@
 package org.apache.doris.sql.analyzer;
 
-import org.apache.doris.catalog.Type;
+
+import org.apache.doris.sql.metadata.Type;
 
 import static java.util.Objects.requireNonNull;
 
@@ -23,8 +24,7 @@ public class ResolvedField
 
     public Type getType()
     {
-        //return field.getType();
-        return null;
+        return field.getType();
     }
 
     public Scope getScope()

@@ -13,9 +13,13 @@
  */
 package org.apache.doris.sql.planner;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.doris.sql.analyzer.RelationType;
 import org.apache.doris.sql.analyzer.Scope;
+import org.apache.doris.sql.planner.plan.PlanNode;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 
+import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;

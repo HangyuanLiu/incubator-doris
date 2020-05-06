@@ -11,22 +11,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.doris.sql.planner.plan;
+package org.apache.doris.sql.planner;
 
-import com.facebook.presto.spi.VariableAllocator;
-import com.facebook.presto.spi.relation.CallExpression;
-import com.facebook.presto.spi.relation.RowExpression;
-import com.facebook.presto.spi.relation.VariableReferenceExpression;
-import com.facebook.presto.spi.type.BigintType;
-import com.facebook.presto.spi.type.Type;
-import com.facebook.presto.sql.analyzer.Field;
-import com.facebook.presto.sql.tree.Expression;
-import com.facebook.presto.sql.tree.FunctionCall;
-import com.facebook.presto.sql.tree.GroupingOperation;
-import com.facebook.presto.sql.tree.Identifier;
-import com.facebook.presto.sql.tree.QualifiedName;
-import com.facebook.presto.sql.tree.SymbolReference;
 import com.google.common.primitives.Ints;
+import org.apache.doris.sql.analyzer.Field;
+import org.apache.doris.sql.relation.RowExpression;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
+import org.apache.doris.sql.tree.Expression;
+import org.apache.doris.sql.tree.Identifier;
+import org.apache.doris.sql.tree.QualifiedName;
+import org.apache.doris.sql.tree.SymbolReference;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -39,7 +33,7 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
 public class PlanVariableAllocator
-        implements VariableAllocator
+        //implements VariableAllocator
 {
     private static final Pattern DISALLOWED_CHAR_PATTERN = Pattern.compile("[^a-zA-Z0-9_\\-$]+");
 
@@ -78,7 +72,6 @@ public class PlanVariableAllocator
         return newVariable("$hashValue", BigintType.BIGINT);
     }
 
-    @Override
     public VariableReferenceExpression newVariable(String nameHint, Type type, String suffix)
     {
         requireNonNull(nameHint, "name is null");
@@ -163,6 +156,11 @@ public class PlanVariableAllocator
 
     public VariableReferenceExpression newVariable(RowExpression expression)
     {
+        return newVariable(expression, null);
+    }
+
+    public VariableReferenceExpression newVariable(RowExpression expression, String suffix)
+    {
         String nameHint = "expr";
         if (expression instanceof VariableReferenceExpression) {
             nameHint = ((VariableReferenceExpression) expression).getName();
@@ -170,6 +168,6 @@ public class PlanVariableAllocator
         else if (expression instanceof CallExpression) {
             nameHint = ((CallExpression) expression).getDisplayName();
         }
-        return newVariable(nameHint, expression.getType(), null);
+        return newVariable(nameHint, expression.getType(), suffix);
     }
 }

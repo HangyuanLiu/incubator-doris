@@ -15,8 +15,8 @@ package org.apache.doris.sql.planner;
 import com.google.common.collect.ImmutableList;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.ResolvedField;
-import org.apache.doris.sql.tree.Expression;
-import org.apache.doris.sql.tree.FieldReference;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
+import org.apache.doris.sql.tree.*;
 
 import java.util.HashMap;
 import java.util.List;

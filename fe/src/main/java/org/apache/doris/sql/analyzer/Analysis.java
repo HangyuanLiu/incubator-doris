@@ -18,8 +18,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimap;
-import org.apache.doris.sql.metadata.ColumnHandle;
-import org.apache.doris.sql.metadata.TableHandle;
+import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.FunctionCall;
 import org.apache.doris.sql.tree.Identifier;
@@ -49,6 +48,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
@@ -225,21 +225,6 @@ public class Analysis
     public Type getCoercion(Expression expression)
     {
         return coercions.get(NodeRef.of(expression));
-    }
-
-    public void addLambdaArgumentReferences(Map<NodeRef<Identifier>, LambdaArgumentDeclaration> lambdaArgumentReferences)
-    {
-        this.lambdaArgumentReferences.putAll(lambdaArgumentReferences);
-    }
-
-    public LambdaArgumentDeclaration getLambdaArgumentReference(Identifier identifier)
-    {
-        return lambdaArgumentReferences.get(NodeRef.of(identifier));
-    }
-
-    public Map<NodeRef<Identifier>, LambdaArgumentDeclaration> getLambdaArgumentReferences()
-    {
-        return unmodifiableMap(lambdaArgumentReferences);
     }
 
     public void setGroupingSets(QuerySpecification node, GroupingSetAnalysis groupingSets)
@@ -543,17 +528,6 @@ public class Analysis
         NodeRef<SampledRelation> key = NodeRef.of(relation);
         checkState(sampleRatios.containsKey(key), "Sample ratio missing for %s. Broken analysis?", relation);
         return sampleRatios.get(key);
-    }
-
-    public void setGroupingOperations(QuerySpecification querySpecification, List<GroupingOperation> groupingOperations)
-    {
-        this.groupingOperations.put(NodeRef.of(querySpecification), ImmutableList.copyOf(groupingOperations));
-    }
-
-    public List<GroupingOperation> getGroupingOperations(QuerySpecification querySpecification)
-    {
-        return Optional.ofNullable(groupingOperations.get(NodeRef.of(querySpecification)))
-                .orElse(emptyList());
     }
 
     public List<Expression> getParameters()

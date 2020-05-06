@@ -18,12 +18,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
-import org.apache.doris.analysis.SqlParser;
-import org.apache.doris.sql.metadata.AccessControl;
-import org.apache.doris.sql.metadata.Metadata;
-import org.apache.doris.sql.metadata.QualifiedObjectName;
-import org.apache.doris.sql.metadata.Session;
-import org.apache.doris.sql.metadata.WarningCollector;
+import org.apache.doris.sql.metadata.*;
+import org.apache.doris.sql.parser.SqlParser;
 import org.apache.doris.sql.tree.AliasedRelation;
 import org.apache.doris.sql.tree.AllColumns;
 import org.apache.doris.sql.tree.AstUtils;
@@ -56,13 +52,10 @@ import org.apache.doris.sql.tree.Table;
 import org.apache.doris.sql.tree.With;
 import org.apache.doris.sql.tree.WithQuery;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getLast;
@@ -72,17 +65,7 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.ExpressionTreeUtils.extractAggregateFunctions;
 import static org.apache.doris.sql.analyzer.ScopeReferenceExtractor.hasReferencesToScope;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.COLUMN_NAME_NOT_SPECIFIED;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.DUPLICATE_RELATION;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.INVALID_ORDINAL;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.MISMATCHED_COLUMN_ALIASES;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.MISSING_SCHEMA;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.MISSING_TABLE;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.NONDETERMINISTIC_ORDER_BY_EXPRESSION_WITH_SELECT_DISTINCT;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.NOT_SUPPORTED;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.ORDER_BY_MUST_BE_IN_SELECT;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.TYPE_MISMATCH;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.WILDCARD_WITHOUT_FROM;
+import static org.apache.doris.sql.analyzer.SemanticErrorCode.*;
 
 public class StatementAnalyzer
 {
@@ -157,7 +140,7 @@ public class StatementAnalyzer
             Scope withScope = analyzeWith(node, scope);
             Scope queryBodyScope = process(node.getQueryBody(), withScope);
             if (node.getOrderBy().isPresent()) {
-                analyzeOrderBy(node, queryBodyScope);
+                //analyzeOrderBy(node, queryBodyScope);
             }
             else {
                 analysis.setOrderByExpressions(node, emptyList());
@@ -239,52 +222,6 @@ public class StatementAnalyzer
             }
             analysis.addEmptyColumnReferencesForTable(accessControl, session.getIdentity(), name);
 
-            Optional<ViewDefinition> optionalView = metadata.getView(session, name);
-            if (optionalView.isPresent()) {
-                Statement statement = analysis.getStatement();
-                if (statement instanceof CreateView) {
-                    CreateView viewStatement = (CreateView) statement;
-                    QualifiedObjectName viewNameFromStatement = createQualifiedObjectName(session, viewStatement, viewStatement.getName());
-                    if (viewStatement.isReplace() && viewNameFromStatement.equals(name)) {
-                        throw new SemanticException(VIEW_IS_RECURSIVE, table, "Statement would create a recursive view");
-                    }
-                }
-                if (analysis.hasTableInView(table)) {
-                    throw new SemanticException(VIEW_IS_RECURSIVE, table, "View is recursive");
-                }
-                ViewDefinition view = optionalView.get();
-
-                Query query = parseView(view.getOriginalSql(), name, table);
-
-                analysis.registerNamedQuery(table, query);
-
-                analysis.registerTableForView(table);
-                RelationType descriptor = analyzeView(query, name, view.getCatalog(), view.getSchema(), view.getOwner(), table);
-                analysis.unregisterTableForView();
-
-                if (isViewStale(view.getColumns(), descriptor.getVisibleFields())) {
-                    throw new SemanticException(VIEW_IS_STALE, table, "View '%s' is stale; it must be re-created", name);
-                }
-
-                // Derive the type of the view from the stored definition, not from the analysis of the underlying query.
-                // This is needed in case the underlying table(s) changed and the query in the view now produces types that
-                // are implicitly coercible to the declared view types.
-                List<Field> outputFields = view.getColumns().stream()
-                        .map(column -> Field.newQualified(
-                                table.getName(),
-                                Optional.of(column.getName()),
-                                column.getType(),
-                                false,
-                                Optional.of(name),
-                                Optional.of(column.getName()),
-                                false))
-                        .collect(toImmutableList());
-
-                analysis.addRelationCoercion(table, outputFields.stream().map(Field::getType).toArray(Type[]::new));
-
-                return createAndAssignScope(table, scope, outputFields);
-            }
-
             Optional<TableHandle> tableHandle = metadata.getTableHandle(session, name);
             if (!tableHandle.isPresent()) {
                 if (!metadata.getCatalogHandle(session, name.getCatalogName()).isPresent()) {
@@ -321,7 +258,7 @@ public class StatementAnalyzer
         }
 
         @Override
-        protected Scope (AliasedRelation relation, Optional<Scope> scope)
+        protected Scope visitAliasedRelation(AliasedRelation relation, Optional<Scope> scope)
         {
             Scope relationScope = process(relation.getRelation(), scope);
 
@@ -630,7 +567,7 @@ public class StatementAnalyzer
         {
             ExpressionAnalysis expressionAnalysis = analyzeExpression(predicate, scope);
 
-            Analyzer.verifyNoAggregateWindowOrGroupingFunctions(analysis.getFunctionHandles(), metadata.getFunctionManager(), predicate, "WHERE clause");
+            //Analyzer.verifyNoAggregateWindowOrGroupingFunctions(analysis.getFunctionHandles(), metadata.getFunctionManager(), predicate, "WHERE clause");
 
             analysis.recordSubqueries(node, expressionAnalysis);
 
