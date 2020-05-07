@@ -13,9 +13,9 @@
  */
 package org.apache.doris.sql.planner.plan;
 
-import com.facebook.presto.spi.relation.VariableReferenceExpression;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 
 import java.util.List;
 

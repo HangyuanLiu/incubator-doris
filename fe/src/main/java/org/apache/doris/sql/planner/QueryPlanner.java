@@ -23,31 +23,25 @@ import org.apache.doris.sql.analyzer.FieldId;
 import org.apache.doris.sql.analyzer.Scope;
 import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.metadata.Session;
-import org.apache.doris.sql.tree.Expression;
-import org.apache.doris.sql.tree.FunctionCall;
-import org.apache.doris.sql.tree.Node;
-import org.apache.doris.sql.tree.OrderBy;
-import org.apache.doris.sql.tree.Query;
-import org.apache.doris.sql.tree.QuerySpecification;
-import org.apache.doris.sql.tree.SortItem;
+import org.apache.doris.sql.planner.plan.*;
+import org.apache.doris.sql.relation.RowExpression;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
+import org.apache.doris.sql.tree.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Streams.stream;
 import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 
 class QueryPlanner
 {
     private final Analysis analysis;
     private final PlanVariableAllocator variableAllocator;
     private final PlanNodeIdAllocator idAllocator;
-    private final Map<NodeRef<LambdaArgumentDeclaration>, VariableReferenceExpression> lambdaDeclarationToVariableMap;
     private final Metadata metadata;
     private final Session session;
     //private final SubqueryPlanner subqueryPlanner;
@@ -56,21 +50,18 @@ class QueryPlanner
             Analysis analysis,
             PlanVariableAllocator variableAllocator,
             PlanNodeIdAllocator idAllocator,
-            Map<NodeRef<LambdaArgumentDeclaration>, VariableReferenceExpression> lambdaDeclarationToVariableMap,
             Metadata metadata,
             Session session)
     {
         requireNonNull(analysis, "analysis is null");
         requireNonNull(variableAllocator, "variableAllocator is null");
         requireNonNull(idAllocator, "idAllocator is null");
-        requireNonNull(lambdaDeclarationToVariableMap, "lambdaDeclarationToVariableMap is null");
         requireNonNull(metadata, "metadata is null");
         requireNonNull(session, "session is null");
 
         this.analysis = analysis;
         this.variableAllocator = variableAllocator;
         this.idAllocator = idAllocator;
-        this.lambdaDeclarationToVariableMap = lambdaDeclarationToVariableMap;
         this.metadata = metadata;
         this.session = session;
         //this.subqueryPlanner = new SubqueryPlanner(analysis, variableAllocator, idAllocator, lambdaDeclarationToVariableMap, metadata, session);
@@ -151,7 +142,7 @@ class QueryPlanner
 
     private PlanBuilder planQueryBody(Query query)
     {
-        RelationPlan relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, lambdaDeclarationToVariableMap, metadata, session)
+        RelationPlan relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, metadata, session)
                 .process(query.getQueryBody(), null);
 
         return planBuilderFor(relationPlan);
@@ -162,7 +153,7 @@ class QueryPlanner
         RelationPlan relationPlan;
 
         if (node.getFrom().isPresent()) {
-            relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, lambdaDeclarationToVariableMap, metadata, session)
+            relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, metadata, session)
                     .process(node.getFrom().get(), null);
         }
         else {

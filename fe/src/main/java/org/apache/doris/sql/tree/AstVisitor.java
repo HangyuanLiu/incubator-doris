@@ -212,6 +212,11 @@ public abstract class AstVisitor<R, C>
         return visitNode(node, context);
     }
 
+    protected R visitSymbolReference(SymbolReference node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitQuantifiedComparisonExpression(QuantifiedComparisonExpression node, C context)
     {
         return visitExpression(node, context);

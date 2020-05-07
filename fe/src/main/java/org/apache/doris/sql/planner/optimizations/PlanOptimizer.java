@@ -16,6 +16,8 @@ package org.apache.doris.sql.planner.optimizations;
 
 import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.metadata.WarningCollector;
+import org.apache.doris.sql.planner.PlanVariableAllocator;
+import org.apache.doris.sql.planner.TypeProvider;
 import org.apache.doris.sql.planner.plan.PlanNode;
 import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 

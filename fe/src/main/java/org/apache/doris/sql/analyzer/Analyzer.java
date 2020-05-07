@@ -16,6 +16,11 @@ package org.apache.doris.sql.analyzer;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 
+import org.apache.doris.sql.metadata.AccessControl;
+import org.apache.doris.sql.metadata.Metadata;
+import org.apache.doris.sql.metadata.Session;
+import org.apache.doris.sql.metadata.WarningCollector;
+import org.apache.doris.sql.parser.SqlParser;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Statement;
 
@@ -31,7 +36,6 @@ public class Analyzer
     private final SqlParser sqlParser;
     private final AccessControl accessControl;
     private final Session session;
-    private final Optional<QueryExplainer> queryExplainer;
     private final List<Expression> parameters;
     private final WarningCollector warningCollector;
 
@@ -39,7 +43,6 @@ public class Analyzer
                     Metadata metadata,
                     SqlParser sqlParser,
                     AccessControl accessControl,
-                    Optional<QueryExplainer> queryExplainer,
                     List<Expression> parameters,
                     WarningCollector warningCollector)
     {
@@ -47,7 +50,6 @@ public class Analyzer
         this.metadata = requireNonNull(metadata, "metadata is null");
         this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
         this.accessControl = requireNonNull(accessControl, "accessControl is null");
-        this.queryExplainer = requireNonNull(queryExplainer, "query explainer is null");
         this.parameters = parameters;
         this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     }
@@ -62,9 +64,10 @@ public class Analyzer
         //Statement rewrittenStatement = StatementRewrite.rewrite(session, metadata, sqlParser, queryExplainer, statement, parameters, accessControl, warningCollector);
         Analysis analysis = new Analysis(statement, parameters, isDescribe);
         StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, sqlParser, accessControl, session, warningCollector);
-        analyzer.analyze(rewrittenStatement, Optional.empty());
+        analyzer.analyze(statement, Optional.empty());
 
         // check column access permissions for each table
+        /*
         analysis.getTableColumnReferences().forEach((accessControlInfo, tableColumnReferences) ->
                 tableColumnReferences.forEach((tableName, columns) ->
                         accessControlInfo.getAccessControl().checkCanSelectFromColumns(
@@ -72,24 +75,8 @@ public class Analyzer
                                 accessControlInfo.getIdentity(),
                                 tableName,
                                 columns)));
+
+         */
         return analysis;
-    }
-
-    static void verifyNoAggregateWindowOrGroupingFunctions(Map<NodeRef<FunctionCall>, FunctionHandle> functionHandles, FunctionManager functionManager, Expression predicate, String clause)
-    {
-        List<FunctionCall> aggregates = extractAggregateFunctions(functionHandles, ImmutableList.of(predicate), functionManager);
-
-        List<FunctionCall> windowExpressions = extractWindowFunctions(ImmutableList.of(predicate));
-
-        List<GroupingOperation> groupingOperations = extractExpressions(ImmutableList.of(predicate), GroupingOperation.class);
-
-        List<Expression> found = ImmutableList.copyOf(Iterables.concat(
-                aggregates,
-                windowExpressions,
-                groupingOperations));
-
-        if (!found.isEmpty()) {
-            throw new SemanticException(CANNOT_HAVE_AGGREGATIONS_WINDOWS_OR_GROUPING, predicate, "%s cannot contain aggregations, window functions or grouping operations: %s", clause, found);
-        }
     }
 }

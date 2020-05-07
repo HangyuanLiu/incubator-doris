@@ -13,12 +13,11 @@
  */
 package org.apache.doris.sql.relational;
 
-import com.facebook.presto.spi.relation.RowExpression;
-import com.facebook.presto.spi.relation.RowExpressionVisitor;
-import com.facebook.presto.spi.relation.VariableReferenceExpression;
-import com.facebook.presto.spi.type.Type;
-import com.facebook.presto.sql.tree.Expression;
-import com.facebook.presto.sql.tree.SymbolReference;
+import org.apache.doris.sql.relation.RowExpression;
+import org.apache.doris.sql.relation.RowExpressionVisitor;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
+import org.apache.doris.sql.tree.Expression;
+import org.apache.doris.sql.tree.SymbolReference;
 
 import java.util.Objects;
 
