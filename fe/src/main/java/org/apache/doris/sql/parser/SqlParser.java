@@ -74,7 +74,6 @@ public class SqlParser
         this(new SqlParserOptions());
     }
 
-    @Inject
     public SqlParser(SqlParserOptions options)
     {
         requireNonNull(options, "options is null");
@@ -108,11 +107,6 @@ public class SqlParser
     public Expression createExpression(String expression, ParsingOptions parsingOptions)
     {
         return (Expression) invokeParser("expression", expression, SqlBaseParser::standaloneExpression, parsingOptions);
-    }
-
-    public Return createRoutineBody(String routineBody, ParsingOptions parsingOptions)
-    {
-        return (Return) invokeParser("routineBody", routineBody, SqlBaseParser::standaloneRoutineBody, parsingOptions);
     }
 
     private Node invokeParser(String name, String sql, Function<SqlBaseParser, ParserRuleContext> parseFunction, ParsingOptions parsingOptions)

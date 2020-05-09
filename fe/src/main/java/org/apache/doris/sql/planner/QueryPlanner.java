@@ -90,10 +90,6 @@ class QueryPlanner
         RelationPlan fromRelationPlan = builder.getRelationPlan();
 
         builder = filter(builder, analysis.getWhere(node), node);
-        //builder = aggregate(builder, node);
-        builder = filter(builder, analysis.getHaving(node), node);
-
-        //builder = window(builder, node);
 
         List<Expression> outputs = analysis.getOutputExpressions(node);
         //builder = handleSubqueries(builder, node, outputs);

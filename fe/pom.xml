@@ -535,6 +535,13 @@ under the License.
             <version>0.8.13</version>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/org.antlr/antlr4 -->
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4</artifactId>
+            <version>4.8</version>
+        </dependency>
+
     </dependencies>
 
     <build>
