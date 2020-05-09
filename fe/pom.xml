@@ -535,6 +535,14 @@ under the License.
             <version>0.8.13</version>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/org.antlr/antlr4 -->
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4</artifactId>
+            <version>4.8</version>
+        </dependency>
+
+
     </dependencies>
 
     <build>
@@ -702,7 +710,7 @@ under the License.
             </plugin>
 
             <!-- for FE java code style checking -->
-            <plugin>
+            <!--plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>3.1.0</version>
@@ -722,7 +730,7 @@ under the License.
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin-->
 
             <!-- clean fe/target dir before building -->
             <plugin>

@@ -778,7 +778,7 @@ public class DistributedPlanner {
             }
             // build partition column
             // TODO
-            ((OlapScanNode) scanChild).getOlapTable().getPartition(0).toString()
+            ((OlapScanNode) scanChild).getOlapTable().getPartition(0).toString();
 
             ArrayList<Expr> groupingExprs = node.getAggInfo().getGroupingExprs();
             for (Expr expr : groupingExprs) {
