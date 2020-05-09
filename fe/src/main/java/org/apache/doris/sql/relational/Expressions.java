@@ -13,20 +13,9 @@
  */
 package org.apache.doris.sql.relational;
 
-import com.facebook.presto.metadata.FunctionManager;
-import com.facebook.presto.spi.function.FunctionHandle;
-import com.facebook.presto.spi.relation.CallExpression;
-import com.facebook.presto.spi.relation.ConstantExpression;
-import com.facebook.presto.spi.relation.InputReferenceExpression;
-import com.facebook.presto.spi.relation.LambdaDefinitionExpression;
-import com.facebook.presto.spi.relation.RowExpression;
-import com.facebook.presto.spi.relation.RowExpressionVisitor;
-import com.facebook.presto.spi.relation.SpecialFormExpression;
-import com.facebook.presto.spi.relation.SpecialFormExpression.Form;
-import com.facebook.presto.spi.relation.VariableReferenceExpression;
-import com.facebook.presto.spi.type.Type;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import org.apache.doris.sql.relation.RowExpression;
 
 import java.util.Arrays;
 import java.util.List;

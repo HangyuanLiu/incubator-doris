@@ -535,6 +535,12 @@ under the License.
             <version>0.8.13</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4-runtime</artifactId>
+            <version>4.8</version>
+        </dependency>
+
     </dependencies>
 
     <build>

@@ -13,9 +13,9 @@
  */
 package org.apache.doris.sql.relation;
 
-import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.doris.sql.metadata.Type;
 
 import javax.annotation.concurrent.Immutable;
 import java.util.Objects;

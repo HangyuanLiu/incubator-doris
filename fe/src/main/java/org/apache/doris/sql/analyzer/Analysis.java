@@ -91,7 +91,6 @@ public class Analysis
     private final Map<NodeRef<Expression>, Type> coercions = new LinkedHashMap<>();
     private final Set<NodeRef<Expression>> typeOnlyCoercions = new LinkedHashSet<>();
     private final Map<NodeRef<Relation>, List<Type>> relationCoercions = new LinkedHashMap<>();
-    private final Map<NodeRef<FunctionCall>, FunctionHandle> functionHandles = new LinkedHashMap<>();
 
     private final Map<Field, ColumnHandle> columns = new LinkedHashMap<>();
 
@@ -362,21 +361,6 @@ public class Analysis
     public void registerTable(Table table, TableHandle handle)
     {
         tables.put(NodeRef.of(table), handle);
-    }
-
-    public FunctionHandle getFunctionHandle(FunctionCall function)
-    {
-        return functionHandles.get(NodeRef.of(function));
-    }
-
-    public Map<NodeRef<FunctionCall>, FunctionHandle> getFunctionHandles()
-    {
-        return ImmutableMap.copyOf(functionHandles);
-    }
-
-    public void addFunctionHandles(Map<NodeRef<FunctionCall>, FunctionHandle> infos)
-    {
-        functionHandles.putAll(infos);
     }
 
     public Set<NodeRef<Expression>> getColumnReferences()

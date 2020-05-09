@@ -13,7 +13,6 @@
  */
 package org.apache.doris.sql.relation;
 
-import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.doris.sql.metadata.Type;
@@ -91,6 +90,7 @@ public final class VariableReferenceExpression
         if (nameComparison != 0) {
             return nameComparison;
         }
-        return type.getTypeSignature().toString().compareTo(o.type.getTypeSignature().toString());
+        return 1;
+        //return type.getTypeSignature().toString().compareTo(o.type.getTypeSignature().toString());
     }
 }

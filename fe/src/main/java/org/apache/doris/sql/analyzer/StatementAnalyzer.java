@@ -59,12 +59,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getLast;
-import static java.lang.Math.toIntExact;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
-import static org.apache.doris.sql.analyzer.ExpressionTreeUtils.extractAggregateFunctions;
-import static org.apache.doris.sql.analyzer.ScopeReferenceExtractor.hasReferencesToScope;
 import static org.apache.doris.sql.analyzer.SemanticErrorCode.*;
 
 public class StatementAnalyzer
@@ -286,41 +283,7 @@ public class StatementAnalyzer
         @Override
         protected Scope visitSampledRelation(SampledRelation relation, Optional<Scope> scope)
         {
-            if (!VariablesExtractor.extractNames(relation.getSamplePercentage(), analysis.getColumnReferences()).isEmpty()) {
-                throw new SemanticException(NON_NUMERIC_SAMPLE_PERCENTAGE, relation.getSamplePercentage(), "Sample percentage cannot contain column references");
-            }
-
-            Map<NodeRef<Expression>, Type> expressionTypes = getExpressionTypes(
-                    session,
-                    metadata,
-                    sqlParser,
-                    TypeProvider.empty(),
-                    relation.getSamplePercentage(),
-                    analysis.getParameters(),
-                    WarningCollector.NOOP,
-                    analysis.isDescribe());
-            ExpressionInterpreter samplePercentageEval = expressionOptimizer(relation.getSamplePercentage(), metadata, session, expressionTypes);
-
-            Object samplePercentageObject = samplePercentageEval.optimize(symbol -> {
-                throw new SemanticException(NON_NUMERIC_SAMPLE_PERCENTAGE, relation.getSamplePercentage(), "Sample percentage cannot contain column references");
-            });
-
-            if (!(samplePercentageObject instanceof Number)) {
-                throw new SemanticException(NON_NUMERIC_SAMPLE_PERCENTAGE, relation.getSamplePercentage(), "Sample percentage should evaluate to a numeric expression");
-            }
-
-            double samplePercentageValue = ((Number) samplePercentageObject).doubleValue();
-
-            if (samplePercentageValue < 0.0) {
-                throw new SemanticException(SemanticErrorCode.SAMPLE_PERCENTAGE_OUT_OF_RANGE, relation.getSamplePercentage(), "Sample percentage must be greater than or equal to 0");
-            }
-            if ((samplePercentageValue > 100.0)) {
-                throw new SemanticException(SemanticErrorCode.SAMPLE_PERCENTAGE_OUT_OF_RANGE, relation.getSamplePercentage(), "Sample percentage must be less than or equal to 100");
-            }
-
-            analysis.setSampleRatio(relation, samplePercentageValue / 100);
-            Scope relationScope = process(relation.getRelation(), scope);
-            return createAndAssignScope(relation, scope, relationScope.getRelationType());
+            return null;
         }
 
         @Override
@@ -331,10 +294,8 @@ public class StatementAnalyzer
 
             Scope sourceScope = analyzeFrom(node, scope);
 
-            node.getWhere().ifPresent(where -> analyzeWhere(node, sourceScope, where));
 
             List<Expression> outputExpressions = analyzeSelect(node, sourceScope);
-            List<Expression> groupByExpressions = analyzeGroupBy(node, sourceScope, outputExpressions);
             //analyzeHaving(node, sourceScope);
 
             Scope outputScope = computeAndAssignOutputScope(node, scope, sourceScope);
@@ -343,7 +304,6 @@ public class StatementAnalyzer
             Optional<Scope> orderByScope = Optional.empty();
             if (node.getOrderBy().isPresent()) {
                 orderByScope = Optional.of(computeAndAssignOrderByScope(node.getOrderBy().get(), sourceScope, outputScope));
-                orderByExpressions = analyzeOrderBy(node, orderByScope.get(), outputExpressions);
             }
             else {
                 analysis.setOrderByExpressions(node, emptyList());
@@ -351,29 +311,6 @@ public class StatementAnalyzer
 
             List<Expression> sourceExpressions = new ArrayList<>(outputExpressions);
             node.getHaving().ifPresent(sourceExpressions::add);
-
-            //analyzeGroupingOperations(node, sourceExpressions, orderByExpressions);
-            List<FunctionCall> aggregates = analyzeAggregations(node, sourceExpressions, orderByExpressions);
-
-            if (!aggregates.isEmpty() && groupByExpressions.isEmpty()) {
-                // Have Aggregation functions but no explicit GROUP BY clause
-                analysis.setGroupByExpressions(node, ImmutableList.of());
-            }
-
-            verifyAggregations(node, sourceScope, orderByScope, groupByExpressions, sourceExpressions, orderByExpressions);
-
-            //analyzeWindowFunctions(node, outputExpressions, orderByExpressions);
-
-            if (analysis.isAggregation(node) && node.getOrderBy().isPresent()) {
-                // Create a different scope for ORDER BY expressions when aggregation is present.
-                // This is because planner requires scope in order to resolve names against fields.
-                // Original ORDER BY scope "sees" FROM query fields. However, during planning
-                // and when aggregation is present, ORDER BY expressions should only be resolvable against
-                // output scope, group by expressions and aggregation expressions.
-                //List<GroupingOperation> orderByGroupingOperations = extractExpressions(orderByExpressions, GroupingOperation.class);
-                //List<FunctionCall> orderByAggregations = extractAggregateFunctions(analysis.getFunctionHandles(), orderByExpressions, metadata.getFunctionManager());
-                //computeAndAssignOrderByScopeWithAggregation(node.getOrderBy().get(), sourceScope, outputScope, orderByAggregations, groupByExpressions, orderByGroupingOperations);
-            }
 
             return outputScope;
         }
@@ -463,51 +400,6 @@ public class StatementAnalyzer
             return orderByScope;
         }
 
-        private Scope computeAndAssignOrderByScopeWithAggregation(OrderBy node, Scope sourceScope, Scope outputScope, List<FunctionCall> aggregations, List<Expression> groupByExpressions, List<GroupingOperation> groupingOperations)
-        {
-            // This scope is only used for planning. When aggregation is present then
-            // only output fields, groups and aggregation expressions should be visible from ORDER BY expression
-            ImmutableList.Builder<Expression> orderByAggregationExpressionsBuilder = ImmutableList.<Expression>builder()
-                    .addAll(groupByExpressions)
-                    .addAll(aggregations)
-                    .addAll(groupingOperations);
-
-            // Don't add aggregate complex expressions that contains references to output column because the names would clash in TranslationMap during planning.
-            List<Expression> orderByExpressionsReferencingOutputScope = AstUtils.preOrder(node)
-                    .filter(Expression.class::isInstance)
-                    .map(Expression.class::cast)
-                    .filter(expression -> hasReferencesToScope(expression, analysis, outputScope))
-                    .collect(toImmutableList());
-            List<Expression> orderByAggregationExpressions = orderByAggregationExpressionsBuilder.build().stream()
-                    .filter(expression -> !orderByExpressionsReferencingOutputScope.contains(expression) || analysis.isColumnReference(expression))
-                    .collect(toImmutableList());
-
-            // generate placeholder fields
-            Set<Field> seen = new HashSet<>();
-            List<Field> orderByAggregationSourceFields = orderByAggregationExpressions.stream()
-                    .map(expression -> {
-                        // generate qualified placeholder field for GROUP BY expressions that are column references
-                        Optional<Field> sourceField = sourceScope.tryResolveField(expression)
-                                .filter(resolvedField -> seen.add(resolvedField.getField()))
-                                .map(ResolvedField::getField);
-                        return sourceField
-                                .orElse(Field.newUnqualified(Optional.empty(), analysis.getType(expression)));
-                    })
-                    .collect(toImmutableList());
-
-            Scope orderByAggregationScope = Scope.builder()
-                    .withRelationType(RelationId.anonymous(), new RelationType(orderByAggregationSourceFields))
-                    .build();
-
-            Scope orderByScope = Scope.builder()
-                    .withParent(orderByAggregationScope)
-                    .withRelationType(outputScope.getRelationId(), outputScope.getRelationType())
-                    .build();
-            analysis.setScope(node, orderByScope);
-            analysis.setOrderByAggregates(node, orderByAggregationExpressions);
-            return orderByScope;
-        }
-
         private List<Expression> analyzeSelect(QuerySpecification node, Scope scope)
         {
             ImmutableList.Builder<Expression> outputExpressionBuilder = ImmutableList.builder();
@@ -544,7 +436,6 @@ public class StatementAnalyzer
                 else if (item instanceof SingleColumn) {
                     SingleColumn column = (SingleColumn) item;
                     ExpressionAnalysis expressionAnalysis = analyzeExpression(column.getExpression(), scope);
-                    analysis.recordSubqueries(node, expressionAnalysis);
                     outputExpressionBuilder.add(column.getExpression());
 
                     Type type = expressionAnalysis.getType(column.getExpression());
@@ -561,26 +452,6 @@ public class StatementAnalyzer
             analysis.setOutputExpressions(node, result);
 
             return result;
-        }
-
-        public void analyzeWhere(Node node, Scope scope, Expression predicate)
-        {
-            ExpressionAnalysis expressionAnalysis = analyzeExpression(predicate, scope);
-
-            //Analyzer.verifyNoAggregateWindowOrGroupingFunctions(analysis.getFunctionHandles(), metadata.getFunctionManager(), predicate, "WHERE clause");
-
-            analysis.recordSubqueries(node, expressionAnalysis);
-
-            Type predicateType = expressionAnalysis.getType(predicate);
-            if (!predicateType.equals(BOOLEAN)) {
-                if (!predicateType.equals(UNKNOWN)) {
-                    throw new SemanticException(TYPE_MISMATCH, predicate, "WHERE clause must evaluate to a boolean: actual type %s", predicateType);
-                }
-                // coerce null to boolean
-                analysis.addCoercion(predicate, BOOLEAN, false);
-            }
-
-            analysis.setWhere(node, predicate);
         }
 
         private Scope analyzeFrom(QuerySpecification node, Optional<Scope> scope)
