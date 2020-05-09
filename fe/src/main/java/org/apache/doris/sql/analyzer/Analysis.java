@@ -69,13 +69,9 @@ public class Analysis
     private final Map<NodeRef<Node>, Scope> scopes = new LinkedHashMap<>();
     private final Map<NodeRef<Expression>, FieldId> columnReferences = new LinkedHashMap<>();
 
-    // a map of users to the columns per table that they access
-    private final Map<AccessControlInfo, Map<QualifiedObjectName, Set<String>>> tableColumnReferences = new LinkedHashMap<>();
-
     private final Map<NodeRef<QuerySpecification>, List<FunctionCall>> aggregates = new LinkedHashMap<>();
     private final Map<NodeRef<OrderBy>, List<Expression>> orderByAggregates = new LinkedHashMap<>();
     private final Map<NodeRef<QuerySpecification>, List<Expression>> groupByExpressions = new LinkedHashMap<>();
-    private final Map<NodeRef<QuerySpecification>, GroupingSetAnalysis> groupingSets = new LinkedHashMap<>();
 
     private final Map<NodeRef<Node>, Expression> where = new LinkedHashMap<>();
     private final Map<NodeRef<QuerySpecification>, Expression> having = new LinkedHashMap<>();
@@ -83,7 +79,6 @@ public class Analysis
     private final Map<NodeRef<Node>, List<Expression>> outputExpressions = new LinkedHashMap<>();
 
     private final Map<NodeRef<Join>, Expression> joins = new LinkedHashMap<>();
-    private final Map<NodeRef<Join>, JoinUsingAnalysis> joinUsing = new LinkedHashMap<>();
 
     private final Map<NodeRef<Table>, TableHandle> tables = new LinkedHashMap<>();
 
@@ -104,7 +99,6 @@ public class Analysis
     private Optional<List<Identifier>> createTableColumnAliases = Optional.empty();
     private Optional<String> createTableComment = Optional.empty();
 
-    private Optional<Insert> insert = Optional.empty();
     private Optional<TableHandle> analyzeTarget = Optional.empty();
 
     // for describe input and describe output
@@ -226,11 +220,6 @@ public class Analysis
         return coercions.get(NodeRef.of(expression));
     }
 
-    public void setGroupingSets(QuerySpecification node, GroupingSetAnalysis groupingSets)
-    {
-        this.groupingSets.put(NodeRef.of(node), groupingSets);
-    }
-
     public void setGroupByExpressions(QuerySpecification node, List<Expression> expressions)
     {
         groupByExpressions.put(NodeRef.of(node), expressions);
@@ -244,11 +233,6 @@ public class Analysis
     public boolean isTypeOnlyCoercion(Expression expression)
     {
         return typeOnlyCoercions.contains(NodeRef.of(expression));
-    }
-
-    public GroupingSetAnalysis getGroupingSets(QuerySpecification node)
-    {
-        return groupingSets.get(NodeRef.of(node));
     }
 
     public List<Expression> getGroupByExpressions(QuerySpecification node)
@@ -399,11 +383,6 @@ public class Analysis
         this.typeOnlyCoercions.addAll(typeOnlyCoercions);
     }
 
-    public Expression getHaving(QuerySpecification query)
-    {
-        return having.get(NodeRef.of(query));
-    }
-
     public void setColumn(Field field, ColumnHandle handle)
     {
         columns.put(field, handle);
@@ -434,16 +413,6 @@ public class Analysis
         this.analyzeTarget = Optional.of(analyzeTarget);
     }
 
-    public void setCreateTableProperties(Map<String, Expression> createTableProperties)
-    {
-        this.createTableProperties = ImmutableMap.copyOf(createTableProperties);
-    }
-
-    public Map<String, Expression> getCreateTableProperties()
-    {
-        return createTableProperties;
-    }
-
     public Optional<List<Identifier>> getColumnAliases()
     {
         return createTableColumnAliases;
@@ -464,16 +433,6 @@ public class Analysis
         return createTableComment;
     }
 
-    public void setInsert(Insert insert)
-    {
-        this.insert = Optional.of(insert);
-    }
-
-    public Optional<Insert> getInsert()
-    {
-        return insert;
-    }
-
     public Query getNamedQuery(Table table)
     {
         return namedQueries.get(NodeRef.of(table));
@@ -487,33 +446,6 @@ public class Analysis
         namedQueries.put(NodeRef.of(tableReference), query);
     }
 
-    public void registerTableForView(Table tableReference)
-    {
-        tablesForView.push(requireNonNull(tableReference, "table is null"));
-    }
-
-    public void unregisterTableForView()
-    {
-        tablesForView.pop();
-    }
-
-    public boolean hasTableInView(Table tableReference)
-    {
-        return tablesForView.contains(tableReference);
-    }
-
-    public void setSampleRatio(SampledRelation relation, double ratio)
-    {
-        sampleRatios.put(NodeRef.of(relation), ratio);
-    }
-
-    public double getSampleRatio(SampledRelation relation)
-    {
-        NodeRef<SampledRelation> key = NodeRef.of(relation);
-        checkState(sampleRatios.containsKey(key), "Sample ratio missing for %s. Broken analysis?", relation);
-        return sampleRatios.get(key);
-    }
-
     public List<Expression> getParameters()
     {
         return parameters;
@@ -522,185 +454,5 @@ public class Analysis
     public boolean isDescribe()
     {
         return isDescribe;
-    }
-
-    public void setJoinUsing(Join node, JoinUsingAnalysis analysis)
-    {
-        joinUsing.put(NodeRef.of(node), analysis);
-    }
-
-    public JoinUsingAnalysis getJoinUsing(Join node)
-    {
-        return joinUsing.get(NodeRef.of(node));
-    }
-
-    public void addTableColumnReferences(AccessControl accessControl, Identity identity, Multimap<QualifiedObjectName, String> tableColumnMap)
-    {
-        AccessControlInfo accessControlInfo = new AccessControlInfo(accessControl, identity);
-        Map<QualifiedObjectName, Set<String>> references = tableColumnReferences.computeIfAbsent(accessControlInfo, k -> new LinkedHashMap<>());
-        tableColumnMap.asMap()
-                .forEach((key, value) -> references.computeIfAbsent(key, k -> new HashSet<>()).addAll(value));
-    }
-
-    public void addEmptyColumnReferencesForTable(AccessControl accessControl, Identity identity, QualifiedObjectName table)
-    {
-        AccessControlInfo accessControlInfo = new AccessControlInfo(accessControl, identity);
-        tableColumnReferences.computeIfAbsent(accessControlInfo, k -> new LinkedHashMap<>()).computeIfAbsent(table, k -> new HashSet<>());
-    }
-
-    public Map<AccessControlInfo, Map<QualifiedObjectName, Set<String>>> getTableColumnReferences()
-    {
-        return tableColumnReferences;
-    }
-
-    @Immutable
-    public static final class Insert
-    {
-        private final TableHandle target;
-        private final List<ColumnHandle> columns;
-
-        public Insert(TableHandle target, List<ColumnHandle> columns)
-        {
-            this.target = requireNonNull(target, "target is null");
-            this.columns = requireNonNull(columns, "columns is null");
-            checkArgument(columns.size() > 0, "No columns given to insert");
-        }
-
-        public List<ColumnHandle> getColumns()
-        {
-            return columns;
-        }
-
-        public TableHandle getTarget()
-        {
-            return target;
-        }
-    }
-
-    public static final class JoinUsingAnalysis
-    {
-        private final List<Integer> leftJoinFields;
-        private final List<Integer> rightJoinFields;
-        private final List<Integer> otherLeftFields;
-        private final List<Integer> otherRightFields;
-
-        JoinUsingAnalysis(List<Integer> leftJoinFields, List<Integer> rightJoinFields, List<Integer> otherLeftFields, List<Integer> otherRightFields)
-        {
-            this.leftJoinFields = ImmutableList.copyOf(leftJoinFields);
-            this.rightJoinFields = ImmutableList.copyOf(rightJoinFields);
-            this.otherLeftFields = ImmutableList.copyOf(otherLeftFields);
-            this.otherRightFields = ImmutableList.copyOf(otherRightFields);
-
-            checkArgument(leftJoinFields.size() == rightJoinFields.size(), "Expected join fields for left and right to have the same size");
-        }
-
-        public List<Integer> getLeftJoinFields()
-        {
-            return leftJoinFields;
-        }
-
-        public List<Integer> getRightJoinFields()
-        {
-            return rightJoinFields;
-        }
-
-        public List<Integer> getOtherLeftFields()
-        {
-            return otherLeftFields;
-        }
-
-        public List<Integer> getOtherRightFields()
-        {
-            return otherRightFields;
-        }
-    }
-
-    public static class GroupingSetAnalysis
-    {
-        private final List<Set<FieldId>> cubes;
-        private final List<List<FieldId>> rollups;
-        private final List<List<Set<FieldId>>> ordinarySets;
-        private final List<Expression> complexExpressions;
-
-        public GroupingSetAnalysis(
-                List<Set<FieldId>> cubes,
-                List<List<FieldId>> rollups,
-                List<List<Set<FieldId>>> ordinarySets,
-                List<Expression> complexExpressions)
-        {
-            this.cubes = ImmutableList.copyOf(cubes);
-            this.rollups = ImmutableList.copyOf(rollups);
-            this.ordinarySets = ImmutableList.copyOf(ordinarySets);
-            this.complexExpressions = ImmutableList.copyOf(complexExpressions);
-        }
-
-        public List<Set<FieldId>> getCubes()
-        {
-            return cubes;
-        }
-
-        public List<List<FieldId>> getRollups()
-        {
-            return rollups;
-        }
-
-        public List<List<Set<FieldId>>> getOrdinarySets()
-        {
-            return ordinarySets;
-        }
-
-        public List<Expression> getComplexExpressions()
-        {
-            return complexExpressions;
-        }
-    }
-
-    public static final class AccessControlInfo
-    {
-        private final AccessControl accessControl;
-        private final Identity identity;
-
-        public AccessControlInfo(AccessControl accessControl, Identity identity)
-        {
-            this.accessControl = requireNonNull(accessControl, "accessControl is null");
-            this.identity = requireNonNull(identity, "identity is null");
-        }
-
-        public AccessControl getAccessControl()
-        {
-            return accessControl;
-        }
-
-        public Identity getIdentity()
-        {
-            return identity;
-        }
-
-        @Override
-        public boolean equals(Object o)
-        {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-
-            AccessControlInfo that = (AccessControlInfo) o;
-            return Objects.equals(accessControl, that.accessControl) &&
-                    Objects.equals(identity, that.identity);
-        }
-
-        @Override
-        public int hashCode()
-        {
-            return Objects.hash(accessControl, identity);
-        }
-
-        @Override
-        public String toString()
-        {
-            return format("AccessControl: %s, Identity: %s", accessControl.getClass(), identity);
-        }
     }
 }
