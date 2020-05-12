@@ -271,6 +271,30 @@ bool RowBlockChanger::change_row_block(
         if (_schema_mapping[i].ref_column >= 0) {
             // new column will be assigned as referenced column
             // check if the type of new column is equal to the older's.
+            /*
+            if (mutable_block->tablet_schema().column(ref_column).define_expr()) {
+                //step 1 : check materialize view function
+                //step 2 : check column type
+                //step 3 : foreach each row
+                for (size_t row_index = 0, new_row_index = 0;
+                     row_index < ref_block->row_block_info().row_num; ++row_index) {
+                    // Skip filtered rows
+                    if (need_filter_data && is_data_left_vec[row_index] == 0) {
+                        continue;
+                    }
+                    mutable_block->get_row(new_row_index++, &write_helper);
+                    ref_block->get_row(row_index, &read_helper);
+
+                    // ---------- materailize view function ----------
+                    if (read_helper.is_null(ref_column)) {
+                        // check null by function syntax
+                    } else {
+                        write_helper.set_not_null(i);
+                        // transform field value
+                    }
+                }
+            }
+            */
             if (newtype == reftype) {
                 // 效率低下，也可以直接计算变长域拷贝，但仍然会破坏封装
                 for (size_t row_index = 0, new_row_index = 0;
@@ -306,9 +330,8 @@ bool RowBlockChanger::change_row_block(
                         }
                     }
                 }
-
                 // 从ref_column 写入 i列。
-            } else if (newtype == OLAP_FIELD_TYPE_VARCHAR && reftype == OLAP_FIELD_TYPE_CHAR) {
+            }  else if (newtype == OLAP_FIELD_TYPE_VARCHAR && reftype == OLAP_FIELD_TYPE_CHAR) {
                 // 效率低下，也可以直接计算变长域拷贝，但仍然会破坏封装
                 for (size_t row_index = 0, new_row_index = 0;
                         row_index < ref_block->row_block_info().row_num; ++row_index) {

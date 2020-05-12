@@ -96,12 +96,18 @@ void MemTable::insert(const Tuple* tuple) {
 }
 
 void MemTable::_tuple_to_row(const Tuple* tuple, ContiguousRow* row, MemPool* mem_pool) {
+    std::cout << "tuple to row" << std::endl;
+    std::cout << "slot desc size " << _slot_descs->size() << std::endl;
+    std::cout << "schema " << _schema->num_columns() << "," << _schema->columns().size() << std::endl;
+    std::cout << "Tuple : " << tuple->to_string(*_tuple_desc) << std::endl;
+    std::cout << "tablet schema : " << _tablet_schema->columns().size() << std::endl;
     for (size_t i = 0; i < _slot_descs->size(); ++i) {
         auto cell = row->cell(i);
         const SlotDescriptor* slot = (*_slot_descs)[i];
 
         bool is_null = tuple->is_null(slot->null_indicator_offset());
         const void* value = tuple->get_slot(slot->tuple_offset());
+        std::cout << "slot offset : " << slot->tuple_offset() << std::endl;
         _schema->column(i)->consume(
                 &cell, (const char*)value, is_null, mem_pool, &_agg_object_pool);
     }

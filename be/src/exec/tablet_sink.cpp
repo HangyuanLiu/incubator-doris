@@ -54,6 +54,7 @@ NodeChannel::~NodeChannel() {
 }
 
 Status NodeChannel::init(RuntimeState* state) {
+    //(TODO) 这里原来使用的是insert output的desc, 要改成拓展后的desc
     _tuple_desc = _parent->_output_tuple_desc;
     _node_info = _parent->_nodes_info->find_node(_node_id);
     if (_node_info == nullptr) {
@@ -93,6 +94,7 @@ void NodeChannel::open() {
     request.set_allocated_id(&_parent->_load_id);
     request.set_index_id(_index_id);
     request.set_txn_id(_parent->_txn_id);
+    //(TODO) 这里的schema应该用新的
     request.set_allocated_schema(_parent->_schema->to_protobuf());
     for (auto& tablet : _all_tablets) {
         auto ptablet = request.add_tablets();
@@ -168,7 +170,7 @@ Status NodeChannel::open_wait() {
 
     return status;
 }
-
+//(TODO) 这里的tuple应该是拓展后的tuple
 Status NodeChannel::add_row(Tuple* input_tuple, int64_t tablet_id) {
     // If add_row() when _eos_is_produced==true, there must be sth wrong, we can only mark this channel as failed.
     auto st = none_of({_cancelled, _eos_is_produced});
@@ -193,7 +195,7 @@ Status NodeChannel::add_row(Tuple* input_tuple, int64_t tablet_id) {
             _pending_batches.emplace(std::move(_cur_batch), _cur_add_batch_request);
             _pending_batches_num++;
         }
-
+        //(TODO) 这里应该使用拓展后的row_desc
         _cur_batch.reset(new RowBatch(*_row_desc, _batch_size, _parent->_mem_tracker));
         _cur_add_batch_request.clear_tablet_ids();
 
@@ -361,13 +363,16 @@ Status IndexChannel::init(RuntimeState* state, const std::vector<TTabletWithPart
         }
         std::vector<NodeChannel*> channels;
         for (auto& node_id : location->node_ids) {
+            std::cout << "node id : " << node_id << std::endl;
             NodeChannel* channel = nullptr;
             auto it = _node_channels.find(node_id);
             if (it == std::end(_node_channels)) {
+                std::cout << "index _id : " << _index_id << "node id " << node_id << std::endl;
                 channel = _parent->_pool->add(
                         new NodeChannel(_parent, _index_id, node_id, _schema_hash));
                 _node_channels.emplace(node_id, channel);
             } else {
+                std::cout << _index_id << "node id " << node_id << std::endl;
                 channel = it->second;
             }
             channel->add_tablet(tablet);
@@ -380,8 +385,12 @@ Status IndexChannel::init(RuntimeState* state, const std::vector<TTabletWithPart
     }
     return Status::OK();
 }
-
+//(TODO) 这里的tuple应该是拓展后的tuple
 Status IndexChannel::add_row(Tuple* tuple, int64_t tablet_id) {
+
+    //cut out column field by schema
+    //cut_column(tuple, _parent->_schema->indexes())
+
     auto it = _channels_by_tablet.find(tablet_id);
     DCHECK(it != std::end(_channels_by_tablet)) << "unknown tablet, tablet_id=" << tablet_id;
     for (auto channel : it->second) {
@@ -544,6 +553,7 @@ Status OlapTableSink::prepare(RuntimeState* state) {
                 tablets.emplace_back(std::move(tablet_with_partition));
             }
         }
+        //这里会传入this,IndexChannel中可以通过parent获取包括自身在内的所有的schema的信息
         auto channel = _pool->add(new IndexChannel(this, index->index_id, index->schema_hash));
         RETURN_IF_ERROR(channel->init(state, tablets));
         _channels.emplace_back(channel);
@@ -597,6 +607,8 @@ Status OlapTableSink::send(RuntimeState* state, RowBatch* input_batch) {
         _convert_batch(state, input_batch, _output_batch.get());
         batch = _output_batch.get();
     }
+
+    //(TODO) 在这里进行拓展列的计算，获得一个列拓展后的结果集
 
     int num_invalid_rows = 0;
     if (_need_validate_data) {

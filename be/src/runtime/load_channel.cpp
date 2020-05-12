@@ -67,6 +67,7 @@ Status LoadChannel::add_batch(
         google::protobuf::RepeatedPtrField<PTabletInfo>* tablet_vec) {
 
     int64_t index_id = request.index_id();
+    std::cout << "add batch to index : " << index_id << std::endl;
     // 1. get tablets channel
     std::shared_ptr<TabletsChannel> channel;
     {

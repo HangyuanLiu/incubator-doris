@@ -2,8 +2,11 @@ package org.apache.doris.sql;
 
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.apache.doris.catalog.Catalog;
+import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.StatementAnalyzer;
+import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.parser.AstBuilder;
 import org.apache.doris.sql.parser.CaseInsensitiveStream;
 import org.apache.doris.sql.parser.ParsingOptions;
@@ -28,10 +31,17 @@ public class Main {
         AstBuilder visitor = new AstBuilder(new ParsingOptions());
         Node stmt = visitor.visit(parser.singleStatement());
 
+        //Session
+        Catalog catalog = Catalog.getInstance();
+        ConnectContext context = new ConnectContext();
+        context.setCatalog(catalog);
+        context.setDatabase("test_db");
+        Session session = new Session(catalog, context);
+
         //analyzer
         ArrayList<Expression> parameters = new ArrayList<>();
         Analysis analysis = new Analysis((Statement) stmt, parameters, true);
-        StatementAnalyzer analyzer = new StatementAnalyzer(analysis);
+        StatementAnalyzer analyzer = new StatementAnalyzer(analysis, session);
         analyzer.analyze(stmt, Optional.empty());
         System.out.println("Hello world");
 

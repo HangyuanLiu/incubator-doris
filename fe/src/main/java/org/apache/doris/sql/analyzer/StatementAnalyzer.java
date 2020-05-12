@@ -84,12 +84,13 @@ public class StatementAnalyzer
     }
 
     public StatementAnalyzer (
-            Analysis analysis) {
+            Analysis analysis,
+            Session session) {
         this.analysis = analysis;
         this.metadata = null;
         this.sqlParser = null;
         this.accessControl = null;
-        this.session = null;
+        this.session = session;
         this.warningCollector = null;
     }
 
@@ -264,6 +265,7 @@ public class StatementAnalyzer
         @Override
         protected Scope visitAliasedRelation(AliasedRelation relation, Optional<Scope> scope)
         {
+            System.out.println("visitAliasedRelation");
             Scope relationScope = process(relation.getRelation(), scope);
 
             // todo this check should be inside of TupleDescriptor.withAlias, but the exception needs the node object
@@ -290,6 +292,7 @@ public class StatementAnalyzer
         @Override
         protected Scope visitSampledRelation(SampledRelation relation, Optional<Scope> scope)
         {
+            System.out.println("visitSampledRelation");
             Scope relationScope = process(relation.getRelation(), scope);
             return createAndAssignScope(relation, scope, relationScope.getRelationType());
         }

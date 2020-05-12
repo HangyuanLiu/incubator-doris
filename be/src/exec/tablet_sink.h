@@ -193,6 +193,7 @@ private:
     std::string _load_info;
     std::string _name;
 
+    //(TODO) 这里原来使用的是insert output的desc, 要改成拓展后的desc
     TupleDescriptor* _tuple_desc = nullptr;
     const NodeInfo* _node_info = nullptr;
 
@@ -211,8 +212,10 @@ private:
 
     bool _eos_is_produced{false}; // only for restricting producer behaviors
 
+    //(TODO) 这里原来使用的是insert output的desc, 要改成拓展后的desc
     std::unique_ptr<RowDescriptor> _row_desc;
     int _batch_size = 0;
+    //(TODO) 用于暂时存放IndexChannel send的tuple，这里发送的也是这个，那么这里是不是配合相应的拓展列？
     std::unique_ptr<RowBatch> _cur_batch;
     PTabletWriterAddBatchRequest _cur_add_batch_request;
 
@@ -327,6 +330,7 @@ private:
     int _tuple_desc_id = -1;
 
     // this is tuple descriptor of destination OLAP table
+    //insert into 的表达式输出，就用在insert表达式里用于缓存计算结果
     TupleDescriptor* _output_tuple_desc = nullptr;
     RowDescriptor* _output_row_desc = nullptr;
     std::vector<ExprContext*> _output_expr_ctxs;

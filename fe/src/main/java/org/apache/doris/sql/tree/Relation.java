@@ -5,12 +5,9 @@ import java.util.Optional;
 public abstract class Relation
         extends Node
 {
-    String s;
-
     protected Relation(Optional<NodeLocation> location)
     {
         super(location);
-        s = "Hello world";
     }
 
     @Override

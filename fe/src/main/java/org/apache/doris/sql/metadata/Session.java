@@ -13,6 +13,27 @@
  */
 package org.apache.doris.sql.metadata;
 
+import org.apache.doris.catalog.Catalog;
+import org.apache.doris.qe.ConnectContext;
+
+import java.util.Optional;
+
 public final class Session
 {
+    public static final String DEFAULT_CLUSTER = "default_cluster";
+    private final Catalog catalog;
+    private final ConnectContext context;
+
+    public Session(Catalog catalog, ConnectContext context) {
+        this.catalog = catalog;
+        this.context = context;
+    }
+
+    public Optional<String> getCatalog() {
+        return Optional.of(DEFAULT_CLUSTER);
+    }
+
+    public Optional<String> getSchema() {
+        return Optional.of(context.getDatabase());
+    }
 }
