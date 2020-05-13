@@ -15,4 +15,21 @@ package org.apache.doris.sql.metadata;
 
 public final class TableHandle
 {
+    private final ConnectorId connectorId;
+    private final ConnectorTableHandle connectorHandle;
+
+    public TableHandle(ConnectorId connectorId, ConnectorTableHandle connectorHandle) {
+        this.connectorId = connectorId;
+        this.connectorHandle = connectorHandle;
+    }
+
+    public ConnectorId getConnectorId()
+    {
+        return connectorId;
+    }
+
+    public ConnectorTableHandle getConnectorHandle()
+    {
+        return connectorHandle;
+    }
 }

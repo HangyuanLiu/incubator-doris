@@ -13,10 +13,13 @@
  */
 package org.apache.doris.sql.metadata;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.qe.ConnectContext;
 
 import java.util.Optional;
+
+import static java.util.Objects.requireNonNull;
 
 public final class Session
 {
@@ -29,11 +32,24 @@ public final class Session
         this.context = context;
     }
 
-    public Optional<String> getCatalog() {
+    public Optional<String> getCluster() {
         return Optional.of(DEFAULT_CLUSTER);
     }
 
     public Optional<String> getSchema() {
         return Optional.of(context.getDatabase());
+    }
+
+    public Catalog getCatalog() {
+        return catalog;
+    }
+
+    public ConnectorSession toConnectorSession(ConnectorId connectorId)
+    {
+        requireNonNull(connectorId, "connectorId is null");
+
+        return new FullConnectorSession(
+                this,
+                connectorId);
     }
 }

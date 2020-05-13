@@ -662,6 +662,7 @@ public class InsertStmt extends DdlStmt {
     }
 
     public void prepareExpressions() throws UserException {
+        //(TODO:lhy) 这里需要构建拓展列的计算表达式，insert load需要改这里，其他load呢？
         List<Expr> selectList = Expr.cloneList(queryStmt.getBaseTblResultExprs());
         // check type compatibility
         int numCols = targetColumns.size();

@@ -66,6 +66,11 @@ public class QualifiedObjectName
         return objectName;
     }
 
+    public SchemaTableName asSchemaTableName()
+    {
+        return new SchemaTableName(schemaName, objectName);
+    }
+
     @Override
     public boolean equals(Object obj)
     {

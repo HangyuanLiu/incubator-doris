@@ -134,6 +134,7 @@ public class LoadingTaskPlanner {
         // 3. Plan fragment
         PlanFragment sinkFragment = new PlanFragment(new PlanFragmentId(0), scanNode, DataPartition.RANDOM);
         sinkFragment.setSink(olapTableSink);
+        //(TODO:lhy)sinkFragment.setOutputExprs(bababa);
 
         fragments.add(sinkFragment);
 

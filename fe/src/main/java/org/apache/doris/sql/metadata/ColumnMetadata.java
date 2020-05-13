@@ -7,6 +7,11 @@ public class ColumnMetadata {
     private final Type type;
     private final boolean nullable;
 
+    public ColumnMetadata(String name, Type type)
+    {
+        this(name, type, true);
+    }
+
     public ColumnMetadata(String name, Type type, boolean nullable) {
         this.name = name;
         this.type = type;

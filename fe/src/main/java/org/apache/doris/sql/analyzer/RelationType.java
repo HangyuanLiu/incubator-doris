@@ -14,6 +14,7 @@ import java.util.Optional;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkElementIndex;
 import static com.google.common.base.Predicates.not;
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
 public class RelationType
@@ -102,13 +103,9 @@ public class RelationType
      */
     public List<Field> resolveFieldsWithPrefix(Optional<QualifiedName> prefix)
     {
-        /*
         return visibleFields.stream()
                 .filter(input -> input.matchesPrefix(prefix))
                 .collect(toImmutableList());
-
-         */
-        return null;
     }
 
     /**
@@ -116,13 +113,9 @@ public class RelationType
      */
     public List<Field> resolveFields(QualifiedName name)
     {
-        /*
         return allFields.stream()
                 .filter(input -> input.canResolve(name))
                 .collect(toImmutableList());
-
-         */
-        return null;
     }
 
     public boolean canResolve(QualifiedName name)
@@ -149,7 +142,6 @@ public class RelationType
      */
     public RelationType withAlias(String relationAlias, List<String> columnAliases)
     {
-        /*
         if (columnAliases != null) {
             checkArgument(columnAliases.size() == visibleFields.size(),
                     "Column alias list has %s entries but '%s' has %s columns available",
@@ -187,10 +179,6 @@ public class RelationType
         }
 
         return new RelationType(fieldsBuilder.build());
-
-
-         */
-        return null;
     }
 
     /**

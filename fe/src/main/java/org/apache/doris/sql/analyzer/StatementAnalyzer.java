@@ -85,9 +85,10 @@ public class StatementAnalyzer
 
     public StatementAnalyzer (
             Analysis analysis,
+            Metadata metadata,
             Session session) {
         this.analysis = analysis;
-        this.metadata = null;
+        this.metadata = metadata;
         this.sqlParser = null;
         this.accessControl = null;
         this.session = session;
@@ -471,7 +472,6 @@ public class StatementAnalyzer
 
         private ExpressionAnalysis analyzeExpression(Expression expression, Scope scope)
         {
-            /*
             return ExpressionAnalyzer.analyzeExpression(
                     session,
                     metadata,
@@ -481,9 +481,6 @@ public class StatementAnalyzer
                     analysis,
                     expression,
                     WarningCollector.NOOP);
-
-             */
-            return null;
         }
 
         private List<Expression> descriptorToFields(Scope scope)
