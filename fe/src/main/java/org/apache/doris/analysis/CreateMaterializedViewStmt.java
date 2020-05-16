@@ -167,6 +167,35 @@ public class CreateMaterializedViewStmt extends DdlStmt {
             } else if (selectListItem.getExpr() instanceof FunctionCallExpr) {
                 FunctionCallExpr functionCallExpr = (FunctionCallExpr) selectListItem.getExpr();
                 String functionName = functionCallExpr.getFnName().getFunction();
+
+                //TODO(lhy): bitmap function
+                if (functionName.equalsIgnoreCase("bitmap_union") || functionName.equalsIgnoreCase("hll_union")) {
+                    //check type
+                    meetAggregate = true;
+                    // check duplicate column
+
+                    Expr e = functionCallExpr.getChild(0).getChild(0);
+                    if (e instanceof CastExpr
+                            && (e.getChild(0) instanceof SlotRef)) {
+                        e = e.getChild(0);
+                    }
+
+                    String columnName = ((SlotRef)e).getColumnName().toLowerCase();
+                    if (!mvColumnNameSet.add(columnName)) {
+                        ErrorReport.reportAnalysisException(ErrorCode.ERR_DUP_FIELDNAME, columnName);
+                    }
+
+                    if (beginIndexOfAggregation == -1) {
+                        beginIndexOfAggregation = i;
+                    }
+                    // TODO(ml): support different type of column, int -> bigint(sum)
+                    MVColumnItem mvColumnItem = new MVColumnItem(columnName);
+                    mvColumnItem.setAggregationType(AggregateType.valueOf(functionName.toUpperCase()), false);
+                    mvColumnItem.setDefineExpr(functionCallExpr.getChild(0));
+                    mvColumnItemList.add(mvColumnItem);
+                    continue;
+                }
+
                 // TODO(ml): support REPLACE, REPLACE_IF_NOT_NULL only for aggregate table, HLL_UNION, BITMAP_UNION
                 if (!functionName.equalsIgnoreCase("sum")
                         && !functionName.equalsIgnoreCase("min")

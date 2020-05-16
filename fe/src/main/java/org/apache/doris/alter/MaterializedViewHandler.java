@@ -26,21 +26,9 @@ import org.apache.doris.analysis.CreateMaterializedViewStmt;
 import org.apache.doris.analysis.DropMaterializedViewStmt;
 import org.apache.doris.analysis.DropRollupClause;
 import org.apache.doris.analysis.MVColumnItem;
-import org.apache.doris.catalog.AggregateType;
-import org.apache.doris.catalog.Catalog;
-import org.apache.doris.catalog.Column;
-import org.apache.doris.catalog.Database;
-import org.apache.doris.catalog.KeysType;
-import org.apache.doris.catalog.MaterializedIndex;
+import org.apache.doris.catalog.*;
 import org.apache.doris.catalog.MaterializedIndex.IndexState;
-import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.catalog.OlapTable.OlapTableState;
-import org.apache.doris.catalog.Partition;
-import org.apache.doris.catalog.Replica;
-import org.apache.doris.catalog.Table;
-import org.apache.doris.catalog.Tablet;
-import org.apache.doris.catalog.TabletInvertedIndex;
-import org.apache.doris.catalog.TabletMeta;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.Config;
 import org.apache.doris.common.DdlException;
@@ -78,6 +66,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.apache.doris.catalog.AggregateType.BITMAP_UNION;
 
 /*
  * MaterializedViewHandler is responsible for ADD/DROP materialized view.
@@ -456,9 +446,26 @@ public class MaterializedViewHandler extends AlterHandler {
                 throw new DdlException("The aggregation type of REPLACE AND REPLACE IF NOT NULL is forbidden in "
                                                + "duplicate table");
             }
-            Column newMVColumn = new Column(baseColumn);
+
+            String columnName = baseColumn.getName();
+            Type newType = baseColumn.getType();
+            if (baseColumn.getType().isIntegerType() && mvAggregationType.equals(BITMAP_UNION)) {
+                newType = Type.BITMAP;
+                columnName = "mv_bitmap_" + columnName;
+            }
+            Column newMVColumn = new Column(
+                    columnName,
+                    newType,
+                    baseColumn.isKey(),
+                    mvAggregationType,
+                    baseColumn.isAllowNull(),
+                    baseColumn.getDefaultValue(),
+                    baseColumn.getComment());
+
             newMVColumn.setIsKey(mvColumnItem.isKey());
             newMVColumn.setAggregationType(mvAggregationType, mvColumnItem.isAggregationTypeImplicit());
+            newMVColumn.setDefineExpr(mvColumnItem.getDefileExpr());
+            System.out.println("handler defile expr : " + mvColumnItem.getDefileExpr());
             newMVColumns.add(newMVColumn);
         }
         return newMVColumns;

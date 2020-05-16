@@ -18,6 +18,9 @@
 package org.apache.doris.catalog;
 
 import org.apache.doris.alter.SchemaChangeHandler;
+import org.apache.doris.analysis.Expr;
+import org.apache.doris.analysis.FunctionCallExpr;
+import org.apache.doris.analysis.SlotRef;
 import org.apache.doris.common.CaseSensibility;
 import org.apache.doris.common.DdlException;
 import org.apache.doris.common.FeMetaVersion;
@@ -35,6 +38,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * This class represents the column-related metadata.
@@ -66,6 +70,9 @@ public class Column implements Writable {
     private String comment;
     @SerializedName(value = "stats")
     private ColumnStats stats;     // cardinality and selectivity etc.
+    //use to define materialize view
+    @SerializedName(value = "defineExpr")
+    private Expr defineExpr;
 
     public Column() {
         this.name = "";
@@ -240,6 +247,10 @@ public class Column implements Writable {
         tColumn.setIs_key(this.isKey);
         tColumn.setIs_allow_null(this.isAllowNull);
         tColumn.setDefault_value(this.defaultValue);
+        if (this.defineExpr != null) {
+            System.out.println("define expr : " + this.defineExpr.debugString());
+            tColumn.setDefine_expr(this.defineExpr.treeToThrift());
+        }
         return tColumn;
     }
 
@@ -414,8 +425,22 @@ public class Column implements Writable {
             Text.writeString(out, defaultValue);
         }
         stats.write(out);
-
         Text.writeString(out, comment);
+
+        //System.out.println("Write column meta");
+        if (defineExpr == null) {
+            out.writeBoolean(false);
+        } else {
+            out.writeBoolean(true);
+            //if (defineExpr instanceof FunctionCallExpr) {
+                if (((FunctionCallExpr) defineExpr).getFnName().getFunction().equals("to_bitmap")) {
+                    System.out.println("Define Expr : " + defineExpr.debugString());
+                    Text.writeString(out, "to_bitmap");
+                    SlotRef slotR = (SlotRef) defineExpr.getChild(0);
+                    slotR.write(out);
+                }
+            //}
+        }
     }
 
     public void readFields(DataInput in) throws IOException {
@@ -455,11 +480,28 @@ public class Column implements Writable {
         } else {
             comment = "";
         }
+
+        if (Catalog.getCurrentCatalogJournalVersion() >= FeMetaVersion.VERSION_85) {
+            //notNull = in.readBoolean();
+            //if (notNull) {
+                //String define_expr_str = Text.readString(in);
+                //SlotRef field = SlotRef.read(in);
+                //defineExpr = new FunctionCallExpr(define_expr_str, Arrays.asList(field));
+            //}
+        }
     }
 
     public static Column read(DataInput in) throws IOException {
         Column column = new Column();
         column.readFields(in);
         return column;
+    }
+
+    public void setDefineExpr(Expr defineExpr) {
+        this.defineExpr = defineExpr;
+    }
+
+    public Expr getDefineExpr() {
+        return defineExpr;
     }
 }

@@ -222,6 +222,7 @@ public class RollupJobV2 extends AlterJobV2 {
                 LOG.warn("InterruptedException: ", e);
                 ok = false;
             }
+            ok = true;
 
             if (!ok || !countDownLatch.getStatus().ok()) {
                 // create rollup replicas failed. just cancel the job
