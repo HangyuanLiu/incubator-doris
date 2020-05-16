@@ -480,7 +480,7 @@ public class StatementAnalyzer
                     scope,
                     analysis,
                     expression,
-                    WarningCollector.NOOP);
+                    null);
         }
 
         private List<Expression> descriptorToFields(Scope scope)

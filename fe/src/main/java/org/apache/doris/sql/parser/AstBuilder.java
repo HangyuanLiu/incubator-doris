@@ -4,45 +4,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
-import org.apache.doris.sql.tree.AliasedRelation;
-import org.apache.doris.sql.tree.AllColumns;
-import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
-import org.apache.doris.sql.tree.ArithmeticUnaryExpression;
-import org.apache.doris.sql.tree.BooleanLiteral;
-import org.apache.doris.sql.tree.ComparisonExpression;
-import org.apache.doris.sql.tree.DecimalLiteral;
-import org.apache.doris.sql.tree.DoubleLiteral;
-import org.apache.doris.sql.tree.Expression;
-import org.apache.doris.sql.tree.GroupBy;
-import org.apache.doris.sql.tree.GroupingElement;
-import org.apache.doris.sql.tree.Identifier;
-import org.apache.doris.sql.tree.IntervalLiteral;
-import org.apache.doris.sql.tree.Join;
-import org.apache.doris.sql.tree.JoinCriteria;
-import org.apache.doris.sql.tree.JoinOn;
-import org.apache.doris.sql.tree.JoinUsing;
-import org.apache.doris.sql.tree.LogicalBinaryExpression;
-import org.apache.doris.sql.tree.LongLiteral;
-import org.apache.doris.sql.tree.NaturalJoin;
-import org.apache.doris.sql.tree.Node;
-import org.apache.doris.sql.tree.NodeLocation;
-import org.apache.doris.sql.tree.NullLiteral;
-import org.apache.doris.sql.tree.OrderBy;
-import org.apache.doris.sql.tree.QualifiedName;
-import org.apache.doris.sql.tree.QuantifiedComparisonExpression;
-import org.apache.doris.sql.tree.Query;
-import org.apache.doris.sql.tree.QueryBody;
-import org.apache.doris.sql.tree.QuerySpecification;
-import org.apache.doris.sql.tree.Relation;
-import org.apache.doris.sql.tree.SampledRelation;
-import org.apache.doris.sql.tree.Select;
-import org.apache.doris.sql.tree.SelectItem;
-import org.apache.doris.sql.tree.SingleColumn;
-import org.apache.doris.sql.tree.SortItem;
-import org.apache.doris.sql.tree.StringLiteral;
-import org.apache.doris.sql.tree.Table;
-import org.apache.doris.sql.tree.With;
-import org.apache.doris.sql.tree.WithQuery;
+import org.apache.doris.sql.tree.*;
 
 import java.util.Iterator;
 import java.util.List;
@@ -373,6 +335,14 @@ public class AstBuilder
 
 
     // ********************* primary expressions **********************
+    @Override
+    public Node visitDereference(SqlBaseParser.DereferenceContext context)
+    {
+        return new DereferenceExpression(
+                getLocation(context),
+                (Expression) visit(context.base),
+                (Identifier) visit(context.fieldName));
+    }
 
     @Override
     public Node visitParenthesizedExpression(SqlBaseParser.ParenthesizedExpressionContext context)

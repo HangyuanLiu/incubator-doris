@@ -385,7 +385,7 @@ Status IndexChannel::init(RuntimeState* state, const std::vector<TTabletWithPart
     }
     return Status::OK();
 }
-//(TODO) 这里的tuple应该是拓展后的tuple
+
 Status IndexChannel::add_row(Tuple* tuple, int64_t tablet_id) {
 
     //cut out column field by schema
@@ -607,8 +607,6 @@ Status OlapTableSink::send(RuntimeState* state, RowBatch* input_batch) {
         _convert_batch(state, input_batch, _output_batch.get());
         batch = _output_batch.get();
     }
-
-    //(TODO) 在这里进行拓展列的计算，获得一个列拓展后的结果集
 
     int num_invalid_rows = 0;
     if (_need_validate_data) {

@@ -662,7 +662,7 @@ public class InsertStmt extends DdlStmt {
     }
 
     public void prepareExpressions() throws UserException {
-        //(TODO:lhy) 这里需要构建拓展列的计算表达式，insert load需要改这里，其他load呢？
+
         List<Expr> selectList = Expr.cloneList(queryStmt.getBaseTblResultExprs());
         // check type compatibility
         int numCols = targetColumns.size();
@@ -677,6 +677,10 @@ public class InsertStmt extends DdlStmt {
             if (exprByName.containsKey(col.getName())) {
                 resultExprs.add(exprByName.get(col.getName()));
             } else {
+                //TODO(lhy)这里需要构建拓展列的计算表达式
+                //if (col.getDefineExpr != null) {
+                //    resultExprs.add(col.getDefineExpr);
+                //}
                 if (col.getDefaultValue() == null) {
                     /*
                     The import stmt has been filtered in function checkColumnCoverage when

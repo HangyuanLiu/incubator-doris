@@ -139,6 +139,8 @@ public class Planner {
             queryStmt = (QueryStmt) statement;
         }
 
+        ((SelectStmt) statement).get
+
         plannerContext = new PlannerContext(analyzer, queryStmt, queryOptions, statement);
         singleNodePlanner = new SingleNodePlanner(plannerContext);
         PlanNode singleNodePlan = singleNodePlanner.createSingleNodePlan();
@@ -181,6 +183,7 @@ public class Planner {
             rootFragment = distributedPlanner.createInsertFragment(rootFragment, insertStmt, fragments);
             rootFragment.setSink(insertStmt.getDataSink());
             insertStmt.complete();
+            //TODO(lhy) InsertStmt中prepareExpressions设置的表达式会在这里赋值给olaptablesink
             ArrayList<Expr> exprs = ((InsertStmt) statement).getResultExprs();
             List<Expr> resExprs = Expr.substituteList(
                     exprs, rootFragment.getPlanRoot().getOutputSmap(), analyzer, true);

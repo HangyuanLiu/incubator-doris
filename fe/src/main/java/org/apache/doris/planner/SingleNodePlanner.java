@@ -777,6 +777,10 @@ public class SingleNodePlanner {
                         olapScanNode);
                 olapScanNode.updateScanRangeInfoByNewMVSelector(bestIndexInfo.getBestIndexId(), bestIndexInfo.isPreAggregation(),
                         bestIndexInfo.getReasonOfDisable());
+
+                ExprSubstitutionMap exprSubstitutionMap;
+                exprSubstitutionMap.add;
+                Expr.trySubstituteList()
             }
 
         } else {

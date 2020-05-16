@@ -17,6 +17,7 @@ import org.apache.doris.sql.parser.CaseInsensitiveStream;
 import org.apache.doris.sql.parser.ParsingOptions;
 import org.apache.doris.sql.parser.SqlBaseLexer;
 import org.apache.doris.sql.parser.SqlBaseParser;
+import org.apache.doris.sql.planner.LogicalPlanner;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.Statement;
@@ -253,7 +254,7 @@ public class Main {
 
 
 
-        String sql = "select key1,key2,key3 from test.baseall";
+        String sql = "select k1 from test.baseall";
         //parser
         CaseInsensitiveStream stream = new CaseInsensitiveStream(CharStreams.fromString(sql));
         SqlBaseLexer lexer = new SqlBaseLexer(stream);
@@ -280,7 +281,7 @@ public class Main {
         System.out.println("Hello world");
 
         //planner
-        //LogicalPlanner logicalPlanner = new LogicalPlanner(false, stateMachine.getSession(), planOptimizers, idAllocator, metadata, sqlParser, statsCalculator, costCalculator, stateMachine.getWarningCollector());
+        LogicalPlanner logicalPlanner = new LogicalPlanner(false, stateMachine.getSession(), planOptimizers, idAllocator, metadata, sqlParser, statsCalculator, costCalculator, stateMachine.getWarningCollector());
         //Plan plan = logicalPlanner.plan(analysis);
     }
 

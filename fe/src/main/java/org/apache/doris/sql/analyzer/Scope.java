@@ -17,9 +17,7 @@ import org.apache.doris.sql.analyzer.Field;
 import org.apache.doris.sql.analyzer.RelationId;
 import org.apache.doris.sql.analyzer.RelationType;
 import org.apache.doris.sql.analyzer.ResolvedField;
-import org.apache.doris.sql.tree.Expression;
-import org.apache.doris.sql.tree.QualifiedName;
-import org.apache.doris.sql.tree.WithQuery;
+import org.apache.doris.sql.tree.*;
 
 import javax.annotation.concurrent.Immutable;
 
@@ -116,7 +114,6 @@ public class Scope
 
     private static QualifiedName asQualifiedName(Expression expression)
     {
-        /*
         QualifiedName name = null;
         if (expression instanceof Identifier) {
             name = QualifiedName.of(((Identifier) expression).getValue());
@@ -125,8 +122,6 @@ public class Scope
             name = DereferenceExpression.getQualifiedName((DereferenceExpression) expression);
         }
         return name;
-         */
-        return null;
     }
 
     public Optional<ResolvedField> tryResolveField(Expression node, QualifiedName name)

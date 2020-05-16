@@ -103,7 +103,7 @@ public class StreamLoadPlanner {
                 throw new DdlException("Column is not SUM AggreateType. column:" + col.getName());
             }
         }
-
+        //TODO(lhy) 此处会调用getFullSchema，获取所有列（包括物化视图列），用于构建tupleDesc
         // create scan node
         StreamLoadScanNode scanNode = new StreamLoadScanNode(loadId, new PlanNodeId(0), tupleDesc, destTable, streamLoadTask);
         scanNode.init(analyzer);

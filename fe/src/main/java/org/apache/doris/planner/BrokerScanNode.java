@@ -230,7 +230,7 @@ public class BrokerScanNode extends LoadScanNode {
         if (isLoad()) {
             columnExprs = context.fileGroup.getColumnExprList();
         }
-
+        //TODO(lhy) 此处根据FullSchema中的表达式添加expr逻辑，同Insert
         Load.initColumns(targetTable, columnExprs,
                 context.fileGroup.getColumnToHadoopFunction(), context.exprMap, analyzer,
                 context.tupleDescriptor, context.slotDescByName, context.params);

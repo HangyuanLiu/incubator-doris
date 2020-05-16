@@ -929,6 +929,7 @@ public class Load {
         // eg1:
         // base schema is (A, B, C), and B is under schema change, so there will be a shadow column: '__doris_shadow_B'
         // So the final column mapping should looks like: (A, B, C, __doris_shadow_B = substitute(B));
+        //TODO(lhy) 获取所有列（包括物化视图列）
         for (Column column : tbl.getFullSchema()) {
             if (!column.isNameWithPrefix(SchemaChangeHandler.SHADOW_NAME_PRFIX)) {
                 continue;

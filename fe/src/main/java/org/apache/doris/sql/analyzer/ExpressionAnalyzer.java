@@ -17,12 +17,9 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
 import org.apache.doris.sql.TypeProvider;
-import org.apache.doris.sql.metadata.Metadata;
-import org.apache.doris.sql.metadata.QualifiedObjectName;
-import org.apache.doris.sql.metadata.Session;
+import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.parser.SqlParser;
 import org.apache.doris.sql.type.Type;
-import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.tree.*;
 
 import javax.annotation.Nullable;
@@ -67,7 +64,8 @@ public class ExpressionAnalyzer
         this.symbolTypes = requireNonNull(symbolTypes, "symbolTypes is null");
         this.parameters = requireNonNull(parameters, "parameters is null");
         this.isDescribe = isDescribe;
-        this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+        //this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+        this.warningCollector = null;
     }
 
     public Map<NodeRef<Expression>, Type> getExpressionTypes()
@@ -139,7 +137,7 @@ public class ExpressionAnalyzer
 
         public Visitor(Scope baseScope, WarningCollector warningCollector) {
             this.baseScope = requireNonNull(baseScope, "baseScope is null");
-            this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+            this.warningCollector = warningCollector;
         }
 
         @Override
@@ -291,5 +289,54 @@ public class ExpressionAnalyzer
     {
         //return analyzeExpressions(session, metadata, sqlParser, types, expressions, parameters, warningCollector, isDescribe).getExpressionTypes();
         return null;
+    }
+
+    public static ExpressionAnalysis analyzeExpression(
+            Session session,
+            Metadata metadata,
+            AccessControl accessControl,
+            SqlParser sqlParser,
+            Scope scope,
+            Analysis analysis,
+            Expression expression,
+            WarningCollector warningCollector)
+    {
+        ExpressionAnalyzer analyzer = create(analysis, session, metadata, sqlParser, accessControl, TypeProvider.empty(), warningCollector);
+        analyzer.analyze(expression, scope);
+
+        Map<NodeRef<Expression>, Type> expressionTypes = analyzer.getExpressionTypes();
+        Map<NodeRef<Expression>, Type> expressionCoercions = analyzer.getExpressionCoercions();
+        Set<NodeRef<Expression>> typeOnlyCoercions = analyzer.getTypeOnlyCoercions();
+        //Map<NodeRef<FunctionCall>, FunctionHandle> resolvedFunctions = analyzer.getResolvedFunctions();
+
+        analysis.addTypes(expressionTypes);
+        analysis.addCoercions(expressionCoercions, typeOnlyCoercions);
+        //analysis.addFunctionHandles(resolvedFunctions);
+        analysis.addColumnReferences(analyzer.getColumnReferences());
+        //analysis.addLambdaArgumentReferences(analyzer.getLambdaArgumentReferences());
+        //analysis.addTableColumnReferences(accessControl, session.getIdentity(), analyzer.getTableColumnReferences());
+
+        return new ExpressionAnalysis(
+                expressionTypes,
+                expressionCoercions,
+                analyzer.getColumnReferences(),
+                analyzer.getTypeOnlyCoercions()
+        );
+    }
+
+    private static ExpressionAnalyzer create(
+            Analysis analysis,
+            Session session,
+            Metadata metadata,
+            SqlParser sqlParser,
+            AccessControl accessControl,
+            TypeProvider types,
+            WarningCollector warningCollector)
+    {
+        return new ExpressionAnalyzer(
+                types,
+                analysis.getParameters(),
+                warningCollector,
+                analysis.isDescribe());
     }
 }
