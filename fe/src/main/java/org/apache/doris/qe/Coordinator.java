@@ -17,6 +17,7 @@
 
 package org.apache.doris.qe;
 
+import java_cup.parse_action;
 import org.apache.doris.analysis.Analyzer;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.catalog.Catalog;
@@ -1517,6 +1518,7 @@ public class Coordinator {
                 }
 
                 paramsList.add(params);
+                LOG.debug("plan: {}", params);
             }
             return paramsList;
         }

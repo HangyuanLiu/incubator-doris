@@ -131,7 +131,7 @@ public class MaterializedIndexMeta implements Writable {
 
     public static MaterializedIndexMeta read(DataInput in) throws IOException {
         String json = Text.readString(in);
-        return GsonUtils.GSON.fromJson(json, MaterializedIndexMeta.class);
+        MaterializedIndexMeta mvMeta = GsonUtils.GSON.fromJson(json, MaterializedIndexMeta.class);
+        return mvMeta;
     }
-
 }

@@ -181,6 +181,8 @@ public class CreateMaterializedViewStmt extends DdlStmt {
                     }
 
                     String columnName = ((SlotRef)e).getColumnName().toLowerCase();
+                    ((SlotRef) e).setTblName(selectStmt.fromClause_.getTableRefs().get(0).name);
+
                     if (!mvColumnNameSet.add(columnName)) {
                         ErrorReport.reportAnalysisException(ErrorCode.ERR_DUP_FIELDNAME, columnName);
                     }

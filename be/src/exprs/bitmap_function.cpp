@@ -343,6 +343,9 @@ StringVal BitmapFunctions::bitmap_hash(doris_udf::FunctionContext* ctx, const do
 }
 
 StringVal BitmapFunctions::bitmap_serialize(FunctionContext* ctx, const StringVal& src) {
+    if (src.is_null) {
+        std::cout << "bitmap is null" << std::endl;
+    }
     auto src_bitmap = reinterpret_cast<BitmapValue*>(src.ptr);
     StringVal result = serialize(ctx, src_bitmap);
     delete src_bitmap;

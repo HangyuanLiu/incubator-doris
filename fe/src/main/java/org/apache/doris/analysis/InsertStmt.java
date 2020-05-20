@@ -343,6 +343,7 @@ public class InsertStmt extends DdlStmt {
             // need a descriptor
             DescriptorTable descTable = analyzer.getDescTbl();
             olapTuple = descTable.createTupleDescriptor();
+
             for (Column col : olapTable.getFullSchema()) {
                 SlotDescriptor slotDesc = descTable.addSlotDescriptor(olapTuple);
                 slotDesc.setIsMaterialized(true);
@@ -354,6 +355,9 @@ public class InsertStmt extends DdlStmt {
                     slotDesc.setIsNullable(false);
                 }
             }
+            BaseTableRef tableRef = new BaseTableRef(new TableRef(tblName, null), targetTable, tblName);
+            tableRef.analyze(analyzer);
+
             // will use it during create load job
             indexIdToSchemaHash = olapTable.getIndexIdToSchemaHash();
         } else if (targetTable instanceof MysqlTable) {
@@ -661,7 +665,7 @@ public class InsertStmt extends DdlStmt {
         return expr.castTo(col.getType());
     }
 
-    public void prepareExpressions() throws UserException {
+    public void prepareExpressions(Analyzer analyzer) throws UserException {
         List<Expr> selectList = Expr.cloneList(queryStmt.getBaseTblResultExprs());
         // check type compatibility
         int numCols = targetColumns.size();
@@ -676,7 +680,14 @@ public class InsertStmt extends DdlStmt {
             if (exprByName.containsKey(col.getName())) {
                 resultExprs.add(exprByName.get(col.getName()));
             } else {
-                if (col.getDefaultValue() == null) {
+                if (col.getDefineExpr() != null) {
+                    FunctionCallExpr expr = (FunctionCallExpr) col.getDefineExpr();
+                    String colName = ((SlotRef) expr.getChild(0)).getColumnName();
+                    expr.analyzeImpl(analyzer);
+
+                    expr.getChild(0).setChild(0, exprByName.get(colName));
+                    resultExprs.add(expr);
+                } else if (col.getDefaultValue() == null) {
                     /*
                     The import stmt has been filtered in function checkColumnCoverage when
                         the default value of column is null and column is not nullable.

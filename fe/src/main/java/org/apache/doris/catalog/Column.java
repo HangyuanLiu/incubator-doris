@@ -17,15 +17,20 @@
 
 package org.apache.doris.catalog;
 
+import com.google.common.collect.Maps;
+import com.google.gson.Gson;
 import org.apache.doris.alter.SchemaChangeHandler;
-import org.apache.doris.analysis.Expr;
-import org.apache.doris.analysis.FunctionCallExpr;
-import org.apache.doris.analysis.SlotRef;
+import org.apache.doris.analysis.*;
 import org.apache.doris.common.CaseSensibility;
 import org.apache.doris.common.DdlException;
 import org.apache.doris.common.FeMetaVersion;
 import org.apache.doris.common.io.Text;
 import org.apache.doris.common.io.Writable;
+import org.apache.doris.common.util.SqlParserUtils;
+import org.apache.doris.mysql.privilege.PaloAuth;
+import org.apache.doris.persist.gson.GsonPostProcessable;
+import org.apache.doris.qe.ConnectContext;
+import org.apache.doris.system.SystemInfoService;
 import org.apache.doris.thrift.TColumn;
 import org.apache.doris.thrift.TColumnType;
 
@@ -38,12 +43,16 @@ import org.apache.logging.log4j.Logger;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This class represents the column-related metadata.
  */
-public class Column implements Writable {
+public class Column implements Writable , GsonPostProcessable {
     private static final Logger LOG = LogManager.getLogger(Column.class);
     @SerializedName(value = "name")
     private String name;
@@ -70,8 +79,10 @@ public class Column implements Writable {
     private String comment;
     @SerializedName(value = "stats")
     private ColumnStats stats;     // cardinality and selectivity etc.
+
     //use to define materialize view
-    @SerializedName(value = "defineExpr")
+    @SerializedName(value = "defineExprString")
+    private String defineExprString;
     private Expr defineExpr;
 
     public Column() {
@@ -80,6 +91,7 @@ public class Column implements Writable {
         this.isAggregationTypeImplicit = false;
         this.isKey = false;
         this.stats = new ColumnStats();
+        this.defineExprString = "";
     }
 
     public Column(String name, PrimitiveType dataType) {
@@ -119,6 +131,7 @@ public class Column implements Writable {
         this.comment = comment;
 
         this.stats = new ColumnStats();
+        this.defineExprString = "";
     }
 
     public Column(Column column) {
@@ -131,6 +144,10 @@ public class Column implements Writable {
         this.defaultValue = column.getDefaultValue();
         this.comment = column.getComment();
         this.stats = column.getStats();
+    }
+
+    public void init() {
+
     }
 
     public void setName(String newName) {
@@ -427,7 +444,10 @@ public class Column implements Writable {
         stats.write(out);
         Text.writeString(out, comment);
 
+        Text.writeString(out, defineExprString);
+
         //System.out.println("Write column meta");
+        /*
         if (defineExpr == null) {
             out.writeBoolean(false);
         } else {
@@ -436,11 +456,24 @@ public class Column implements Writable {
                 if (((FunctionCallExpr) defineExpr).getFnName().getFunction().equals("to_bitmap")) {
                     System.out.println("Define Expr : " + defineExpr.debugString());
                     Text.writeString(out, "to_bitmap");
-                    SlotRef slotR = (SlotRef) defineExpr.getChild(0);
-                    slotR.write(out);
+
+                    Expr child = defineExpr.getChild(0);
+                    if (child instanceof CastExpr) {
+                        child = child.getChild(0);
+                    }
+                    System.out.println("Define Expr Result: " + child.debugString());
+                    try {
+                        child.write(out);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                } else {
+                    throw new IOException("Write error : " + defineExpr.debugString());
                 }
             //}
         }
+
+         */
     }
 
     public void readFields(DataInput in) throws IOException {
@@ -482,12 +515,18 @@ public class Column implements Writable {
         }
 
         if (Catalog.getCurrentCatalogJournalVersion() >= FeMetaVersion.VERSION_85) {
-            //notNull = in.readBoolean();
-            //if (notNull) {
-                //String define_expr_str = Text.readString(in);
-                //SlotRef field = SlotRef.read(in);
-                //defineExpr = new FunctionCallExpr(define_expr_str, Arrays.asList(field));
-            //}
+            /*
+            notNull = in.readBoolean();
+            if (notNull) {
+                String define_expr_str = Text.readString(in);
+                SlotRef field = SlotRef.read(in);
+                defineExpr = new FunctionCallExpr(define_expr_str, Arrays.asList(field));
+                System.out.println("Read define expr : " + defineExpr.debugString());
+            }
+
+             */
+            defineExprString = Text.readString(in);
+            deserializeDefineExpr(defineExprString);
         }
     }
 
@@ -497,11 +536,81 @@ public class Column implements Writable {
         return column;
     }
 
-    public void setDefineExpr(Expr defineExpr) {
-        this.defineExpr = defineExpr;
-    }
-
     public Expr getDefineExpr() {
         return defineExpr;
+    }
+
+    public void setDefineExpr(Expr expr) {
+        defineExpr = expr;
+        if (expr != null) {
+            serializeDefineExpr(expr);
+        }
+    }
+
+    public void serializeDefineExpr(Expr defineExpr) {
+        String sql = defineExpr.toSql();
+        defineExprString = "COLUMNS (" + name + "=" + defineExpr.toSql() + ")";
+        System.out.println("serialize expr : " + defineExprString);
+    }
+
+    public void deserializeDefineExpr(String defineExprString) {
+        //defineExprString = "COLUMNS (mv_bitmap_price = to_bitmap(price))";
+        System.out.println("deser expr : " + defineExprString);
+        if (defineExprString.equals("")) {
+            defineExpr = null;
+        } else {
+            try {
+                SqlParser parser = new SqlParser(new SqlScanner(new StringReader(defineExprString)));
+                ImportColumnsStmt columnsStmt = (ImportColumnsStmt) SqlParserUtils.getFirstStmt(parser);
+
+                ConnectContext ctx = new ConnectContext(null);
+                ctx.setCluster(SystemInfoService.DEFAULT_CLUSTER);
+                ctx.setCurrentUserIdentity(UserIdentity.ROOT);
+                ctx.setQualifiedUser(PaloAuth.ROOT_USER);
+                ctx.setCatalog(Catalog.getCurrentCatalog());
+                ctx.setThreadLocalInfo();
+
+                Analyzer analyzer = new Analyzer(Catalog.getCurrentCatalog(), ctx);
+                columnsStmt.analyze(analyzer);
+                defineExpr = columnsStmt.getColumns().get(0).getExpr();
+                System.out.println("Expr : " + defineExpr.debugString());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        /*
+        else {
+            SqlParser parser = new SqlParser(new SqlScanner(new StringReader(defineExprString)));
+            try {
+                List<Expr> stmts = (List<Expr>) parser.parse().value;
+                Expr expr = (Expr) stmts.get(0);
+                Analyzer analyzer = new Analyzer(Catalog.getInstance(), new ConnectContext());
+                expr.analyze(analyzer);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+         */
+        /*
+        HashMap<String, String> properties = new Gson().fromJson(defineExprString, HashMap.class);
+
+        String[] slotRefStr = properties.get("SlotRef").split("\\.");
+        System.out.println("slot ref " + properties.get("SlotRef"));
+        TableName tableName;
+        String columnName;
+        if (slotRefStr.length > 2) {
+            tableName = new TableName(slotRefStr[0], slotRefStr[1]);
+            columnName = slotRefStr[2];
+        } else {
+            tableName = new TableName(null, slotRefStr[0]);
+            columnName = slotRefStr[1];
+        }
+        defineExpr = new FunctionCallExpr(properties.get("FunctionCallExpr"), Arrays.asList(new SlotRef(tableName, columnName)));
+         */
+    }
+
+    @Override
+    public void gsonPostProcess() {
+        deserializeDefineExpr(defineExprString);
     }
 }

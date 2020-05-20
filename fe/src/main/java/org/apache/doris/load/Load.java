@@ -1012,6 +1012,13 @@ public class Load {
                 slotDescByName.put(realColName, slotDesc);
             }
         }
+
+        //materialized view
+        for (Column column : tbl.getFullSchema()) {
+            if (column.getDefineExpr() != null) {
+                exprsByName.put(column.getName(), column.getDefineExpr());
+            }
+        }
         LOG.debug("slotDescByName: {}, exprsByName: {}", slotDescByName, exprsByName);
 
         // analyze all exprs

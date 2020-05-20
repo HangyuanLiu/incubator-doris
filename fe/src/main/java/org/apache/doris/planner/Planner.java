@@ -145,7 +145,7 @@ public class Planner {
 
         if (statement instanceof InsertStmt) {
             InsertStmt insertStmt = (InsertStmt) statement;
-            insertStmt.prepareExpressions();
+            insertStmt.prepareExpressions(analyzer);
         }
 
         // TODO chenhao16 , no used materialization work
