@@ -451,7 +451,7 @@ public class MaterializedViewHandler extends AlterHandler {
             Type newType = baseColumn.getType();
             if (baseColumn.getType().isIntegerType() && mvAggregationType.equals(BITMAP_UNION)) {
                 newType = Type.BITMAP;
-                columnName = "mv_bitmap_" + columnName;
+                columnName = mvColumnItem.getDefineExpr().toSql();
             }
             Column newMVColumn = new Column(
                     columnName,
@@ -464,8 +464,8 @@ public class MaterializedViewHandler extends AlterHandler {
 
             newMVColumn.setIsKey(mvColumnItem.isKey());
             newMVColumn.setAggregationType(mvAggregationType, mvColumnItem.isAggregationTypeImplicit());
-            newMVColumn.setDefineExpr(mvColumnItem.getDefileExpr());
-            System.out.println("handler defile expr : " + mvColumnItem.getDefileExpr());
+            newMVColumn.setDefineExpr(mvColumnItem.getDefineExpr());
+            System.out.println("handler defile expr : " + mvColumnItem.getDefineExpr());
             newMVColumns.add(newMVColumn);
         }
         return newMVColumns;

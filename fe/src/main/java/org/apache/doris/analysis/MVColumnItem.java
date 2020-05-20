@@ -61,7 +61,7 @@ public class MVColumnItem {
         return isAggregationTypeImplicit;
     }
 
-    public Expr getDefileExpr() {
+    public Expr getDefineExpr() {
         return defineExpr;
     }
 

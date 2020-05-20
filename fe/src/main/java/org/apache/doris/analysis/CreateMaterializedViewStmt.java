@@ -172,26 +172,19 @@ public class CreateMaterializedViewStmt extends DdlStmt {
                 if (functionName.equalsIgnoreCase("bitmap_union") || functionName.equalsIgnoreCase("hll_union")) {
                     //check type
                     meetAggregate = true;
-                    // check duplicate column
 
-                    Expr e = functionCallExpr.getChild(0).getChild(0);
-                    if (e instanceof CastExpr
-                            && (e.getChild(0) instanceof SlotRef)) {
-                        e = e.getChild(0);
-                    }
-
-                    String columnName = ((SlotRef)e).getColumnName().toLowerCase();
-                    ((SlotRef) e).setTblName(selectStmt.fromClause_.getTableRefs().get(0).name);
-
-                    if (!mvColumnNameSet.add(columnName)) {
-                        ErrorReport.reportAnalysisException(ErrorCode.ERR_DUP_FIELDNAME, columnName);
-                    }
+                    //TODO(lhy): check
 
                     if (beginIndexOfAggregation == -1) {
                         beginIndexOfAggregation = i;
                     }
+                    Preconditions.checkState(functionCallExpr.getChildren().size() == 1);
                     // TODO(ml): support different type of column, int -> bigint(sum)
-                    MVColumnItem mvColumnItem = new MVColumnItem(columnName);
+                    List<SlotRef> slots = Lists.newArrayList();
+                    functionCallExpr.collect(SlotRef.class, slots);
+                    Preconditions.checkState(slots.size() == 1);
+
+                    MVColumnItem mvColumnItem = new MVColumnItem(slots.get(0).getColumnName());
                     mvColumnItem.setAggregationType(AggregateType.valueOf(functionName.toUpperCase()), false);
                     mvColumnItem.setDefineExpr(functionCallExpr.getChild(0));
                     mvColumnItemList.add(mvColumnItem);
