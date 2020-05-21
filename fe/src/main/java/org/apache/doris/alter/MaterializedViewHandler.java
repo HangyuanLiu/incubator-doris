@@ -26,9 +26,22 @@ import org.apache.doris.analysis.CreateMaterializedViewStmt;
 import org.apache.doris.analysis.DropMaterializedViewStmt;
 import org.apache.doris.analysis.DropRollupClause;
 import org.apache.doris.analysis.MVColumnItem;
-import org.apache.doris.catalog.*;
+import org.apache.doris.catalog.AggregateType;
+import org.apache.doris.catalog.Catalog;
+import org.apache.doris.catalog.Column;
+import org.apache.doris.catalog.Database;
+import org.apache.doris.catalog.KeysType;
+import org.apache.doris.catalog.MaterializedIndex;
 import org.apache.doris.catalog.MaterializedIndex.IndexState;
+import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.catalog.OlapTable.OlapTableState;
+import org.apache.doris.catalog.Partition;
+import org.apache.doris.catalog.Replica;
+import org.apache.doris.catalog.Table;
+import org.apache.doris.catalog.Tablet;
+import org.apache.doris.catalog.TabletInvertedIndex;
+import org.apache.doris.catalog.TabletMeta;
+import org.apache.doris.catalog.Type;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.Config;
 import org.apache.doris.common.DdlException;
@@ -68,6 +81,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.doris.catalog.AggregateType.BITMAP_UNION;
+import static org.apache.doris.catalog.AggregateType.HLL_UNION;
 
 /*
  * MaterializedViewHandler is responsible for ADD/DROP materialized view.
@@ -78,6 +92,7 @@ import static org.apache.doris.catalog.AggregateType.BITMAP_UNION;
 public class MaterializedViewHandler extends AlterHandler {
     private static final Logger LOG = LogManager.getLogger(MaterializedViewHandler.class);
     public static final String NEW_STORAGE_FORMAT_INDEX_NAME_PREFIX = "__v2_";
+    public static final String MATERIALIZED_VIEW_NAME_PRFIX = "__doris_materialized_view_";
 
     public MaterializedViewHandler() {
         super("materialized view");
@@ -449,16 +464,27 @@ public class MaterializedViewHandler extends AlterHandler {
 
             String columnName = baseColumn.getName();
             Type newType = baseColumn.getType();
-            if (baseColumn.getType().isIntegerType() && mvAggregationType.equals(BITMAP_UNION)) {
-                newType = Type.BITMAP;
-                columnName = mvColumnItem.getDefineExpr().toSql();
+            boolean isKey = baseColumn.isKey();
+            boolean isAllowNull = baseColumn.isAllowNull();
+            if (mvAggregationType != null) {
+                if (mvAggregationType.equals(BITMAP_UNION)) {
+                    newType = Type.BITMAP;
+                    columnName = MATERIALIZED_VIEW_NAME_PRFIX + "bitmap_" +columnName;
+                } else if (mvAggregationType.equals(HLL_UNION)){
+                    newType = Type.HLL;
+                    columnName = MATERIALIZED_VIEW_NAME_PRFIX + "hll_" +columnName;
+                }
+
+                isKey = false;
+                isAllowNull = false;
             }
+
             Column newMVColumn = new Column(
                     columnName,
                     newType,
-                    baseColumn.isKey(),
+                    isKey,
                     mvAggregationType,
-                    baseColumn.isAllowNull(),
+                    isAllowNull,
                     baseColumn.getDefaultValue(),
                     baseColumn.getComment());
 

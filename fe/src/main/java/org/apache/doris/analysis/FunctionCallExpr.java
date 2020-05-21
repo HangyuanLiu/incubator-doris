@@ -407,7 +407,8 @@ public class FunctionCallExpr extends Expr {
 
         if (fnName.getFunction().equalsIgnoreCase(FunctionSet.BITMAP_COUNT)
                 || fnName.getFunction().equalsIgnoreCase(FunctionSet.BITMAP_UNION)
-                || fnName.getFunction().equalsIgnoreCase(FunctionSet.BITMAP_UNION_COUNT)) {
+                || fnName.getFunction().equalsIgnoreCase(FunctionSet.BITMAP_UNION_COUNT)
+                || fnName.getFunction().equalsIgnoreCase(FunctionSet.BITMAP_INTERSECT)) {
             if (children.size() != 1) {
                 throw new AnalysisException(fnName + " function could only have one child");
             }
@@ -421,7 +422,7 @@ public class FunctionCallExpr extends Expr {
         if ((fnName.getFunction().equalsIgnoreCase("HLL_UNION_AGG")
                 || fnName.getFunction().equalsIgnoreCase("HLL_CARDINALITY")
                 || fnName.getFunction().equalsIgnoreCase("HLL_RAW_AGG"))
-                && !arg.type.isHllType()) {
+                && !arg.type.isHllType() && !arg.type.isStringType()) {
             throw new AnalysisException(
                     "HLL_UNION_AGG, HLL_RAW_AGG and HLL_CARDINALITY's params must be hll column");
         }

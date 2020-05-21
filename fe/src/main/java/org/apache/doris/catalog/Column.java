@@ -146,10 +146,6 @@ public class Column implements Writable , GsonPostProcessable {
         this.stats = column.getStats();
     }
 
-    public void init() {
-
-    }
-
     public void setName(String newName) {
         this.name = newName;
     }
@@ -445,35 +441,6 @@ public class Column implements Writable , GsonPostProcessable {
         Text.writeString(out, comment);
 
         Text.writeString(out, defineExprString);
-
-        //System.out.println("Write column meta");
-        /*
-        if (defineExpr == null) {
-            out.writeBoolean(false);
-        } else {
-            out.writeBoolean(true);
-            //if (defineExpr instanceof FunctionCallExpr) {
-                if (((FunctionCallExpr) defineExpr).getFnName().getFunction().equals("to_bitmap")) {
-                    System.out.println("Define Expr : " + defineExpr.debugString());
-                    Text.writeString(out, "to_bitmap");
-
-                    Expr child = defineExpr.getChild(0);
-                    if (child instanceof CastExpr) {
-                        child = child.getChild(0);
-                    }
-                    System.out.println("Define Expr Result: " + child.debugString());
-                    try {
-                        child.write(out);
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
-                } else {
-                    throw new IOException("Write error : " + defineExpr.debugString());
-                }
-            //}
-        }
-
-         */
     }
 
     public void readFields(DataInput in) throws IOException {
@@ -515,16 +482,6 @@ public class Column implements Writable , GsonPostProcessable {
         }
 
         if (Catalog.getCurrentCatalogJournalVersion() >= FeMetaVersion.VERSION_85) {
-            /*
-            notNull = in.readBoolean();
-            if (notNull) {
-                String define_expr_str = Text.readString(in);
-                SlotRef field = SlotRef.read(in);
-                defineExpr = new FunctionCallExpr(define_expr_str, Arrays.asList(field));
-                System.out.println("Read define expr : " + defineExpr.debugString());
-            }
-
-             */
             defineExprString = Text.readString(in);
             deserializeDefineExpr(defineExprString);
         }
@@ -548,14 +505,10 @@ public class Column implements Writable , GsonPostProcessable {
     }
 
     public void serializeDefineExpr(Expr defineExpr) {
-        String sql = defineExpr.toSql();
         defineExprString = "COLUMNS (" + name + "=" + defineExpr.toSql() + ")";
-        System.out.println("serialize expr : " + defineExprString);
     }
 
     public void deserializeDefineExpr(String defineExprString) {
-        //defineExprString = "COLUMNS (mv_bitmap_price = to_bitmap(price))";
-        System.out.println("deser expr : " + defineExprString);
         if (defineExprString.equals("")) {
             defineExpr = null;
         } else {
@@ -573,40 +526,10 @@ public class Column implements Writable , GsonPostProcessable {
                 Analyzer analyzer = new Analyzer(Catalog.getCurrentCatalog(), ctx);
                 columnsStmt.analyze(analyzer);
                 defineExpr = columnsStmt.getColumns().get(0).getExpr();
-                System.out.println("Expr : " + defineExpr.debugString());
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-        /*
-        else {
-            SqlParser parser = new SqlParser(new SqlScanner(new StringReader(defineExprString)));
-            try {
-                List<Expr> stmts = (List<Expr>) parser.parse().value;
-                Expr expr = (Expr) stmts.get(0);
-                Analyzer analyzer = new Analyzer(Catalog.getInstance(), new ConnectContext());
-                expr.analyze(analyzer);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-         */
-        /*
-        HashMap<String, String> properties = new Gson().fromJson(defineExprString, HashMap.class);
-
-        String[] slotRefStr = properties.get("SlotRef").split("\\.");
-        System.out.println("slot ref " + properties.get("SlotRef"));
-        TableName tableName;
-        String columnName;
-        if (slotRefStr.length > 2) {
-            tableName = new TableName(slotRefStr[0], slotRefStr[1]);
-            columnName = slotRefStr[2];
-        } else {
-            tableName = new TableName(null, slotRefStr[0]);
-            columnName = slotRefStr[1];
-        }
-        defineExpr = new FunctionCallExpr(properties.get("FunctionCallExpr"), Arrays.asList(new SlotRef(tableName, columnName)));
-         */
     }
 
     @Override

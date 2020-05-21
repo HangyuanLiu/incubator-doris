@@ -270,6 +270,7 @@ bool RowBlockChanger::change_row_block(
             // check if the type of new column is equal to the older's.
             FieldType reftype = ref_block->tablet_schema().column(ref_column).type();
             FieldType newtype = mutable_block->tablet_schema().column(i).type();
+
             if (newtype == reftype) {
                 // 效率低下，也可以直接计算变长域拷贝，但仍然会破坏封装
                 for (size_t row_index = 0, new_row_index = 0;
@@ -282,6 +283,8 @@ bool RowBlockChanger::change_row_block(
                     // 指定新的要写入的row index（不同于读的row_index）
                     mutable_block->get_row(new_row_index++, &write_helper);
                     ref_block->get_row(row_index, &read_helper);
+
+                    std::cout << "write helper : " <<write_helper.to_string() << std::endl;
 
                     if (true == read_helper.is_null(ref_column)) {
                         write_helper.set_null(i);
