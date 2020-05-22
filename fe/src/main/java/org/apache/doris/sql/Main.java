@@ -1,14 +1,17 @@
 package org.apache.doris.sql;
 
+import com.google.common.collect.Lists;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.apache.doris.analysis.CreateDbStmt;
 import org.apache.doris.analysis.CreateTableStmt;
 import org.apache.doris.catalog.Catalog;
+import org.apache.doris.planner.DistributedPlanner;
+import org.apache.doris.planner.PlanFragment;
+import org.apache.doris.planner.PlanNode;
 import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.StatementAnalyzer;
-import org.apache.doris.sql.metadata.DorisMetadata;
 import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.metadata.MetadataManager;
 import org.apache.doris.sql.metadata.Session;
@@ -18,6 +21,9 @@ import org.apache.doris.sql.parser.ParsingOptions;
 import org.apache.doris.sql.parser.SqlBaseLexer;
 import org.apache.doris.sql.parser.SqlBaseParser;
 import org.apache.doris.sql.planner.LogicalPlanner;
+import org.apache.doris.sql.planner.PhysicalPlanner;
+import org.apache.doris.sql.planner.Plan;
+import org.apache.doris.sql.planner.SimplePlanRewriter;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.Statement;
@@ -282,7 +288,14 @@ public class Main {
 
         //planner
         LogicalPlanner logicalPlanner = new LogicalPlanner(false, stateMachine.getSession(), planOptimizers, idAllocator, metadata, sqlParser, statsCalculator, costCalculator, stateMachine.getWarningCollector());
-        //Plan plan = logicalPlanner.plan(analysis);
+        Plan plan = logicalPlanner.plan(analysis);
+
+        PhysicalPlanner physicalPlanner = new PhysicalPlanner();
+        PlanNode root = physicalPlanner.createPhysicalPlan(plan);
+
+        DistributedPlanner distributedPlanner = new DistributedPlanner(plannerContext);
+        ArrayList<PlanFragment> fragments = Lists.newArrayList();
+        fragments = distributedPlanner.createPlanFragments(root);
     }
 
     private static void createTable(String sql) throws Exception {

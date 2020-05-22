@@ -1,6 +1,7 @@
 package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.Field;
@@ -9,6 +10,9 @@ import org.apache.doris.sql.planner.plan.OutputNode;
 import org.apache.doris.sql.planner.plan.PlanNode;
 import org.apache.doris.sql.tree.Query;
 import org.apache.doris.sql.tree.Statement;
+
+import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
 
 public class LogicalPlanner {
     public enum Stage {
@@ -19,12 +23,12 @@ public class LogicalPlanner {
 
     }
 
-    public PlanNode plan(Analysis analysis)
+    public Plan plan(Analysis analysis)
     {
         return plan(analysis, Stage.OPTIMIZED_AND_VALIDATED);
     }
 
-    public PlanNode plan(Analysis analysis, Stage stage)
+    public Plan plan(Analysis analysis, Stage stage)
     {
         PlanNode root = planStatement(analysis, analysis.getStatement());
         /*
@@ -41,8 +45,9 @@ public class LogicalPlanner {
             // make sure we produce a valid plan after optimizations run. This is mainly to catch programming errors
             planSanityChecker.validateFinalPlan(root, session, metadata, sqlParser, variableAllocator.getTypes(), warningCollector);
         }
-         */
-        return root;
+        */
+        //TypeProvider types = variableAllocator.getTypes();
+        return new Plan(root, null);
     }
 
     public PlanNode planStatement(Analysis analysis, Statement statement)

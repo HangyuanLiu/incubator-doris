@@ -139,8 +139,6 @@ public class Planner {
             queryStmt = (QueryStmt) statement;
         }
 
-        ((SelectStmt) statement).get
-
         plannerContext = new PlannerContext(analyzer, queryStmt, queryOptions, statement);
         singleNodePlanner = new SingleNodePlanner(plannerContext);
         PlanNode singleNodePlan = singleNodePlanner.createSingleNodePlan();
