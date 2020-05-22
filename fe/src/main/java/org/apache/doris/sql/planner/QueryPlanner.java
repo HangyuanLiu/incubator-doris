@@ -2,7 +2,9 @@ package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
-import org.apache.doris.sql.VariableReferenceExpression;
+import org.apache.doris.sql.planner.plan.Assignments;
+import org.apache.doris.sql.planner.plan.ProjectNode;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Query;
@@ -12,6 +14,7 @@ import org.apache.doris.sql.tree.SymbolReference;
 import java.util.List;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 
 public class QueryPlanner {
     private final Analysis analysis;
@@ -25,10 +28,10 @@ public class QueryPlanner {
     {
         PlanBuilder builder = planQueryBody(query);
 
-        List<Expression> orderBy = analysis.getOrderByExpressions(query);
-        builder = handleSubqueries(builder, query, orderBy);
-        List<Expression> outputs = analysis.getOutputExpressions(query);
-        builder = handleSubqueries(builder, query, outputs);
+        //List<Expression> orderBy = analysis.getOrderByExpressions(query);
+        //builder = handleSubqueries(builder, query, orderBy);
+        //List<Expression> outputs = analysis.getOutputExpressions(query);
+        //builder = handleSubqueries(builder, query, outputs);
         builder = project(builder, Iterables.concat(orderBy, outputs));
 
         builder = sort(builder, query);
@@ -156,5 +159,12 @@ public class QueryPlanner {
                 subPlan.getRoot(),
                 projections.build()),
                 analysis.getParameters());
+    }
+
+    private static List<Expression> toSymbolReferences(List<VariableReferenceExpression> variables)
+    {
+        return variables.stream()
+                .map(variable -> new SymbolReference(variable.getName()))
+                .collect(toImmutableList());
     }
 }

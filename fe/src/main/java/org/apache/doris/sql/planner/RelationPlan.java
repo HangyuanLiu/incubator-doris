@@ -3,7 +3,7 @@ package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.doris.planner.PlanNode;
-import org.apache.doris.sql.VariableReferenceExpression;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.RelationType;
 import org.apache.doris.sql.analyzer.Scope;
 

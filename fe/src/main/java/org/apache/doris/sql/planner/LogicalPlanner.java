@@ -1,19 +1,14 @@
 package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.doris.planner.MergeNode;
-import org.apache.doris.planner.PlanNode;
-import org.apache.doris.planner.ResultSink;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.Field;
 import org.apache.doris.sql.analyzer.RelationType;
+import org.apache.doris.sql.planner.plan.OutputNode;
+import org.apache.doris.sql.planner.plan.PlanNode;
 import org.apache.doris.sql.tree.Query;
 import org.apache.doris.sql.tree.Statement;
-import org.apache.doris.thrift.TPlanNode;
-
-import static com.google.common.base.Preconditions.checkState;
-import static java.lang.String.format;
-import static java.util.Objects.requireNonNull;
 
 public class LogicalPlanner {
     public enum Stage {

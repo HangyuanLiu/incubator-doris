@@ -12,12 +12,10 @@
  * limitations under the License.
  */
 package org.apache.doris.sql.planner;
-import com.google.common.collect.ImmutableList;
-import org.apache.doris.sql.VariableReferenceExpression;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.ResolvedField;
 import org.apache.doris.sql.tree.*;
-import org.apache.doris.sql.type.Type;
 
 import java.util.HashMap;
 import java.util.List;

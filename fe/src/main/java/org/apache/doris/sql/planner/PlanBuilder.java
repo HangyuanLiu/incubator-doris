@@ -14,8 +14,10 @@
 package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.doris.planner.PlanNode;
-import org.apache.doris.sql.VariableReferenceExpression;
+import org.apache.doris.sql.planner.plan.Assignments;
+import org.apache.doris.sql.planner.plan.PlanNode;
+import org.apache.doris.sql.planner.plan.ProjectNode;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.SymbolReference;
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 
 class PlanBuilder
 {
@@ -96,9 +99,6 @@ class PlanBuilder
 
     public PlanBuilder appendProjections(Iterable<Expression> expressions, PlanVariableAllocator variableAllocator, PlanNodeIdAllocator idAllocator)
     {
-        getRoot().getOutputSmap()
-
-
         TranslationMap translations = copyTranslations();
 
         Assignments.Builder projections = Assignments.builder();
