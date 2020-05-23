@@ -97,6 +97,7 @@ struct TAlterTabletReqV2 {
     // version of data which this alter task should transform
     5: optional Types.TVersion alter_version
     6: optional Types.TVersionHash alter_version_hash // Deprecated
+    7: optional list<Exprs.TExpr> materialized_view_function
 }
 
 struct TClusterInfo {

@@ -1518,7 +1518,7 @@ public class Coordinator {
                 }
 
                 paramsList.add(params);
-                LOG.debug("plan: {}", params);
+                LOG.debug("TExecPlanFragmentParams: {}", params);
             }
             return paramsList;
         }

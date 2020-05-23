@@ -237,6 +237,7 @@ private:
         TabletSharedPtr new_tablet;
         std::vector<RowsetReaderSharedPtr> ref_rowset_readers;
         DeleteHandler delete_handler;
+        std::map<std::string, std::string> materialized_function_map;
     };
 
     // add alter task to base_tablet and new_tablet.
@@ -259,7 +260,9 @@ private:
                                      TabletSharedPtr new_tablet,
                                      RowBlockChanger* rb_changer,
                                      bool* sc_sorting,
-                                     bool* sc_directly);
+                                     bool* sc_directly,
+                                     std::map<std::string, std::string> materialized_function_map
+                                     );
 
     // 需要新建default_value时的初始化设置
     static OLAPStatus _init_column_mapping(ColumnMapping* column_mapping,

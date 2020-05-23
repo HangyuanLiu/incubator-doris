@@ -265,6 +265,11 @@ bool RowBlockChanger::change_row_block(
     for (size_t i = 0, len = mutable_block->tablet_schema().num_columns(); !filter_all && i < len; ++i) {
         int32_t ref_column = _schema_mapping[i].ref_column;
 
+        //TODO(lhy)
+//        if (_schema_mapping[i].materialized_function) {
+
+  //      }
+
         if (_schema_mapping[i].ref_column >= 0) {
             // new column will be assigned as referenced column
             // check if the type of new column is equal to the older's.
@@ -1387,6 +1392,11 @@ OLAPStatus SchemaChangeHandler::_do_process_alter_tablet_v2(const TAlterTabletRe
         sc_params.ref_rowset_readers = rs_readers;
         sc_params.delete_handler = delete_handler;
 
+        //TODO(lhy)
+//        if (request.materialized_view_function) {
+            //sc_params.materialized_function_map.insert("field_name", "fucntion_name");
+  //      }
+
         res = _convert_historical_rowsets(sc_params);
         if (res != OLAP_SUCCESS) {
             break;
@@ -1432,11 +1442,14 @@ OLAPStatus SchemaChangeHandler::schema_version_convert(
     bool sc_sorting = false;
     bool sc_directly = false;
 
+    std::map<std::string, std::string> test;
     if (OLAP_SUCCESS != (res = _parse_request(base_tablet,
                                               new_tablet,
                                               &rb_changer,
                                               &sc_sorting,
-                                              &sc_directly))) {
+                                              &sc_directly,
+                                                test
+                                              ))) {
         LOG(WARNING) << "failed to parse the request. res=" << res;
         return res;
     }
@@ -1653,7 +1666,7 @@ OLAPStatus SchemaChangeHandler::_convert_historical_rowsets(const SchemaChangePa
 
     // a. 解析Alter请求，转换成内部的表示形式
     OLAPStatus res = _parse_request(sc_params.base_tablet, sc_params.new_tablet,
-                                    &rb_changer, &sc_sorting, &sc_directly);
+                                    &rb_changer, &sc_sorting, &sc_directly, sc_params.materialized_function_map);
     if (res != OLAP_SUCCESS) {
         LOG(WARNING) << "failed to parse the request. res=" << res;
         goto PROCESS_ALTER_EXIT;
@@ -1787,7 +1800,8 @@ OLAPStatus SchemaChangeHandler::_parse_request(TabletSharedPtr base_tablet,
                                                TabletSharedPtr new_tablet,
                                                RowBlockChanger* rb_changer,
                                                bool* sc_sorting,
-                                               bool* sc_directly) {
+                                               bool* sc_directly,
+                                               const std::map<std::string, std::string> materialized_function_map) {
     OLAPStatus res = OLAP_SUCCESS;
 
     // set column mapping
@@ -1808,6 +1822,7 @@ OLAPStatus SchemaChangeHandler::_parse_request(TabletSharedPtr base_tablet,
             }
 
             column_mapping->ref_column = column_index;
+            column_mapping->materialized_function = materialized_function_map.find(column_name)->second;
             VLOG(3) << "A column refered to existed column will be added after schema changing."
                     << "column=" << column_name << ", ref_column=" << column_index;
             continue;

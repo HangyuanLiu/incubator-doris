@@ -29,6 +29,7 @@ struct ColumnMapping {
     // <0: use default value
     // >=0: use origin column
     int32_t ref_column;
+    std::string materialized_function;
     // normally for default value. stores values for filters
     WrapperField* default_value;
 };
