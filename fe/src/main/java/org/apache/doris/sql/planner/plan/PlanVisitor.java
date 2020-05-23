@@ -5,7 +5,7 @@ public abstract class PlanVisitor<R, C>
     /**
      * The default behavior to perform when visiting a PlanNode
      */
-    public abstract R visitPlan(PlanNode node, C context);
+    public abstract R visitPlan(LogicalPlanNode node, C context);
 
     public R visitOutput(OutputNode node, C context)
     {

@@ -2,7 +2,9 @@ package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNode;
+import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.planner.plan.TableScanNode;
@@ -23,9 +25,11 @@ import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowE
 class RelationPlanner
         extends DefaultTraversalVisitor<RelationPlan, Void> {
     private final Analysis analysis;
+    private final IdGenerator<PlanNodeId> idAllocator;
 
-    RelationPlanner(Analysis analysis) {
+    RelationPlanner(Analysis analysis, IdGenerator<PlanNodeId> idAllocator) {
         this.analysis = analysis;
+        this.idAllocator = idAllocator;
     }
 
     @Override

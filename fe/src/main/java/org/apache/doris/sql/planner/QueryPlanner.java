@@ -2,6 +2,8 @@ package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import org.apache.doris.common.IdGenerator;
+import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
@@ -18,10 +20,11 @@ import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowE
 
 public class QueryPlanner {
     private final Analysis analysis;
+    private final IdGenerator<PlanNodeId> idAllocator;
 
-    QueryPlanner(
-            Analysis analysis) {
+    QueryPlanner(Analysis analysis, IdGenerator<PlanNodeId> idAllocator) {
         this.analysis = analysis;
+        this.idAllocator = idAllocator;
     }
 
     public RelationPlan plan(Query query)
@@ -30,7 +33,7 @@ public class QueryPlanner {
 
         //List<Expression> orderBy = analysis.getOrderByExpressions(query);
         //builder = handleSubqueries(builder, query, orderBy);
-        //List<Expression> outputs = analysis.getOutputExpressions(query);
+        List<Expression> outputs = analysis.getOutputExpressions(query);
         //builder = handleSubqueries(builder, query, outputs);
         builder = project(builder, Iterables.concat(orderBy, outputs));
 

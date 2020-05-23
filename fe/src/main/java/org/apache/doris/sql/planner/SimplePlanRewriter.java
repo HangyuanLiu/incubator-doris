@@ -14,6 +14,7 @@
 package org.apache.doris.sql.planner;
 
 import org.apache.doris.planner.PlanNode;
+import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.PlanVisitor;
 
 import java.util.List;
@@ -24,18 +25,18 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 public abstract class SimplePlanRewriter<C>
         extends PlanVisitor<PlanNode, SimplePlanRewriter.RewriteContext<C>>
 {
-    public static <C> PlanNode rewriteWith(SimplePlanRewriter<C> rewriter, org.apache.doris.sql.planner.plan.PlanNode node)
+    public static <C> PlanNode rewriteWith(SimplePlanRewriter<C> rewriter, LogicalPlanNode node)
     {
         return node.accept(rewriter, new RewriteContext<>(rewriter, null));
     }
 
-    public static <C> PlanNode rewriteWith(SimplePlanRewriter<C> rewriter, org.apache.doris.sql.planner.plan.PlanNode node, C context)
+    public static <C> PlanNode rewriteWith(SimplePlanRewriter<C> rewriter, LogicalPlanNode node, C context)
     {
         return node.accept(rewriter, new RewriteContext<>(rewriter, context));
     }
 
     @Override
-    public PlanNode visitPlan(org.apache.doris.sql.planner.plan.PlanNode node, RewriteContext<C> context)
+    public PlanNode visitPlan(LogicalPlanNode node, RewriteContext<C> context)
     {
         return context.defaultRewrite(node, context.get());
     }
@@ -60,7 +61,7 @@ public abstract class SimplePlanRewriter<C>
          * Invoke the rewrite logic recursively on children of the given node and swap it
          * out with an identical copy with the rewritten children
          */
-        public PlanNode defaultRewrite(org.apache.doris.sql.planner.plan.PlanNode node)
+        public PlanNode defaultRewrite(LogicalPlanNode node)
         {
             return defaultRewrite(node, null);
         }
@@ -69,7 +70,7 @@ public abstract class SimplePlanRewriter<C>
          * Invoke the rewrite logic recursively on children of the given node and swap it
          * out with an identical copy with the rewritten children
          */
-        public PlanNode defaultRewrite(org.apache.doris.sql.planner.plan.PlanNode node, C context)
+        public PlanNode defaultRewrite(LogicalPlanNode node, C context)
         {
             List<PlanNode> children = node.getSources().stream()
                     .map(child -> rewrite(child, context))
@@ -81,7 +82,7 @@ public abstract class SimplePlanRewriter<C>
         /**
          * This method is meant for invoking the rewrite logic on children while processing a node
          */
-        public PlanNode rewrite(org.apache.doris.sql.planner.plan.PlanNode node, C userContext)
+        public PlanNode rewrite(LogicalPlanNode node, C userContext)
         {
             PlanNode result = node.accept(nodeRewriter, new RewriteContext<>(nodeRewriter, userContext));
             verify(result != null, "nodeRewriter returned null for %s", node.getClass().getName());
@@ -92,7 +93,7 @@ public abstract class SimplePlanRewriter<C>
         /**
          * This method is meant for invoking the rewrite logic on children while processing a node
          */
-        public PlanNode rewrite(org.apache.doris.sql.planner.plan.PlanNode node)
+        public PlanNode rewrite(LogicalPlanNode node)
         {
             return rewrite(node, null);
         }

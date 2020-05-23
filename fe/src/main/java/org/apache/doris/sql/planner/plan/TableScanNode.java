@@ -32,7 +32,7 @@ import static java.util.Objects.requireNonNull;
 
 @Immutable
 public final class TableScanNode
-        extends PlanNode
+        extends LogicalPlanNode
 {
     private final TableHandle table;
     private final Map<VariableReferenceExpression, ColumnHandle> assignments;
@@ -132,7 +132,7 @@ public final class TableScanNode
     }
 
     @Override
-    public List<PlanNode> getSources()
+    public List<LogicalPlanNode> getSources()
     {
         // table scan should be the leaf node
         return emptyList();
@@ -166,7 +166,7 @@ public final class TableScanNode
     }
 
     @Override
-    public PlanNode replaceChildren(List<PlanNode> newChildren)
+    public LogicalPlanNode replaceChildren(List<LogicalPlanNode> newChildren)
     {
         checkArgument(newChildren.isEmpty(), "newChildren is not empty");
         return this;

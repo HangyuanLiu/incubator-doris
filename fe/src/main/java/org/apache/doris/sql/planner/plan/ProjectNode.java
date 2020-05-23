@@ -11,15 +11,15 @@ import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
 
 public final class ProjectNode
-        extends PlanNode
+        extends LogicalPlanNode
 {
-    private final PlanNode source;
+    private final LogicalPlanNode source;
     private final Assignments assignments;
 
     // TODO: pass in the "assignments" and the "outputs" separately (i.e., get rid if the symbol := symbol idiom)
     @JsonCreator
     public ProjectNode(@JsonProperty("id") PlanNodeId id,
-                       @JsonProperty("source") PlanNode source,
+                       @JsonProperty("source") LogicalPlanNode source,
                        @JsonProperty("assignments") Assignments assignments)
     {
         super(id);
@@ -44,13 +44,13 @@ public final class ProjectNode
     }
 
     @Override
-    public List<PlanNode> getSources()
+    public List<LogicalPlanNode> getSources()
     {
         return singletonList(source);
     }
 
     @JsonProperty
-    public PlanNode getSource()
+    public LogicalPlanNode getSource()
     {
         return source;
     }
@@ -62,7 +62,7 @@ public final class ProjectNode
     }
 
     @Override
-    public PlanNode replaceChildren(List<PlanNode> newChildren)
+    public LogicalPlanNode replaceChildren(List<LogicalPlanNode> newChildren)
     {
         requireNonNull(newChildren, "newChildren list is null");
         if (newChildren.size() != 1) {

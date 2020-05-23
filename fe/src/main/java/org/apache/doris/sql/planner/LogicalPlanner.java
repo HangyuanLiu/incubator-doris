@@ -1,13 +1,14 @@
 package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.doris.sql.TypeProvider;
+import org.apache.doris.common.IdGenerator;
+import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.Field;
 import org.apache.doris.sql.analyzer.RelationType;
 import org.apache.doris.sql.planner.plan.OutputNode;
-import org.apache.doris.sql.planner.plan.PlanNode;
+import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.tree.Query;
 import org.apache.doris.sql.tree.Statement;
 
@@ -18,6 +19,8 @@ public class LogicalPlanner {
     public enum Stage {
         CREATED, OPTIMIZED, OPTIMIZED_AND_VALIDATED
     }
+
+    IdGenerator<PlanNodeId> idAllocator;
 
     public LogicalPlanner() {
 
@@ -30,7 +33,7 @@ public class LogicalPlanner {
 
     public Plan plan(Analysis analysis, Stage stage)
     {
-        PlanNode root = planStatement(analysis, analysis.getStatement());
+        LogicalPlanNode root = planStatement(analysis, analysis.getStatement());
         /*
         planSanityChecker.validateIntermediatePlan(root, session, metadata, sqlParser, variableAllocator.getTypes(), warningCollector);
 
@@ -50,7 +53,7 @@ public class LogicalPlanner {
         return new Plan(root, null);
     }
 
-    public PlanNode planStatement(Analysis analysis, Statement statement)
+    public LogicalPlanNode planStatement(Analysis analysis, Statement statement)
     {
         return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
     }
@@ -66,7 +69,7 @@ public class LogicalPlanner {
         return null;
     }
 
-    private PlanNode createOutputPlan(RelationPlan plan, Analysis analysis)
+    private LogicalPlanNode createOutputPlan(RelationPlan plan, Analysis analysis)
     {
         ImmutableList.Builder<VariableReferenceExpression> outputs = ImmutableList.builder();
         ImmutableList.Builder<String> names = ImmutableList.builder();
@@ -88,7 +91,7 @@ public class LogicalPlanner {
 
     private RelationPlan createRelationPlan(Analysis analysis, Query query)
     {
-        return new RelationPlanner(analysis, variableAllocator, idAllocator, buildLambdaDeclarationToVariableMap(analysis, variableAllocator), metadata, session)
+        return new RelationPlanner(analysis, idAllocator)
                 .process(query, null);
     }
 }

@@ -1,10 +1,13 @@
 package org.apache.doris.sql.metadata;;
 
+import org.apache.doris.catalog.Table;
+
 import static java.util.Objects.requireNonNull;
 
 public final class DorisTableHandle implements ConnectorTableHandle {
     private final String schemaName;
     private final String tableName;
+    private Table table;
 
     public DorisTableHandle(
             String schemaName,
@@ -20,5 +23,9 @@ public final class DorisTableHandle implements ConnectorTableHandle {
 
     public String getTableName() {
         return tableName;
+    }
+
+    public Table getTable() {
+        return table;
     }
 }

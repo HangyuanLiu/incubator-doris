@@ -2,7 +2,7 @@ package org.apache.doris.sql.planner;
 
 
 import com.google.common.collect.ImmutableList;
-import org.apache.doris.planner.PlanNode;
+import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.RelationType;
 import org.apache.doris.sql.analyzer.Scope;
@@ -25,11 +25,11 @@ import static java.util.Objects.requireNonNull;
  * will have index n.
  */
 public class RelationPlan {
-    private final PlanNode root;
+    private final LogicalPlanNode root;
     private final List<VariableReferenceExpression> fieldMappings; // for each field in the relation, the corresponding variable from "root"
     private final Scope scope;
 
-    public RelationPlan(PlanNode root, Scope scope, List<VariableReferenceExpression> fieldMappings)
+    public RelationPlan(LogicalPlanNode root, Scope scope, List<VariableReferenceExpression> fieldMappings)
     {
         requireNonNull(root, "root is null");
         requireNonNull(fieldMappings, "outputSymbols is null");
@@ -52,7 +52,7 @@ public class RelationPlan {
         return fieldMappings.get(fieldIndex);
     }
 
-    public PlanNode getRoot()
+    public LogicalPlanNode getRoot()
     {
         return root;
     }

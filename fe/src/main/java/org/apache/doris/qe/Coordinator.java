@@ -89,6 +89,7 @@ import com.google.common.collect.Sets;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.thrift.TException;
+import org.mortbay.log.Log;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -1517,7 +1518,9 @@ public class Coordinator {
                 }
 
                 paramsList.add(params);
+                LOG.debug(params.toString());
             }
+
             return paramsList;
         }
 

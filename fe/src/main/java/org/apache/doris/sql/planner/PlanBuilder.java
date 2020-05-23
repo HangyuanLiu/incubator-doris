@@ -15,7 +15,7 @@ package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.doris.sql.planner.plan.Assignments;
-import org.apache.doris.sql.planner.plan.PlanNode;
+import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
@@ -32,9 +32,9 @@ class PlanBuilder
 {
     private final TranslationMap translations;
     private final List<Expression> parameters;
-    private final PlanNode root;
+    private final LogicalPlanNode root;
 
-    public PlanBuilder(TranslationMap translations, PlanNode root, List<Expression> parameters)
+    public PlanBuilder(TranslationMap translations, LogicalPlanNode root, List<Expression> parameters)
     {
         requireNonNull(translations, "translations is null");
         requireNonNull(root, "root is null");
@@ -57,7 +57,7 @@ class PlanBuilder
         return translations.getAnalysis();
     }
 
-    public PlanBuilder withNewRoot(PlanNode root)
+    public PlanBuilder withNewRoot(LogicalPlanNode root)
     {
         return new PlanBuilder(translations, root, parameters);
     }
@@ -67,7 +67,7 @@ class PlanBuilder
         return translations.getRelationPlan();
     }
 
-    public PlanNode getRoot()
+    public LogicalPlanNode getRoot()
     {
         return root;
     }

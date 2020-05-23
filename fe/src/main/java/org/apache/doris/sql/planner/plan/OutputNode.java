@@ -28,15 +28,15 @@ import static java.util.Objects.requireNonNull;
 
 @Immutable
 public class OutputNode
-        extends PlanNode
+        extends LogicalPlanNode
 {
-    private final PlanNode source;
+    private final LogicalPlanNode source;
     private final List<String> columnNames;
     private final List<VariableReferenceExpression> outputVariables; // column name = variable.name
 
     @JsonCreator
     public OutputNode(@JsonProperty("id") PlanNodeId id,
-                      @JsonProperty("source") PlanNode source,
+                      @JsonProperty("source") LogicalPlanNode source,
                       @JsonProperty("columnNames") List<String> columnNames,
                       @JsonProperty("outputVariables") List<VariableReferenceExpression> outputVariables)
     {
@@ -52,7 +52,7 @@ public class OutputNode
     }
 
     @Override
-    public List<PlanNode> getSources()
+    public List<LogicalPlanNode> getSources()
     {
         return ImmutableList.of(source);
     }
@@ -71,7 +71,7 @@ public class OutputNode
     }
 
     @JsonProperty
-    public PlanNode getSource()
+    public LogicalPlanNode getSource()
     {
         return source;
     }
@@ -83,7 +83,7 @@ public class OutputNode
     }
 
     @Override
-    public PlanNode replaceChildren(List<PlanNode> newChildren)
+    public LogicalPlanNode replaceChildren(List<LogicalPlanNode> newChildren)
     {
         return new OutputNode(getId(), Iterables.getOnlyElement(newChildren), columnNames, outputVariables);
     }
