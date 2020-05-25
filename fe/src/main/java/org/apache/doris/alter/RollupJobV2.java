@@ -17,6 +17,7 @@
 
 package org.apache.doris.alter;
 
+import org.apache.doris.analysis.Expr;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.Database;
@@ -58,6 +59,8 @@ import org.apache.logging.log4j.Logger;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -322,12 +325,20 @@ public class RollupJobV2 extends AlterJobV2 {
 
                     List<Replica> rollupReplicas = rollupTablet.getReplicas();
                     for (Replica rollupReplica : rollupReplicas) {
+
+                        Map<String, Expr> defineExprs = new HashMap<>();
+                        for (Column column : rollupSchema) {
+                            if (column.getDefineExpr() != null) {
+                                defineExprs.put(column.getName(), column.getDefineExpr());
+                            }
+                        }
+
                         AlterReplicaTask rollupTask = new AlterReplicaTask(
                                 rollupReplica.getBackendId(), dbId, tableId, partitionId,
                                 rollupIndexId, baseIndexId,
                                 rollupTabletId, baseTabletId, rollupReplica.getId(),
                                 rollupSchemaHash, baseSchemaHash,
-                                visibleVersion, visibleVersionHash, jobId, JobType.ROLLUP);
+                                visibleVersion, visibleVersionHash, jobId, JobType.ROLLUP, defineExprs);
                         rollupBatchTask.addTask(rollupTask);
                     }
                 }

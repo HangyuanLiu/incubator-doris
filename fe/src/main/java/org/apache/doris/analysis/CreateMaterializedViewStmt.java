@@ -220,6 +220,7 @@ public class CreateMaterializedViewStmt extends DdlStmt {
                 MVColumnItem mvColumnItem = new MVColumnItem(columnName);
                 mvColumnItem.setAggregationType(AggregateType.valueOf(functionName.toUpperCase()), false);
 
+                defineExpr.analyze(analyzer);
                 mvColumnItem.setDefineExpr(defineExpr);
 
                 mvColumnItemList.add(mvColumnItem);

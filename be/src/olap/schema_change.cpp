@@ -17,10 +17,8 @@
 
 #include "olap/schema_change.h"
 
-#include <pthread.h>
-#include <signal.h>
-
 #include <algorithm>
+#include <signal.h>
 #include <vector>
 
 #include "olap/merger.h"
@@ -34,10 +32,7 @@
 #include "olap/rowset/rowset_id_generator.h"
 #include "runtime/mem_pool.h"
 #include "runtime/mem_tracker.h"
-#include "common/resource_tls.h"
-#include "agent/cgroups_mgr.h"
 #include "runtime/exec_env.h"
-#include "runtime/heartbeat_flags.h"
 
 using std::deque;
 using std::list;
@@ -264,13 +259,43 @@ bool RowBlockChanger::change_row_block(
     // b. 根据前面的过滤信息，只对还标记为1的处理
     for (size_t i = 0, len = mutable_block->tablet_schema().num_columns(); !filter_all && i < len; ++i) {
         int32_t ref_column = _schema_mapping[i].ref_column;
-
-        //TODO(lhy)
-//        if (_schema_mapping[i].materialized_function) {
-
-  //      }
-
         if (_schema_mapping[i].ref_column >= 0) {
+            //TODO(lhy)
+            if (_schema_mapping[i].materialized_function != "") {
+                // 效率低下，也可以直接计算变长域拷贝，但仍然会破坏封装
+                for (size_t row_index = 0, new_row_index = 0;
+                     row_index < ref_block->row_block_info().row_num; ++row_index) {
+                    // 不需要的row，每次处理到这个row时就跳过
+                    if (need_filter_data && is_data_left_vec[row_index] == 0) {
+                        continue;
+                    }
+
+                    // 指定新的要写入的row index（不同于读的row_index）
+                    mutable_block->get_row(new_row_index++, &write_helper);
+                    ref_block->get_row(row_index, &read_helper);
+
+                    std::cout << "reader helper : " <<read_helper.to_string() << std::endl;
+
+                    if (true == read_helper.is_null(ref_column)) {
+                        write_helper.set_null(i);
+                    } else {
+                        write_helper.set_not_null(i);
+                        char* src = read_helper.cell_ptr(ref_column);
+                        StringParser::ParseResult parse_result = StringParser::PARSE_SUCCESS;
+                        uint64_t int_value = StringParser::string_to_unsigned_int<uint64_t>(src, strlen(src), &parse_result);
+
+                        size_t size = mutable_block->tablet_schema().column(i).length();
+                        char* buf = reinterpret_cast<char*>(mem_pool->allocate(size));
+                        Slice dst(buf, size);
+
+                        BitmapValue bitmap;
+                        bitmap.add(int_value);
+                        bitmap.write(dst.data);
+                        write_helper.set_field_content(i, reinterpret_cast<char*>(&dst), mem_pool);
+                    }
+                }
+            }
+
             // new column will be assigned as referenced column
             // check if the type of new column is equal to the older's.
             FieldType reftype = ref_block->tablet_schema().column(ref_column).type();
@@ -1393,9 +1418,13 @@ OLAPStatus SchemaChangeHandler::_do_process_alter_tablet_v2(const TAlterTabletRe
         sc_params.delete_handler = delete_handler;
 
         //TODO(lhy)
-//        if (request.materialized_view_function) {
-            //sc_params.materialized_function_map.insert("field_name", "fucntion_name");
-  //      }
+        if (request.__isset.materialized_view_function) {
+            std::cout << "materialized view function : " << std::endl;
+//            request.materialized_view_function[0]
+            //request.materialized_view_function[0].printTo(std::cout);
+            sc_params.materialized_function_map.insert(
+                    std::make_pair(std::string("__doris_materialized_view_bitmap_user_id"),std::string("to_bitmap")));
+        }
 
         res = _convert_historical_rowsets(sc_params);
         if (res != OLAP_SUCCESS) {
@@ -1822,12 +1851,22 @@ OLAPStatus SchemaChangeHandler::_parse_request(TabletSharedPtr base_tablet,
             }
 
             column_mapping->ref_column = column_index;
-            column_mapping->materialized_function = materialized_function_map.find(column_name)->second;
             VLOG(3) << "A column refered to existed column will be added after schema changing."
                     << "column=" << column_name << ", ref_column=" << column_index;
             continue;
         }
 
+        //TODO(lhy)
+        if (materialized_function_map.find(column_name) != materialized_function_map.end()) {
+            column_mapping->materialized_function = materialized_function_map.find(column_name)->second;
+            std::string origin_column_name = "user_id";
+            int32_t column_index = base_tablet->field_index(origin_column_name);
+            if (column_index >= 0) {
+                column_mapping->ref_column = column_index;
+                continue;
+            }
+        }
+        //FIXME(lhy)
         int32_t column_index = base_tablet->field_index(column_name);
         if (column_index >= 0) {
             column_mapping->ref_column = column_index;
