@@ -89,6 +89,9 @@ struct TAlterTabletReq {
 
 // This v2 request will replace the old TAlterTabletReq.
 // TAlterTabletReq should be deprecated after new alter job process merged.
+
+
+
 struct TAlterTabletReqV2 {
     1: required Types.TTabletId base_tablet_id
     2: required Types.TTabletId new_tablet_id
@@ -97,7 +100,13 @@ struct TAlterTabletReqV2 {
     // version of data which this alter task should transform
     5: optional Types.TVersion alter_version
     6: optional Types.TVersionHash alter_version_hash // Deprecated
-    7: optional map<string, Exprs.TExpr> materialized_view_function
+    7: optional list<TAlterMaterializedViewParam> materialized_view_params
+}
+
+struct TAlterMaterializedViewParam {
+    1: required string column_name
+    2: required string origin_column_name
+    3: required Exprs.TExpr mv_expr
 }
 
 struct TClusterInfo {

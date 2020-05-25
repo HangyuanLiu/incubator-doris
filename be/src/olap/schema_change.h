@@ -231,14 +231,21 @@ private:
     OLAPStatus _get_versions_to_be_changed(TabletSharedPtr base_tablet,
                                            std::vector<Version>* versions_to_be_changed);
 
+    struct AlterMaterializedViewParam {
+        std::string column_name;
+        std::string origin_column_name;
+        std::string mv_expr;
+    };
+
     struct SchemaChangeParams {
         AlterTabletType alter_tablet_type;
         TabletSharedPtr base_tablet;
         TabletSharedPtr new_tablet;
         std::vector<RowsetReaderSharedPtr> ref_rowset_readers;
         DeleteHandler delete_handler;
-        std::map<std::string, std::string> materialized_function_map;
+        std::map<std::string, AlterMaterializedViewParam> materialized_params_map;
     };
+
 
     // add alter task to base_tablet and new_tablet.
     // add A->(B|C|...) relation chain to all of them.
@@ -261,7 +268,7 @@ private:
                                      RowBlockChanger* rb_changer,
                                      bool* sc_sorting,
                                      bool* sc_directly,
-                                     std::map<std::string, std::string> materialized_function_map
+                                     const std::map<std::string, AlterMaterializedViewParam>& materialized_function_map
                                      );
 
     // 需要新建default_value时的初始化设置

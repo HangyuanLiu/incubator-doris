@@ -294,6 +294,7 @@ bool RowBlockChanger::change_row_block(
                         write_helper.set_field_content(i, reinterpret_cast<char*>(&dst), mem_pool);
                     }
                 }
+                continue;
             }
 
             // new column will be assigned as referenced column
@@ -1418,12 +1419,17 @@ OLAPStatus SchemaChangeHandler::_do_process_alter_tablet_v2(const TAlterTabletRe
         sc_params.delete_handler = delete_handler;
 
         //TODO(lhy)
-        if (request.__isset.materialized_view_function) {
-            std::cout << "materialized view function : " << std::endl;
-//            request.materialized_view_function[0]
-            //request.materialized_view_function[0].printTo(std::cout);
-            sc_params.materialized_function_map.insert(
-                    std::make_pair(std::string("__doris_materialized_view_bitmap_user_id"),std::string("to_bitmap")));
+        if (request.__isset.materialized_view_params) {
+            for (auto item : request.materialized_view_params) {
+                AlterMaterializedViewParam mvParams;
+                mvParams.column_name = item.column_name;
+                mvParams.origin_column_name = item.origin_column_name;
+                mvParams.mv_expr = item.mv_expr.nodes[0].fn.name.function_name;
+                sc_params.materialized_params_map.insert(std::make_pair(item.column_name, mvParams));
+
+                std::cout << "materialized view function : "
+                          << mvParams.column_name << "," << mvParams.origin_column_name << "," <<mvParams.mv_expr << std::endl;
+            }
         }
 
         res = _convert_historical_rowsets(sc_params);
@@ -1470,14 +1476,14 @@ OLAPStatus SchemaChangeHandler::schema_version_convert(
     RowBlockChanger rb_changer(new_tablet->tablet_schema(), base_tablet);
     bool sc_sorting = false;
     bool sc_directly = false;
-
-    std::map<std::string, std::string> test;
+    //TODO(lhy)
+    const std::map<std::string, AlterMaterializedViewParam> test;
     if (OLAP_SUCCESS != (res = _parse_request(base_tablet,
                                               new_tablet,
                                               &rb_changer,
                                               &sc_sorting,
                                               &sc_directly,
-                                                test
+                                              test
                                               ))) {
         LOG(WARNING) << "failed to parse the request. res=" << res;
         return res;
@@ -1695,7 +1701,7 @@ OLAPStatus SchemaChangeHandler::_convert_historical_rowsets(const SchemaChangePa
 
     // a. 解析Alter请求，转换成内部的表示形式
     OLAPStatus res = _parse_request(sc_params.base_tablet, sc_params.new_tablet,
-                                    &rb_changer, &sc_sorting, &sc_directly, sc_params.materialized_function_map);
+                                    &rb_changer, &sc_sorting, &sc_directly, sc_params.materialized_params_map);
     if (res != OLAP_SUCCESS) {
         LOG(WARNING) << "failed to parse the request. res=" << res;
         goto PROCESS_ALTER_EXIT;
@@ -1830,7 +1836,7 @@ OLAPStatus SchemaChangeHandler::_parse_request(TabletSharedPtr base_tablet,
                                                RowBlockChanger* rb_changer,
                                                bool* sc_sorting,
                                                bool* sc_directly,
-                                               const std::map<std::string, std::string> materialized_function_map) {
+                                               const std::map<std::string, AlterMaterializedViewParam>& materialized_function_map) {
     OLAPStatus res = OLAP_SUCCESS;
 
     // set column mapping
@@ -1858,8 +1864,9 @@ OLAPStatus SchemaChangeHandler::_parse_request(TabletSharedPtr base_tablet,
 
         //TODO(lhy)
         if (materialized_function_map.find(column_name) != materialized_function_map.end()) {
-            column_mapping->materialized_function = materialized_function_map.find(column_name)->second;
-            std::string origin_column_name = "user_id";
+            AlterMaterializedViewParam mvParam = materialized_function_map.find(column_name)->second;
+            column_mapping->materialized_function = mvParam.origin_column_name;
+            std::string origin_column_name = mvParam.origin_column_name;
             int32_t column_index = base_tablet->field_index(origin_column_name);
             if (column_index >= 0) {
                 column_mapping->ref_column = column_index;
