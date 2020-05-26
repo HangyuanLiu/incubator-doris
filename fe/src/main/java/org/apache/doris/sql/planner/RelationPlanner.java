@@ -6,6 +6,7 @@ import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNode;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.planner.plan.Assignments;
+import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.planner.plan.TableScanNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
@@ -25,29 +26,19 @@ import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowE
 class RelationPlanner
         extends DefaultTraversalVisitor<RelationPlan, Void> {
     private final Analysis analysis;
+    private final VariableAllocator variableAllocator;
     private final IdGenerator<PlanNodeId> idAllocator;
 
-    RelationPlanner(Analysis analysis, IdGenerator<PlanNodeId> idAllocator) {
+    RelationPlanner(Analysis analysis, VariableAllocator variableAllocator, IdGenerator<PlanNodeId> idAllocator) {
         this.analysis = analysis;
+        this.variableAllocator = variableAllocator;
         this.idAllocator = idAllocator;
     }
 
     @Override
     protected RelationPlan visitTable(Table node, Void context)
     {
-        Query namedQuery = analysis.getNamedQuery(node);
         Scope scope = analysis.getScope(node);
-
-        if (namedQuery != null) {
-            RelationPlan subPlan = process(namedQuery, null);
-
-            // Add implicit coercions if view query produces types that don't match the declared output types
-            // of the view (e.g., if the underlying tables referenced by the view changed)
-            Type[] types = scope.getRelationType().getAllFields().stream().map(Field::getType).toArray(Type[]::new);
-            RelationPlan withCoercions = addCoercions(subPlan, types);
-            return new RelationPlan(withCoercions.getRoot(), scope, withCoercions.getFieldMappings());
-        }
-
         TableHandle handle = analysis.getTableHandle(node);
 
         ImmutableList.Builder<VariableReferenceExpression> outputVariablesBuilder = ImmutableList.builder();
@@ -59,7 +50,7 @@ class RelationPlanner
         }
 
         List<VariableReferenceExpression> outputVariables = outputVariablesBuilder.build();
-        PlanNode root = new TableScanNode(idAllocator.getNextId(), handle, outputVariables, columns.build(), TupleDomain.all(), TupleDomain.all());
+        LogicalPlanNode root = new TableScanNode(idAllocator.getNextId(), handle, outputVariables, columns.build());
         return new RelationPlan(root, scope, outputVariables);
     }
 
@@ -68,7 +59,7 @@ class RelationPlanner
     {
         RelationPlan subPlan = process(node.getRelation(), context);
 
-        PlanNode root = subPlan.getRoot();
+        LogicalPlanNode root = subPlan.getRoot();
         List<VariableReferenceExpression> mappings = subPlan.getFieldMappings();
 
         if (node.getColumnNames() != null) {
@@ -93,29 +84,16 @@ class RelationPlanner
     }
 
     @Override
-    protected RelationPlan visitSampledRelation(SampledRelation node, Void context)
-    {
-        RelationPlan subPlan = process(node.getRelation(), context);
-
-        double ratio = analysis.getSampleRatio(node);
-        PlanNode planNode = new SampleNode(idAllocator.getNextId(),
-                subPlan.getRoot(),
-                ratio,
-                SampleNodeUtil.fromType(node.getType()));
-        return new RelationPlan(planNode, analysis.getScope(node), subPlan.getFieldMappings());
-    }
-
-    @Override
     protected RelationPlan visitQuery(Query node, Void context)
     {
-        return new QueryPlanner(analysis, variableAllocator, idAllocator, lambdaDeclarationToVariableMap, metadata, session)
+        return new QueryPlanner(analysis, variableAllocator, idAllocator)
                 .plan(node);
     }
 
     @Override
     protected RelationPlan visitQuerySpecification(QuerySpecification node, Void context)
     {
-        return new QueryPlanner(analysis, variableAllocator, idAllocator, lambdaDeclarationToVariableMap, metadata, session)
+        return new QueryPlanner(analysis, variableAllocator, idAllocator)
                 .plan(node);
     }
 }

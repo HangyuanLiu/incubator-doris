@@ -73,6 +73,7 @@ public class VariableReferenceExpression extends RowExpression
         if (nameComparison != 0) {
             return nameComparison;
         }
-        return type.getTypeSignature().toString().compareTo(o.type.getTypeSignature().toString());
+        return 1;
+        //return type.getTypeSignature().toString().compareTo(o.type.getTypeSignature().toString());
     }
 }

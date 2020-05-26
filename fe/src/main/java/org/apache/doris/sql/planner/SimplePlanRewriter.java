@@ -76,7 +76,9 @@ public abstract class SimplePlanRewriter<C>
                     .map(child -> rewrite(child, context))
                     .collect(toImmutableList());
 
-            return replaceChildren(node, children);
+            System.exit(-1);
+            return  null;
+            //return replaceChildren(node, children);
         }
 
         /**

@@ -38,50 +38,17 @@ public final class TableScanNode
     private final Map<VariableReferenceExpression, ColumnHandle> assignments;
     private final List<VariableReferenceExpression> outputVariables;
 
-    // Used during predicate refinement over multiple passes of predicate pushdown
-    // TODO: think about how to get rid of this in new planner
-    // TODO: these two fields will not be effective if they are created by connectors until we have refactored PickTableLayout
-    private final TupleDomain<ColumnHandle> currentConstraint;
-
-    private final TupleDomain<ColumnHandle> enforcedConstraint;
-
-    /**
-     * This constructor is for JSON deserialization only.  Do not use!
-     */
-    @JsonCreator
-    public TableScanNode(
-            @JsonProperty("id") PlanNodeId id,
-            @JsonProperty("table") TableHandle table,
-            @JsonProperty("outputVariables") List<VariableReferenceExpression> outputVariables,
-            @JsonProperty("assignments") Map<VariableReferenceExpression, ColumnHandle> assignments)
-    {
-        super(id);
-        this.table = requireNonNull(table, "table is null");
-        this.outputVariables = unmodifiableList(requireNonNull(outputVariables, "outputVariables is null"));
-        this.assignments = unmodifiableMap(new HashMap<>(requireNonNull(assignments, "assignments is null")));
-        checkArgument(assignments.keySet().containsAll(outputVariables), "assignments does not cover all of outputs");
-        this.currentConstraint = null;
-        this.enforcedConstraint = null;
-    }
-
     public TableScanNode(
             PlanNodeId id,
             TableHandle table,
             List<VariableReferenceExpression> outputVariables,
-            Map<VariableReferenceExpression, ColumnHandle> assignments,
-            TupleDomain<ColumnHandle> currentConstraint,
-            TupleDomain<ColumnHandle> enforcedConstraint)
+            Map<VariableReferenceExpression, ColumnHandle> assignments)
     {
         super(id);
         this.table = requireNonNull(table, "table is null");
         this.outputVariables = unmodifiableList(requireNonNull(outputVariables, "outputVariables is null"));
         this.assignments = unmodifiableMap(new HashMap<>(requireNonNull(assignments, "assignments is null")));
         checkArgument(assignments.keySet().containsAll(outputVariables), "assignments does not cover all of outputs");
-        this.currentConstraint = requireNonNull(currentConstraint, "currentConstraint is null");
-        this.enforcedConstraint = requireNonNull(enforcedConstraint, "enforcedConstraint is null");
-        if (!currentConstraint.isAll() || !enforcedConstraint.isAll()) {
-            checkArgument(table.getLayout().isPresent(), "tableLayout must be present when currentConstraint or enforcedConstraint is non-trivial");
-        }
     }
 
     /**
@@ -100,35 +67,6 @@ public final class TableScanNode
     public Map<VariableReferenceExpression, ColumnHandle> getAssignments()
     {
         return assignments;
-    }
-
-    /**
-     * A TupleDomain that represents a predicate that every row this TableScan node
-     * produces is guaranteed to satisfy.
-     * <p>
-     * This guarantee can have different origins.
-     * For example, it may be successful predicate push down, or inherent guarantee provided by the underlying data.
-     */
-    public TupleDomain<ColumnHandle> getCurrentConstraint()
-    {
-        // currentConstraint can be pretty complex. As a result, it may incur a significant cost to serialize, store, and transport.
-        checkState(currentConstraint != null, "currentConstraint should only be used in planner. It is not transported to workers.");
-        return currentConstraint;
-    }
-
-    /**
-     * A TupleDomain that represents a predicate that has been successfully pushed into
-     * this TableScan node. In other words, predicates that were removed from filters
-     * above the TableScan node because the TableScan node can guarantee it.
-     * <p>
-     * This field is used to make sure that predicates which were previously pushed down
-     * do not get lost in subsequent refinements of the table layout.
-     */
-    public TupleDomain<ColumnHandle> getEnforcedConstraint()
-    {
-        // enforcedConstraint can be pretty complex. As a result, it may incur a significant cost to serialize, store, and transport.
-        checkState(enforcedConstraint != null, "enforcedConstraint should only be used in planner. It is not transported to workers.");
-        return enforcedConstraint;
     }
 
     @Override
@@ -159,8 +97,6 @@ public final class TableScanNode
         stringBuilder.append("table='").append(table).append('\'');
         stringBuilder.append(", outputVariables='").append(outputVariables).append('\'');
         stringBuilder.append(", assignments='").append(assignments).append('\'');
-        stringBuilder.append(", currentConstraint='").append(currentConstraint).append('\'');
-        stringBuilder.append(", enforcedConstraint='").append(enforcedConstraint).append('\'');
         stringBuilder.append('}');
         return stringBuilder.toString();
     }

@@ -9,6 +9,7 @@ import org.apache.doris.catalog.Catalog;
 import org.apache.doris.planner.DistributedPlanner;
 import org.apache.doris.planner.PlanFragment;
 import org.apache.doris.planner.PlanNode;
+import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.StatementAnalyzer;
@@ -284,18 +285,21 @@ public class Main {
         Analysis analysis = new Analysis((Statement) stmt, parameters, true);
         StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, session);
         analyzer.analyze(stmt, Optional.empty());
-        System.out.println("Hello world");
 
         //planner
-        LogicalPlanner logicalPlanner = new LogicalPlanner(false, stateMachine.getSession(), planOptimizers, idAllocator, metadata, sqlParser, statsCalculator, costCalculator, stateMachine.getWarningCollector());
+        LogicalPlanner logicalPlanner = new LogicalPlanner(PlanNodeId.createGenerator());
         Plan plan = logicalPlanner.plan(analysis);
 
+        System.out.println("Hello world");
+        /*
         PhysicalPlanner physicalPlanner = new PhysicalPlanner();
         PlanNode root = physicalPlanner.createPhysicalPlan(plan);
 
         DistributedPlanner distributedPlanner = new DistributedPlanner(plannerContext);
         ArrayList<PlanFragment> fragments = Lists.newArrayList();
         fragments = distributedPlanner.createPlanFragments(root);
+
+         */
     }
 
     private static void createTable(String sql) throws Exception {

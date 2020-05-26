@@ -18,6 +18,7 @@ import org.apache.doris.sql.planner.plan.TableScanNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 
 public class PhysicalPlanner {
+    /*
     public PlanNode createPhysicalPlan(Plan plan) {
         PhysicalPlanTranslator physicalPlanTranslator = new PhysicalPlanTranslator();
         PlanNode root = SimplePlanRewriter.rewriteWith(physicalPlanTranslator, plan.getRoot());
@@ -65,4 +66,5 @@ public class PhysicalPlanner {
     private static class FragmentProperties {
         private final DescriptorTable descTbl = new DescriptorTable();
     }
+     */
 }

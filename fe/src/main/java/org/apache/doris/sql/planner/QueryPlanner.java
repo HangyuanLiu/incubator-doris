@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNodeId;
+import org.apache.doris.sql.analyzer.Scope;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
@@ -20,10 +21,12 @@ import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowE
 
 public class QueryPlanner {
     private final Analysis analysis;
+    private final VariableAllocator variableAllocator;
     private final IdGenerator<PlanNodeId> idAllocator;
 
-    QueryPlanner(Analysis analysis, IdGenerator<PlanNodeId> idAllocator) {
+    QueryPlanner(Analysis analysis, VariableAllocator variableAllocator, IdGenerator<PlanNodeId> idAllocator) {
         this.analysis = analysis;
+        this.variableAllocator = variableAllocator;
         this.idAllocator = idAllocator;
     }
 
@@ -33,12 +36,12 @@ public class QueryPlanner {
 
         //List<Expression> orderBy = analysis.getOrderByExpressions(query);
         //builder = handleSubqueries(builder, query, orderBy);
-        List<Expression> outputs = analysis.getOutputExpressions(query);
+        //List<Expression> outputs = analysis.getOutputExpressions(query);
         //builder = handleSubqueries(builder, query, outputs);
-        builder = project(builder, Iterables.concat(orderBy, outputs));
+        //builder = project(builder, Iterables.concat(outputs));
 
-        builder = sort(builder, query);
-        builder = limit(builder, query);
+        //builder = sort(builder, query);
+        //builder = limit(builder, query);
         builder = project(builder, analysis.getOutputExpressions(query));
 
         return new RelationPlan(builder.getRoot(), analysis.getScope(query), computeOutputs(builder, analysis.getOutputExpressions(query)));
@@ -47,45 +50,7 @@ public class QueryPlanner {
     public RelationPlan plan(QuerySpecification node)
     {
         PlanBuilder builder = planFrom(node);
-        RelationPlan fromRelationPlan = builder.getRelationPlan();
-
-        //builder = filter(builder, analysis.getWhere(node), node);
-        //builder = aggregate(builder, node);
-        //builder = filter(builder, analysis.getHaving(node), node);
-
-        //builder = window(builder, node);
-
         List<Expression> outputs = analysis.getOutputExpressions(node);
-        builder = handleSubqueries(builder, node, outputs);
-
-        if (node.getOrderBy().isPresent()) {
-            if (!analysis.isAggregation(node)) {
-                // ORDER BY requires both output and source fields to be visible if there are no aggregations
-                builder = project(builder, outputs, fromRelationPlan);
-                outputs = toSymbolReferences(computeOutputs(builder, outputs));
-                builder = planBuilderFor(builder, analysis.getScope(node.getOrderBy().get()));
-            }
-            else {
-                // ORDER BY requires output fields, groups and translated aggregations to be visible for queries with aggregation
-                List<Expression> orderByAggregates = analysis.getOrderByAggregates(node.getOrderBy().get());
-                builder = project(builder, Iterables.concat(outputs, orderByAggregates));
-                outputs = toSymbolReferences(computeOutputs(builder, outputs));
-                List<Expression> complexOrderByAggregatesToRemap = orderByAggregates.stream()
-                        .filter(expression -> !analysis.isColumnReference(expression))
-                        .collect(toImmutableList());
-                builder = planBuilderFor(builder, analysis.getScope(node.getOrderBy().get()), complexOrderByAggregatesToRemap);
-            }
-
-            builder = window(builder, node.getOrderBy().get());
-        }
-
-        List<Expression> orderBy = analysis.getOrderByExpressions(node);
-        builder = handleSubqueries(builder, node, orderBy);
-        builder = project(builder, Iterables.concat(orderBy, outputs));
-
-        builder = distinct(builder, node);
-        builder = sort(builder, node);
-        builder = limit(builder, node);
         builder = project(builder, outputs);
 
         return new RelationPlan(builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs));
@@ -102,7 +67,7 @@ public class QueryPlanner {
 
     private PlanBuilder planQueryBody(Query query)
     {
-        RelationPlan relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, lambdaDeclarationToVariableMap, metadata, session)
+        RelationPlan relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator)
                 .process(query.getQueryBody(), null);
 
         return planBuilderFor(relationPlan);
@@ -112,20 +77,25 @@ public class QueryPlanner {
     {
         RelationPlan relationPlan;
 
-        if (node.getFrom().isPresent()) {
-            relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, lambdaDeclarationToVariableMap, metadata, session)
+        //if (node.getFrom().isPresent()) {
+            relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator)
                     .process(node.getFrom().get(), null);
-        }
-        else {
+        //}
+        //else {
             //relationPlan = planImplicitTable();
-        }
+       // }
 
         return planBuilderFor(relationPlan);
     }
 
+    private PlanBuilder planBuilderFor(PlanBuilder builder, Scope scope)
+    {
+        return planBuilderFor(new RelationPlan(builder.getRoot(), scope, builder.getRoot().getOutputVariables()));
+    }
+
     private PlanBuilder planBuilderFor(RelationPlan relationPlan)
     {
-        TranslationMap translations = new TranslationMap(relationPlan, analysis, lambdaDeclarationToVariableMap);
+        TranslationMap translations = new TranslationMap(relationPlan, analysis);
 
         // Make field->variable mapping from underlying relation plan available for translations
         // This makes it possible to rewrite FieldOrExpressions that reference fields from the FROM clause directly
@@ -141,7 +111,7 @@ public class QueryPlanner {
 
     private PlanBuilder project(PlanBuilder subPlan, Iterable<Expression> expressions)
     {
-        TranslationMap outputTranslations = new TranslationMap(subPlan.getRelationPlan(), analysis, lambdaDeclarationToVariableMap);
+        TranslationMap outputTranslations = new TranslationMap(subPlan.getRelationPlan(), analysis);
 
         Assignments.Builder projections = Assignments.builder();
         for (Expression expression : expressions) {

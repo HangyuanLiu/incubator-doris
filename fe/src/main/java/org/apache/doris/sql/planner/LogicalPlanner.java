@@ -21,9 +21,10 @@ public class LogicalPlanner {
     }
 
     IdGenerator<PlanNodeId> idAllocator;
+    private final VariableAllocator variableAllocator = new VariableAllocator();
 
-    public LogicalPlanner() {
-
+    public LogicalPlanner(IdGenerator<PlanNodeId> idAllocator) {
+        this.idAllocator = idAllocator;
     }
 
     public Plan plan(Analysis analysis)
@@ -91,7 +92,7 @@ public class LogicalPlanner {
 
     private RelationPlan createRelationPlan(Analysis analysis, Query query)
     {
-        return new RelationPlanner(analysis, idAllocator)
+        return new RelationPlanner(analysis, variableAllocator, idAllocator)
                 .process(query, null);
     }
 }

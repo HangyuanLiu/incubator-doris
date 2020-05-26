@@ -14,6 +14,8 @@
 package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.doris.common.IdGenerator;
+import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.ProjectNode;
@@ -47,7 +49,7 @@ class PlanBuilder
 
     public TranslationMap copyTranslations()
     {
-        TranslationMap translations = new TranslationMap(getRelationPlan(), getAnalysis(), getTranslations().getLambdaDeclarationToVariableMap());
+        TranslationMap translations = new TranslationMap(getRelationPlan(), getAnalysis());
         translations.copyMappingsFrom(getTranslations());
         return translations;
     }
@@ -97,7 +99,7 @@ class PlanBuilder
         return translations;
     }
 
-    public PlanBuilder appendProjections(Iterable<Expression> expressions, PlanVariableAllocator variableAllocator, PlanNodeIdAllocator idAllocator)
+    public PlanBuilder appendProjections(Iterable<Expression> expressions, VariableAllocator variableAllocator, IdGenerator<PlanNodeId> idAllocator)
     {
         TranslationMap translations = copyTranslations();
 
