@@ -43,11 +43,9 @@ class RowCursor;
 class RowBlockChanger {
 public:
     RowBlockChanger(const TabletSchema& tablet_schema,
-                    const TabletSharedPtr& base_tablet,
                     const DeleteHandler& delete_handler);
 
-    RowBlockChanger(const TabletSchema& tablet_schema,
-                    const TabletSharedPtr& base_tablet);
+    RowBlockChanger(const TabletSchema& tablet_schema);
 
     virtual ~RowBlockChanger();
 

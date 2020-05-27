@@ -124,5 +124,32 @@ void set_column_value_by_type(FieldType fieldType, int src, char* target, MemPoo
         *(int*)target = src;
     }
 }
+/*
+CREATE TABLE test (
+    k1 tinyint(4) NOT NULL COMMENT "",
+    k2 smallint(6) NOT NULL COMMENT "",
+    k3 int(11) NOT NULL COMMENT "",
+    k4 bigint(20) NOT NULL COMMENT "",
+    k5 decimal(9, 3) NOT NULL COMMENT "",
+    k6 char(5) NOT NULL COMMENT "",
+    k7 varchar(20) NOT NULL COMMENT "",
+    k8 double MAX NOT NULL COMMENT "",
+    k9 float SUM NOT NULL COMMENT "",
+    k10 date NOT NULL COMMENT "",
+    k11 datetime NOT NULL COMMENT ""
+) ENGINE=OLAP
+AGGREGATE KEY(k1, k2, k3, k4, k5, k6, k7)
+*/
+
+TabletSchema create_test_table_schema() {
+    TabletSchema tablet_schema;
+    tablet_schema._cols.push_back(create_int_key(0));
+        tablet_schema._cols.push_back(create_int_key(1));
+        tablet_schema._cols.push_back(create_int_key(2));
+        tablet_schema._cols.push_back(create_int_value(3));
+        tablet_schema._num_columns = 4;
+        tablet_schema._num_key_columns = 3;
+        tablet_schema._num_short_key_columns = 3;
+}
 
 }

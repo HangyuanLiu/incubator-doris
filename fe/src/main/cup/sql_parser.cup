@@ -4383,8 +4383,6 @@ keyword ::=
     {: RESULT = id; :}
     | KW_FORMAT:id
     {: RESULT = id; :}
-    | KW_HLL_UNION:id
-    {: RESULT = id; :}
     | KW_PATH:id
     {: RESULT = id; :}
     | KW_FUNCTION:id

@@ -17,12 +17,14 @@
 
 package org.apache.doris.analysis;
 
+import org.apache.doris.alter.MaterializedViewHandler;
 import org.apache.doris.alter.SchemaChangeHandler;
 import org.apache.doris.catalog.AggregateType;
 import org.apache.doris.catalog.BrokerTable;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.Database;
+import org.apache.doris.catalog.Function;
 import org.apache.doris.catalog.MysqlTable;
 import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.catalog.Partition;
@@ -355,8 +357,9 @@ public class InsertStmt extends DdlStmt {
                     slotDesc.setIsNullable(false);
                 }
             }
-            BaseTableRef tableRef = new BaseTableRef(new TableRef(tblName, null), targetTable, tblName);
-            tableRef.analyze(analyzer);
+            //TODO(lhy)
+            //BaseTableRef tableRef = new BaseTableRef(new TableRef(tblName, null), targetTable, tblName);
+            //tableRef.analyze(analyzer);
 
             // will use it during create load job
             indexIdToSchemaHash = olapTable.getIndexIdToSchemaHash();
@@ -441,6 +444,7 @@ public class InsertStmt extends DdlStmt {
          * null or default value when loading.
          */
         List<Integer> origColIdxsForShadowCols = Lists.newArrayList();
+        List<Integer> origColIdxsForMVCols = Lists.newArrayList();
         for (Column column : targetTable.getFullSchema()) {
             if (column.isNameWithPrefix(SchemaChangeHandler.SHADOW_NAME_PRFIX)) {
                 String origName = Column.removeNamePrefix(column.getName());
@@ -448,6 +452,17 @@ public class InsertStmt extends DdlStmt {
                     if (targetColumns.get(i).nameEquals(origName, false)) {
                         // Rule A
                         origColIdxsForShadowCols.add(i);
+                        targetColumns.add(column);
+                        break;
+                    }
+                }
+            } else if (column.isNameWithPrefix(MaterializedViewHandler.MATERIALIZED_VIEW_NAME_PRFIX)) {
+                //TODO(lhy)
+                String funcName = ((FunctionCallExpr) column.getDefineExpr()).getFnName().getFunction();
+                String origName = column.getName().substring(SchemaChangeHandler.SHADOW_NAME_PRFIX.length());
+                for (int i = 0; i < targetColumns.size(); ++i) {
+                    if (targetColumns.get(i).nameEquals(origName, false)) {
+                        origColIdxsForMVCols.add(i);
                         targetColumns.add(column);
                         break;
                     }
@@ -503,6 +518,27 @@ public class InsertStmt extends DdlStmt {
                 // extend the result expr by duplicating the related exprs
                 for (Integer idx : origColIdxsForShadowCols) {
                     queryStmt.getResultExprs().add(queryStmt.getResultExprs().get(idx));
+                }
+            }
+            if (!origColIdxsForMVCols.isEmpty()) {
+                ExprSubstitutionMap smap = new ExprSubstitutionMap();
+                for (Integer idx : origColIdxsForMVCols) {
+                    //TODO(lhy)
+
+                    Column originColumn = targetTable.getBaseSchema().get(idx);
+                    List<SlotRef> slots = Lists.newArrayList();
+                    originColumn.getDefineExpr().collect(SlotRef.class, slots);
+                    smap.getLhs().add(slots.get(0));
+
+                    Expr originExpr = queryStmt.getResultExprs().get(idx);
+                    smap.getRhs().add(originExpr);
+                }
+                ArrayList<Expr> exprs = queryStmt.getResultExprs();
+                List<Expr> resExprs = Expr.substituteList(
+                                exprs, smap, analyzer, true);
+
+                for (Expr expr : resExprs) {
+                    expr.analyze(analyzer);
                 }
             }
             // check compatibility
@@ -668,8 +704,7 @@ public class InsertStmt extends DdlStmt {
     public void prepareExpressions(Analyzer analyzer) throws UserException {
         List<Expr> selectList = Expr.cloneList(queryStmt.getBaseTblResultExprs());
         // check type compatibility
-        int numCols = targetColumns.size();
-        for (int i = 0; i < numCols; ++i) {
+        for (int i = 0; i < targetColumns.size(); ++i) {
             Column col = targetColumns.get(i);
             Expr expr = checkTypeCompatibility(col, selectList.get(i));
             selectList.set(i, expr);

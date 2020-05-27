@@ -16,6 +16,7 @@
 // under the License.
 
 #include <gtest/gtest.h>
+#include <olap/schema_change.h>
 
 #include "olap/byte_buffer.h"
 #include "olap/stream_name.h"
@@ -27,7 +28,6 @@
 #include "olap/row_cursor.h"
 #include "olap/row_block.h"
 #include "runtime/mem_pool.h"
-#include "runtime/string_value.hpp"
 #include "runtime/vectorized_row_batch.h"
 #include "util/logging.h"
 
@@ -38,9 +38,9 @@ namespace doris {
 class TestColumn : public testing::Test {
 public:
     TestColumn() : 
-            _column_writer(NULL),
-            _column_reader(NULL),
-            _stream_factory(NULL) {
+            _column_writer(nullptr),
+            _column_reader(nullptr),
+            _stream_factory(nullptr) {
             _offsets.clear();
         _map_in_streams.clear();
         _present_buffers.clear();        
@@ -52,23 +52,23 @@ public:
         _mem_pool.reset(new MemPool(_mem_tracker.get()));
     }
     
-    virtual ~TestColumn() {
+    ~TestColumn() override {
         SAFE_DELETE(_column_writer);
         SAFE_DELETE(_column_reader);
         SAFE_DELETE(_stream_factory);
     }
     
-    virtual void SetUp() {
+    void SetUp() override {
         _offsets.push_back(0);
         _stream_factory = 
                 new(std::nothrow) OutStreamFactory(COMPRESS_LZ4,
                                                    OLAP_DEFAULT_COLUMN_STREAM_BUFFER_SIZE);
-        ASSERT_TRUE(_stream_factory != NULL);
+        ASSERT_TRUE(_stream_factory != nullptr);
         config::column_dictionary_key_ratio_threshold = 30;
         config::column_dictionary_key_size_threshold = 1000;
     }
     
-    virtual void TearDown() {
+    void TearDown() override {
         SAFE_DELETE(_column_writer);
         SAFE_DELETE(_column_reader);
         SAFE_DELETE(_stream_factory);
@@ -130,7 +130,7 @@ public:
         std::vector<int> buffer_size;
         std::vector<StreamName> name;
 
-        std::map<StreamName, OutStream*>::const_iterator it 
+        std::map<StreamName, OutStream*>::const_iterator it
             = _stream_factory->streams().begin();
         for (; it != _stream_factory->streams().end(); ++it) {
             StreamName stream_name = it->first;
@@ -662,6 +662,136 @@ TEST_F(TestColumn, ConvertDoubleToVarchar) {
 TEST_F(TestColumn, ConvertDecimalToVarchar) {
     decimal12_t val(456, 789000000);
     test_convert_to_varchar<decimal12_t>("Decimal", 12, val, "456.789000000", OLAP_SUCCESS);
+}
+
+TEST_F(TestColumn, ConvertIntToBitmap) {
+    //Base Tablet
+    TabletSchemaPB tablet_schema_pb;
+    tablet_schema_pb.set_keys_type(KeysType::AGG_KEYS);
+    tablet_schema_pb.set_num_short_key_columns(2);
+    tablet_schema_pb.set_num_rows_per_row_block(1024);
+    tablet_schema_pb.set_compress_kind(COMPRESS_NONE);
+    tablet_schema_pb.set_next_column_unique_id(4);
+
+    ColumnPB* column_1 = tablet_schema_pb.add_column();
+    column_1->set_unique_id(1);
+    column_1->set_name("k1");
+    column_1->set_type("INT");
+    column_1->set_is_key(true);
+    column_1->set_length(4);
+    column_1->set_index_length(4);
+    column_1->set_is_nullable(false);
+    column_1->set_is_bf_column(false);
+
+    ColumnPB* column_2 = tablet_schema_pb.add_column();
+    column_2->set_unique_id(2);
+    column_2->set_name("k2");
+    column_2->set_type("VARCHAR");
+    column_2->set_length(20);
+    column_2->set_index_length(20);
+    column_2->set_is_key(true);
+    column_2->set_is_nullable(false);
+    column_2->set_is_bf_column(false);
+
+    ColumnPB* column_3 = tablet_schema_pb.add_column();
+    column_3->set_unique_id(3);
+    column_3->set_name("k3");
+    column_3->set_type("INT");
+    column_3->set_is_key(true);
+    column_3->set_length(4);
+    column_3->set_index_length(4);
+    column_3->set_is_nullable(false);
+    column_3->set_is_bf_column(false);
+
+    ColumnPB* column_4 = tablet_schema_pb.add_column();
+    column_4->set_unique_id(4);
+    column_4->set_name("v1");
+    column_4->set_type("INT");
+    column_4->set_length(4);
+    column_4->set_is_key(false);
+    column_4->set_is_nullable(false);
+    column_4->set_is_bf_column(false);
+    column_4->set_aggregation("SUM");
+
+    TabletSchema tablet_schema;
+    tablet_schema.init_from_pb(tablet_schema_pb);
+
+    //Base row block
+    CreateColumnWriter(tablet_schema);
+
+    RowCursor write_row;
+    write_row.init(tablet_schema);
+    RowBlock block(&tablet_schema);
+    RowBlockInfo block_info;
+    block_info.row_num = 10000;
+    block.init(block_info);
+
+    std::vector<std::string> val_string_array;
+    //std::string origin_val = "2019-11-25 19:07:00";
+    //val_string_array.emplace_back(origin_val);
+    val_string_array.emplace_back("1");
+    val_string_array.emplace_back("a");
+    val_string_array.emplace_back("2");
+    val_string_array.emplace_back("3");
+    OlapTuple tuple(val_string_array);
+    write_row.from_tuple(tuple);
+    block.set_row(0, write_row);
+    block.finalize(1);
+    ASSERT_EQ(_column_writer->write_batch(&block, &write_row), OLAP_SUCCESS);
+    ColumnDataHeaderMessage header;
+    ASSERT_EQ(_column_writer->finalize(&header), OLAP_SUCCESS);
+
+    //Materialized View tablet schema
+    TabletSchemaPB mv_tablet_schema_pb;
+    mv_tablet_schema_pb.set_keys_type(KeysType::AGG_KEYS);
+    mv_tablet_schema_pb.set_num_short_key_columns(2);
+    mv_tablet_schema_pb.set_num_rows_per_row_block(1024);
+    mv_tablet_schema_pb.set_compress_kind(COMPRESS_NONE);
+    mv_tablet_schema_pb.set_next_column_unique_id(4);
+
+    ColumnPB* mv_column_1 = mv_tablet_schema_pb.add_column();
+    mv_column_1->set_unique_id(1);
+    mv_column_1->set_name("k1");
+    mv_column_1->set_type("INT");
+    mv_column_1->set_is_key(true);
+    mv_column_1->set_length(4);
+    mv_column_1->set_index_length(4);
+    mv_column_1->set_is_nullable(false);
+    mv_column_1->set_is_bf_column(false);
+
+    ColumnPB* mv_column_2 = mv_tablet_schema_pb.add_column();
+    mv_column_2->set_unique_id(4);
+    mv_column_2->set_name("v1");
+    mv_column_2->set_type("BITMAP");
+    mv_column_2->set_length(4);
+    mv_column_2->set_is_key(false);
+    mv_column_2->set_is_nullable(false);
+    mv_column_2->set_is_bf_column(false);
+    mv_column_2->set_aggregation("BITMAP_UNION");
+
+    TabletSchema mv_tablet_schema;
+    mv_tablet_schema.init_from_pb(mv_tablet_schema_pb);
+
+    RowBlockChanger row_block_changer(mv_tablet_schema);
+    ColumnMapping* column_mapping = row_block_changer.get_mutable_column_mapping(0);
+    column_mapping->ref_column = 0;
+    column_mapping = row_block_changer.get_mutable_column_mapping(1);
+    column_mapping->ref_column = 2;
+    column_mapping->materialized_function = "to_bitmap";
+
+    RowBlock mutable_block(&mv_tablet_schema);
+    mutable_block.init(block_info);
+    uint64_t filtered_rows = 0;
+    row_block_changer.change_row_block(&block, 0, &mutable_block, &filtered_rows);
+
+    RowCursor mv_row_cursor;
+    mv_row_cursor.init(mv_tablet_schema);
+    mutable_block.get_row(0, &mv_row_cursor);
+
+    char* cell_ptr = mv_row_cursor.cell_ptr(1);
+    BitmapValue bitmapValue(cell_ptr);
+    std::cout <<"bitmap cardinality : " << bitmapValue.cardinality() << std::endl;
+    std::cout << mv_row_cursor.to_string() << std::endl;
 }
 }
 

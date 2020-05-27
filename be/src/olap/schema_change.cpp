@@ -89,13 +89,11 @@ private:
 };
 
 
-RowBlockChanger::RowBlockChanger(const TabletSchema& tablet_schema,
-                                 const TabletSharedPtr &base_tablet) {
+RowBlockChanger::RowBlockChanger(const TabletSchema& tablet_schema) {
     _schema_mapping.resize(tablet_schema.num_columns());
 }
 
 RowBlockChanger::RowBlockChanger(const TabletSchema& tablet_schema,
-                                 const TabletSharedPtr& base_tablet,
                                  const DeleteHandler& delete_handler) {
     _schema_mapping.resize(tablet_schema.num_columns());
     _delete_handler = delete_handler;
@@ -275,23 +273,29 @@ bool RowBlockChanger::change_row_block(
                     ref_block->get_row(row_index, &read_helper);
 
                     std::cout << "reader helper : " <<read_helper.to_string() << std::endl;
+                    if (_schema_mapping[i].materialized_function == "bitmap_union") {
+                        if (true == read_helper.is_null(ref_column)) {
+                            write_helper.set_null(i);
+                        } else {
+                            write_helper.set_not_null(i);
+                            char *src = read_helper.cell_ptr(ref_column);
+                            StringParser::ParseResult parse_result = StringParser::PARSE_SUCCESS;
+                            uint64_t int_value = StringParser::string_to_unsigned_int<uint64_t>(src, strlen(src),
+                                                                                                &parse_result);
 
-                    if (true == read_helper.is_null(ref_column)) {
-                        write_helper.set_null(i);
-                    } else {
-                        write_helper.set_not_null(i);
-                        char* src = read_helper.cell_ptr(ref_column);
-                        StringParser::ParseResult parse_result = StringParser::PARSE_SUCCESS;
-                        uint64_t int_value = StringParser::string_to_unsigned_int<uint64_t>(src, strlen(src), &parse_result);
+                            size_t size = mutable_block->tablet_schema().column(i).length();
+                            char *buf = reinterpret_cast<char *>(mem_pool->allocate(size));
+                            Slice dst(buf, size);
 
-                        size_t size = mutable_block->tablet_schema().column(i).length();
-                        char* buf = reinterpret_cast<char*>(mem_pool->allocate(size));
-                        Slice dst(buf, size);
-
-                        BitmapValue bitmap;
-                        bitmap.add(int_value);
-                        bitmap.write(dst.data);
-                        write_helper.set_field_content(i, reinterpret_cast<char*>(&dst), mem_pool);
+                            BitmapValue bitmap;
+                            bitmap.add(int_value);
+                            bitmap.write(dst.data);
+                            write_helper.set_field_content(i, reinterpret_cast<char *>(&dst), mem_pool);
+                        }
+                    } else if (_schema_mapping[i].materialized_function == "hll_union") {
+                        auto* src_slice = reinterpret_cast<Slice*>(read_helper.cell_ptr(ref_column));
+                        HyperLogLog hll(*src_slice);
+                        write_helper.set_field_content(i, reinterpret_cast<char *>(&hll), mem_pool);
                     }
                 }
                 continue;
@@ -1473,7 +1477,7 @@ OLAPStatus SchemaChangeHandler::schema_version_convert(
 
     // a. 解析Alter请求，转换成内部的表示形式
     // 不使用DELETE_DATA命令指定的删除条件
-    RowBlockChanger rb_changer(new_tablet->tablet_schema(), base_tablet);
+    RowBlockChanger rb_changer(new_tablet->tablet_schema());
     bool sc_sorting = false;
     bool sc_directly = false;
     //TODO(lhy)
@@ -1692,8 +1696,7 @@ OLAPStatus SchemaChangeHandler::_convert_historical_rowsets(const SchemaChangePa
 
     // change中增加了filter信息，在_parse_request中会设置filter的column信息
     // 并在每次row block的change时，过滤一些数据
-    RowBlockChanger rb_changer(sc_params.new_tablet->tablet_schema(),
-                               sc_params.base_tablet, sc_params.delete_handler);
+    RowBlockChanger rb_changer(sc_params.new_tablet->tablet_schema(), sc_params.delete_handler);
 
     bool sc_sorting = false;
     bool sc_directly = false;
