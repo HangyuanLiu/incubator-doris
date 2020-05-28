@@ -721,6 +721,7 @@ TEST_F(TestColumn, ConvertIntToBitmap) {
 
     RowCursor write_row;
     write_row.init(tablet_schema);
+    write_row.allocate_memory_for_string_type(tablet_schema);
     RowBlock block(&tablet_schema);
     RowBlockInfo block_info;
     block_info.row_num = 10000;
@@ -730,7 +731,7 @@ TEST_F(TestColumn, ConvertIntToBitmap) {
     //std::string origin_val = "2019-11-25 19:07:00";
     //val_string_array.emplace_back(origin_val);
     val_string_array.emplace_back("1");
-    val_string_array.emplace_back("a");
+    val_string_array.emplace_back("1");
     val_string_array.emplace_back("2");
     val_string_array.emplace_back("3");
     OlapTuple tuple(val_string_array);
@@ -747,7 +748,7 @@ TEST_F(TestColumn, ConvertIntToBitmap) {
     mv_tablet_schema_pb.set_num_short_key_columns(2);
     mv_tablet_schema_pb.set_num_rows_per_row_block(1024);
     mv_tablet_schema_pb.set_compress_kind(COMPRESS_NONE);
-    mv_tablet_schema_pb.set_next_column_unique_id(4);
+    mv_tablet_schema_pb.set_next_column_unique_id(3);
 
     ColumnPB* mv_column_1 = mv_tablet_schema_pb.add_column();
     mv_column_1->set_unique_id(1);
@@ -762,7 +763,7 @@ TEST_F(TestColumn, ConvertIntToBitmap) {
     ColumnPB* mv_column_2 = mv_tablet_schema_pb.add_column();
     mv_column_2->set_unique_id(4);
     mv_column_2->set_name("v1");
-    mv_column_2->set_type("BITMAP");
+    mv_column_2->set_type("OBJECT");
     mv_column_2->set_length(4);
     mv_column_2->set_is_key(false);
     mv_column_2->set_is_nullable(false);
@@ -772,12 +773,13 @@ TEST_F(TestColumn, ConvertIntToBitmap) {
     TabletSchema mv_tablet_schema;
     mv_tablet_schema.init_from_pb(mv_tablet_schema_pb);
 
-    RowBlockChanger row_block_changer(mv_tablet_schema);
+    RowBlockChanger row_block_changer(mv_tablet_schema, NULL);
     ColumnMapping* column_mapping = row_block_changer.get_mutable_column_mapping(0);
     column_mapping->ref_column = 0;
     column_mapping = row_block_changer.get_mutable_column_mapping(1);
     column_mapping->ref_column = 2;
     column_mapping->materialized_function = "to_bitmap";
+
 
     RowBlock mutable_block(&mv_tablet_schema);
     mutable_block.init(block_info);

@@ -24,7 +24,6 @@ import org.apache.doris.catalog.BrokerTable;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.Database;
-import org.apache.doris.catalog.Function;
 import org.apache.doris.catalog.MysqlTable;
 import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.catalog.Partition;
@@ -357,9 +356,6 @@ public class InsertStmt extends DdlStmt {
                     slotDesc.setIsNullable(false);
                 }
             }
-            //TODO(lhy)
-            //BaseTableRef tableRef = new BaseTableRef(new TableRef(tblName, null), targetTable, tblName);
-            //tableRef.analyze(analyzer);
 
             // will use it during create load job
             indexIdToSchemaHash = olapTable.getIndexIdToSchemaHash();
@@ -444,7 +440,8 @@ public class InsertStmt extends DdlStmt {
          * null or default value when loading.
          */
         List<Integer> origColIdxsForShadowCols = Lists.newArrayList();
-        List<Integer> origColIdxsForMVCols = Lists.newArrayList();
+        Map<Integer, Integer> origColIdxsForMVCols = Maps.newHashMap();
+        int columnIdx = 0;
         for (Column column : targetTable.getFullSchema()) {
             if (column.isNameWithPrefix(SchemaChangeHandler.SHADOW_NAME_PRFIX)) {
                 String origName = Column.removeNamePrefix(column.getName());
@@ -458,16 +455,21 @@ public class InsertStmt extends DdlStmt {
                 }
             } else if (column.isNameWithPrefix(MaterializedViewHandler.MATERIALIZED_VIEW_NAME_PRFIX)) {
                 //TODO(lhy)
-                String funcName = ((FunctionCallExpr) column.getDefineExpr()).getFnName().getFunction();
-                String origName = column.getName().substring(SchemaChangeHandler.SHADOW_NAME_PRFIX.length());
+                Expr defineExpr = column.getDefineExpr();
+                List<SlotRef> slots = Lists.newArrayList();
+                defineExpr.collect(SlotRef.class, slots);
+                Preconditions.checkArgument(slots.size() == 1);
+                String origName = slots.get(0).getColumnName();
                 for (int i = 0; i < targetColumns.size(); ++i) {
                     if (targetColumns.get(i).nameEquals(origName, false)) {
-                        origColIdxsForMVCols.add(i);
+                        origColIdxsForMVCols.put(i, columnIdx);
+                        //origColIdxsForMVCols.add(i);
                         targetColumns.add(column);
                         break;
                     }
                 }
             }
+            columnIdx++;
         }
 
         // parse query statement
@@ -521,24 +523,14 @@ public class InsertStmt extends DdlStmt {
                 }
             }
             if (!origColIdxsForMVCols.isEmpty()) {
-                ExprSubstitutionMap smap = new ExprSubstitutionMap();
-                for (Integer idx : origColIdxsForMVCols) {
+                for (Map.Entry<Integer, Integer> idx : origColIdxsForMVCols.entrySet()) {
                     //TODO(lhy)
-
-                    Column originColumn = targetTable.getBaseSchema().get(idx);
-                    List<SlotRef> slots = Lists.newArrayList();
-                    originColumn.getDefineExpr().collect(SlotRef.class, slots);
-                    smap.getLhs().add(slots.get(0));
-
-                    Expr originExpr = queryStmt.getResultExprs().get(idx);
-                    smap.getRhs().add(originExpr);
-                }
-                ArrayList<Expr> exprs = queryStmt.getResultExprs();
-                List<Expr> resExprs = Expr.substituteList(
-                                exprs, smap, analyzer, true);
-
-                for (Expr expr : resExprs) {
+                    Column originColumn = targetTable.getFullSchema().get(idx.getValue());
+                    Expr expr = originColumn.getDefineExpr();
                     expr.analyze(analyzer);
+                    queryStmt.getResultExprs().add(expr);
+                    queryStmt.getBaseTblResultExprs().add(expr);
+                    queryStmt.getColLabels().add(originColumn.getName());
                 }
             }
             // check compatibility
@@ -715,6 +707,7 @@ public class InsertStmt extends DdlStmt {
             if (exprByName.containsKey(col.getName())) {
                 resultExprs.add(exprByName.get(col.getName()));
             } else {
+                //schema change 新加列
                 if (col.getDefineExpr() != null) {
                     FunctionCallExpr expr = (FunctionCallExpr) col.getDefineExpr();
                     String colName = ((SlotRef) expr.getChild(0)).getColumnName();

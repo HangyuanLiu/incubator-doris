@@ -678,7 +678,7 @@ public:
             return;
         }
 
-        DCHECK(counter->type() == TUnit::TIME_NS);
+        //DCHECK(counter->type() == TUnit::TIME_NS);
         _sw.start();
     }
 
