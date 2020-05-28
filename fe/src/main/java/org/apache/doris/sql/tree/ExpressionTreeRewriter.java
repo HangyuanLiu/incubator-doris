@@ -51,7 +51,57 @@ public class ExpressionTreeRewriter<C> {
     private class RewritingVisitor
             extends AstVisitor<Expression, ExpressionTreeRewriter.Context<C>>
     {
+        @Override
+        protected Expression visitExpression(Expression node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteExpression(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
 
+            throw new UnsupportedOperationException("not yet implemented: " + getClass().getSimpleName() + " for " + node.getClass().getName());
+        }
+
+        @Override
+        public Expression visitIdentifier(Identifier node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteIdentifier(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            return node;
+        }
+
+        @Override
+        protected Expression visitFieldReference(FieldReference node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteFieldReference(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            return node;
+        }
+
+        @Override
+        protected Expression visitSymbolReference(SymbolReference node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteSymbolReference(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            return node;
+        }
     }
 
     public static class Context<C>

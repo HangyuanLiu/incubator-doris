@@ -3,6 +3,7 @@ package org.apache.doris.sql;
 import com.google.common.collect.Lists;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.apache.doris.analysis.Analyzer;
 import org.apache.doris.analysis.CreateDbStmt;
 import org.apache.doris.analysis.CreateTableStmt;
 import org.apache.doris.catalog.Catalog;
@@ -10,6 +11,7 @@ import org.apache.doris.planner.DistributedPlanner;
 import org.apache.doris.planner.PlanFragment;
 import org.apache.doris.planner.PlanNode;
 import org.apache.doris.planner.PlanNodeId;
+import org.apache.doris.planner.PlannerContext;
 import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.StatementAnalyzer;
@@ -291,15 +293,14 @@ public class Main {
         Plan plan = logicalPlanner.plan(analysis);
 
         System.out.println("Hello world");
-        /*
+        //physical plan
         PhysicalPlanner physicalPlanner = new PhysicalPlanner();
         PlanNode root = physicalPlanner.createPhysicalPlan(plan);
 
+        PlannerContext plannerContext = new PlannerContext(null, null, null, null);
         DistributedPlanner distributedPlanner = new DistributedPlanner(plannerContext);
         ArrayList<PlanFragment> fragments = Lists.newArrayList();
         fragments = distributedPlanner.createPlanFragments(root);
-
-         */
     }
 
     private static void createTable(String sql) throws Exception {

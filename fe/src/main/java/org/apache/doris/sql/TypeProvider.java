@@ -23,6 +23,10 @@ public class TypeProvider
 {
     private final Map<String, Type> types;
 
+    public TypeProvider() {
+        types = null;
+    }
+
     public TypeProvider(Map<String, Type> types) {
         this.types = types;
     }

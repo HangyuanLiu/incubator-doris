@@ -13,20 +13,21 @@ import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.metadata.DorisTableHandle;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.OutputNode;
+import org.apache.doris.sql.planner.plan.PlanVisitor;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.planner.plan.TableScanNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 
 public class PhysicalPlanner {
-    /*
     public PlanNode createPhysicalPlan(Plan plan) {
         PhysicalPlanTranslator physicalPlanTranslator = new PhysicalPlanTranslator();
-        PlanNode root = SimplePlanRewriter.rewriteWith(physicalPlanTranslator, plan.getRoot());
+        //PlanNode root = SimplePlanRewriter.rewriteWith(physicalPlanTranslator, plan.getRoot());
+        PlanNode root = physicalPlanTranslator.visitPlan(plan.getRoot(), new FragmentProperties());
         return root;
     }
 
     private static class PhysicalPlanTranslator
-            extends SimplePlanRewriter<FragmentProperties> {
+            extends PlanVisitor<PlanNode, FragmentProperties> {
 
         public PlanNode visitPlan(LogicalPlanNode node, FragmentProperties context) {
             return node.accept(this, context);
@@ -66,5 +67,4 @@ public class PhysicalPlanner {
     private static class FragmentProperties {
         private final DescriptorTable descTbl = new DescriptorTable();
     }
-     */
 }

@@ -3,6 +3,7 @@ package org.apache.doris.sql.planner;
 import com.google.common.collect.ImmutableList;
 import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNodeId;
+import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.Field;
@@ -51,7 +52,7 @@ public class LogicalPlanner {
         }
         */
         //TypeProvider types = variableAllocator.getTypes();
-        return new Plan(root, null);
+        return new Plan(root, new TypeProvider());
     }
 
     public LogicalPlanNode planStatement(Analysis analysis, Statement statement)
