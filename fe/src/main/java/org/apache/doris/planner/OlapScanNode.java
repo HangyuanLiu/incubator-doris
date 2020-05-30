@@ -132,6 +132,10 @@ public class OlapScanNode extends ScanNode {
         olapTable = (OlapTable) desc.getTable();
     }
 
+    public OlapScanNode(PlanNodeId id, String planNodeName) {
+        super(id, null, planNodeName);
+    }
+
     public void setIsPreAggregation(boolean isPreAggregation, String reason) {
         this.isPreAggregation = isPreAggregation;
         this.reasonOfPreAggregation = reason;

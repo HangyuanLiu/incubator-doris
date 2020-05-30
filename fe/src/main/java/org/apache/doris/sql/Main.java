@@ -6,6 +6,7 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.apache.doris.analysis.Analyzer;
 import org.apache.doris.analysis.CreateDbStmt;
 import org.apache.doris.analysis.CreateTableStmt;
+import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.planner.DistributedPlanner;
 import org.apache.doris.planner.PlanFragment;
@@ -31,6 +32,7 @@ import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.Statement;
 import org.apache.doris.sql.utframe.UtFrameUtils;
+import org.apache.doris.thrift.TQueryOptions;
 
 import java.util.ArrayList;
 import java.util.Optional;
@@ -295,12 +297,17 @@ public class Main {
         System.out.println("Hello world");
         //physical plan
         PhysicalPlanner physicalPlanner = new PhysicalPlanner();
-        PlanNode root = physicalPlanner.createPhysicalPlan(plan);
+        DescriptorTable descTbl = new DescriptorTable();
+        PlanNode root = physicalPlanner.createPhysicalPlan(plan, descTbl);
+        System.out.println(descTbl.getTupleDescs());
 
-        PlannerContext plannerContext = new PlannerContext(null, null, null, null);
+
+        TQueryOptions tQueryOptions = new TQueryOptions();
+        tQueryOptions.num_nodes = 3;
+        PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
         DistributedPlanner distributedPlanner = new DistributedPlanner(plannerContext);
-        ArrayList<PlanFragment> fragments = Lists.newArrayList();
-        fragments = distributedPlanner.createPlanFragments(root);
+        ArrayList<PlanFragment> fragments = distributedPlanner.createPlanFragments(root);
+        System.out.println("fragments : " + fragments);
     }
 
     private static void createTable(String sql) throws Exception {
