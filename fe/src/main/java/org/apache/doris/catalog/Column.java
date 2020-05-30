@@ -17,20 +17,14 @@
 
 package org.apache.doris.catalog;
 
-import com.google.common.collect.Maps;
-import com.google.gson.Gson;
 import org.apache.doris.alter.SchemaChangeHandler;
-import org.apache.doris.analysis.*;
+import org.apache.doris.analysis.Expr;
 import org.apache.doris.common.CaseSensibility;
 import org.apache.doris.common.DdlException;
 import org.apache.doris.common.FeMetaVersion;
 import org.apache.doris.common.io.Text;
 import org.apache.doris.common.io.Writable;
-import org.apache.doris.common.util.SqlParserUtils;
-import org.apache.doris.mysql.privilege.PaloAuth;
-import org.apache.doris.persist.gson.GsonPostProcessable;
-import org.apache.doris.qe.ConnectContext;
-import org.apache.doris.system.SystemInfoService;
+import org.apache.doris.persist.gson.GsonUtils;
 import org.apache.doris.thrift.TColumn;
 import org.apache.doris.thrift.TColumnType;
 
@@ -43,16 +37,11 @@ import org.apache.logging.log4j.Logger;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.io.StringReader;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * This class represents the column-related metadata.
  */
-public class Column implements Writable , GsonPostProcessable {
+public class Column implements Writable {
     private static final Logger LOG = LogManager.getLogger(Column.class);
     @SerializedName(value = "name")
     private String name;
@@ -79,11 +68,7 @@ public class Column implements Writable , GsonPostProcessable {
     private String comment;
     @SerializedName(value = "stats")
     private ColumnStats stats;     // cardinality and selectivity etc.
-
-    //use to define materialize view
-    @SerializedName(value = "defineExprString")
-    private String defineExprString;
-    private Expr defineExpr;
+    private Expr defineExpr; // use to define column in materialize view
 
     public Column() {
         this.name = "";
@@ -91,7 +76,6 @@ public class Column implements Writable , GsonPostProcessable {
         this.isAggregationTypeImplicit = false;
         this.isKey = false;
         this.stats = new ColumnStats();
-        this.defineExprString = "";
     }
 
     public Column(String name, PrimitiveType dataType) {
@@ -131,7 +115,6 @@ public class Column implements Writable , GsonPostProcessable {
         this.comment = comment;
 
         this.stats = new ColumnStats();
-        this.defineExprString = "";
     }
 
     public Column(Column column) {
@@ -176,6 +159,10 @@ public class Column implements Writable , GsonPostProcessable {
     public PrimitiveType getDataType() { return type.getPrimitiveType(); }
 
     public Type getType() { return ScalarType.createType(type.getPrimitiveType()); }
+
+    public void setType(Type type) {
+        this.type = type;
+    }
 
     public Type getOriginType() { return type; }
 
@@ -261,7 +248,6 @@ public class Column implements Writable , GsonPostProcessable {
         tColumn.setIs_allow_null(this.isAllowNull);
         tColumn.setDefault_value(this.defaultValue);
         if (this.defineExpr != null) {
-            System.out.println("define expr : " + this.defineExpr.debugString());
             tColumn.setDefine_expr(this.defineExpr.treeToThrift());
         }
         return tColumn;
@@ -332,6 +318,14 @@ public class Column implements Writable , GsonPostProcessable {
             return colName.substring(SchemaChangeHandler.SHADOW_NAME_PRFIX.length());
         }
         return colName;
+    }
+
+    public Expr getDefineExpr() {
+        return defineExpr;
+    }
+
+    public void setDefineExpr(Expr expr) {
+        defineExpr = expr;
     }
 
     public String toSql() {
@@ -418,32 +412,11 @@ public class Column implements Writable , GsonPostProcessable {
 
     @Override
     public void write(DataOutput out) throws IOException {
-        Text.writeString(out, name);
-        ColumnType.write(out, type);
-        if (null == aggregationType) {
-            out.writeBoolean(false);
-        } else {
-            out.writeBoolean(true);
-            Text.writeString(out, aggregationType.name());
-            out.writeBoolean(isAggregationTypeImplicit);
-        }
-
-        out.writeBoolean(isKey);
-        out.writeBoolean(isAllowNull);
-
-        if (defaultValue == null) {
-            out.writeBoolean(false);
-        } else {
-            out.writeBoolean(true);
-            Text.writeString(out, defaultValue);
-        }
-        stats.write(out);
-        Text.writeString(out, comment);
-
-        Text.writeString(out, defineExprString);
+        String json = GsonUtils.GSON.toJson(this);
+        Text.writeString(out, json);
     }
 
-    public void readFields(DataInput in) throws IOException {
+    private void readFields(DataInput in) throws IOException {
         name = Text.readString(in);
         type = ColumnType.read(in);
         boolean notNull = in.readBoolean();
@@ -480,60 +453,16 @@ public class Column implements Writable , GsonPostProcessable {
         } else {
             comment = "";
         }
-
-        if (Catalog.getCurrentCatalogJournalVersion() >= FeMetaVersion.VERSION_85) {
-            defineExprString = Text.readString(in);
-            deserializeDefineExpr(defineExprString);
-        }
     }
 
     public static Column read(DataInput in) throws IOException {
-        Column column = new Column();
-        column.readFields(in);
-        return column;
-    }
-
-    public Expr getDefineExpr() {
-        return defineExpr;
-    }
-
-    public void setDefineExpr(Expr expr) {
-        defineExpr = expr;
-        if (expr != null) {
-            serializeDefineExpr(expr);
-        }
-    }
-
-    public void serializeDefineExpr(Expr defineExpr) {
-        defineExprString = "COLUMNS (" + name + "=" + defineExpr.toSql() + ")";
-    }
-
-    public void deserializeDefineExpr(String defineExprString) {
-        if (defineExprString.equals("")) {
-            defineExpr = null;
+        if (Catalog.getCurrentCatalogJournalVersion() < FeMetaVersion.VERSION_86) {
+            Column column = new Column();
+            column.readFields(in);
+            return column;
         } else {
-            try {
-                SqlParser parser = new SqlParser(new SqlScanner(new StringReader(defineExprString)));
-                ImportColumnsStmt columnsStmt = (ImportColumnsStmt) SqlParserUtils.getFirstStmt(parser);
-
-                ConnectContext ctx = new ConnectContext(null);
-                ctx.setCluster(SystemInfoService.DEFAULT_CLUSTER);
-                ctx.setCurrentUserIdentity(UserIdentity.ROOT);
-                ctx.setQualifiedUser(PaloAuth.ROOT_USER);
-                ctx.setCatalog(Catalog.getCurrentCatalog());
-                ctx.setThreadLocalInfo();
-
-                Analyzer analyzer = new Analyzer(Catalog.getCurrentCatalog(), ctx);
-                columnsStmt.analyze(analyzer);
-                defineExpr = columnsStmt.getColumns().get(0).getExpr();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            String json = Text.readString(in);
+            return GsonUtils.GSON.fromJson(json, Column.class);
         }
-    }
-
-    @Override
-    public void gsonPostProcess() {
-        deserializeDefineExpr(defineExprString);
     }
 }
