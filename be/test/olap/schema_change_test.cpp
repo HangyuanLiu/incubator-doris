@@ -796,11 +796,8 @@ TEST_F(TestColumn, ConvertIntToBitmap) {
     
     auto dst_slice = reinterpret_cast<Slice*>(mv_row_cursor.cell_ptr(1));
     auto dst_bitmap = reinterpret_cast<BitmapValue*>(dst_slice->data);
-    std::cout << "size :" << dst_slice->size << std::endl;
-    std::cout <<"bitmap cardinality : " << dst_bitmap->cardinality() << std::endl;
     BitmapValue bitmapValue(dst_slice->data);
-    std::cout <<"bitmap cardinality : " << bitmapValue.cardinality() << std::endl;
-    std::cout <<"mv row cursor : " << mv_row_cursor.to_string() << std::endl;
+    ASSERT_EQ(bitmapValue.cardinality(), 1);
 }
 
 TEST_F(TestColumn, ConvertCharToHLL) {
@@ -853,7 +850,7 @@ TEST_F(TestColumn, ConvertCharToHLL) {
     mv_column_1->set_is_bf_column(false);
 
     ColumnPB* mv_column_2 = mv_tablet_schema_pb.add_column();
-    mv_column_2->set_unique_id(4);
+    mv_column_2->set_unique_id(2);
     mv_column_2->set_name("v1");
     mv_column_2->set_type("HLL");
     mv_column_2->set_length(4);
@@ -872,7 +869,6 @@ TEST_F(TestColumn, ConvertCharToHLL) {
     column_mapping->ref_column = 1;
     column_mapping->materialized_function = "hll_hash";
 
-
     RowBlock mutable_block(&mv_tablet_schema);
     mutable_block.init(block_info);
     uint64_t filtered_rows = 0;
@@ -882,10 +878,9 @@ TEST_F(TestColumn, ConvertCharToHLL) {
     mv_row_cursor.init(mv_tablet_schema);
     mutable_block.get_row(0, &mv_row_cursor);
 
-    char* cell_ptr = mv_row_cursor.cell_ptr(1);
-    HyperLogLog hll;
-    hll.deserialize(Slice(cell_ptr));
-    std::cout <<"hll estimate_cardinality : " << hll.estimate_cardinality() << std::endl;
+    auto dst_slice = reinterpret_cast<Slice*>(mv_row_cursor.cell_ptr(1));
+    HyperLogLog hll(dst_slice->data);
+    ASSERT_EQ(hll.estimate_cardinality(), 1);
 }
 
 }

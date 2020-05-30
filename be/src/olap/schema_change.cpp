@@ -260,6 +260,7 @@ bool RowBlockChanger::change_row_block(
         if (_schema_mapping[i].ref_column >= 0) {
             //TODO(lhy)
             if (_schema_mapping[i].materialized_function != "") {
+                VLOG(3) << "_schema_mapping[" << i << "].materialized_function : " << _schema_mapping[i].materialized_function;
                 // 效率低下，也可以直接计算变长域拷贝，但仍然会破坏封装
                 for (size_t row_index = 0, new_row_index = 0;
                      row_index < ref_block->row_block_info().row_num; ++row_index) {
@@ -272,38 +273,38 @@ bool RowBlockChanger::change_row_block(
                     mutable_block->get_row(new_row_index++, &write_helper);
                     ref_block->get_row(row_index, &read_helper);
 
-                    std::cout << "reader helper : " <<read_helper.to_string() << std::endl;
                     if (_schema_mapping[i].materialized_function == "to_bitmap") {
-                        if (true == read_helper.is_null(ref_column)) {
-                            write_helper.set_null(i);
-                        } else {
-                            write_helper.set_not_null(i);
+                        write_helper.set_not_null(i);
+                        BitmapValue bitmap;
+                        if (!read_helper.is_null(ref_column)) {
                             char *src = read_helper.cell_ptr(ref_column);
-                            std::cout << *((int*) src) << std::endl;
                             StringParser::ParseResult parse_result = StringParser::PARSE_SUCCESS;
-                            uint64_t int_value = StringParser::string_to_unsigned_int<uint64_t>(src, strlen(src),
-                                                                                                &parse_result);
-                            
-                            BitmapValue bitmap;
+                            uint64_t int_value = StringParser::string_to_unsigned_int<uint64_t>(src, strlen(src), &parse_result);
                             bitmap.add(int_value);
-                            int size_in_bytes = bitmap.getSizeInBytes();
-                            std::cout << "size in bytes " << bitmap.getSizeInBytes() << std::endl;
-                            char *buf = reinterpret_cast<char *>(mem_pool->allocate(size_in_bytes));
-                            
-                            Slice dst(buf, size_in_bytes);
-                            bitmap.write(dst.data);
-                            write_helper.set_field_content(i, reinterpret_cast<char *>(&dst), mem_pool);
-
-                            BitmapValue bitmap2(buf);
-                            
-                            std::cout <<"bitmap cardinality 1: " << bitmap.cardinality() << std::endl;
-                            std::cout <<"bitmap cardinality 2: " << bitmap2.cardinality() << std::endl;
                         }
+                        char *buf = reinterpret_cast<char *>(mem_pool->allocate(bitmap.getSizeInBytes()));
+                        Slice dst(buf, bitmap.getSizeInBytes());
+                        bitmap.write(dst.data);
+                        write_helper.set_field_content(i, reinterpret_cast<char *>(&dst), mem_pool);
                     } else if (_schema_mapping[i].materialized_function == "hll_hash") {
-                        auto* src_slice = reinterpret_cast<Slice*>(read_helper.cell_ptr(ref_column));
-                        HyperLogLog hll(*src_slice);
-                        std::cout << "size :" << hll.estimate_cardinality() << std::endl;
-                        write_helper.set_field_content(i, reinterpret_cast<char *>(&hll), mem_pool);
+                        write_helper.set_not_null(i);
+                        Slice src;
+                        if (mutable_block->tablet_schema().column(i).type() != OLAP_FIELD_TYPE_VARCHAR) {
+                            src.data = read_helper.cell_ptr(ref_column);
+                            src.size = mutable_block->tablet_schema().column(i).length();
+                        } else {
+                            src = *reinterpret_cast<Slice *>(read_helper.cell_ptr(ref_column));
+                        }
+                        HyperLogLog hll;
+                        if (!read_helper.is_null(ref_column)) {
+                            uint64_t hash_value = HashUtil::murmur_hash64A(src.data, src.size, HashUtil::MURMUR_SEED);
+                            hll.update(hash_value);
+                        }
+                        std::string buf;
+                        buf.resize(hll.max_serialized_size());
+                        buf.resize(hll.serialize((uint8_t *) buf.c_str()));
+                        Slice dst(buf);
+                        write_helper.set_field_content(i, reinterpret_cast<char *>(&dst), mem_pool);
                     }
                 }
                 continue;
@@ -349,7 +350,6 @@ bool RowBlockChanger::change_row_block(
                             write_helper.set_field_content(i, src, mem_pool);
                         }
                     }
-                    std::cout << "write helper : " <<write_helper.to_string() << std::endl;
                 }
 
                 // 从ref_column 写入 i列。
@@ -1438,9 +1438,6 @@ OLAPStatus SchemaChangeHandler::_do_process_alter_tablet_v2(const TAlterTabletRe
                 mvParams.origin_column_name = item.origin_column_name;
                 mvParams.mv_expr = item.mv_expr.nodes[0].fn.name.function_name;
                 sc_params.materialized_params_map.insert(std::make_pair(item.column_name, mvParams));
-
-                std::cout << "materialized view function : "
-                          << mvParams.column_name << "," << mvParams.origin_column_name << "," <<mvParams.mv_expr << std::endl;
             }
         }
 
