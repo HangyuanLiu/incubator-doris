@@ -732,8 +732,8 @@ TEST_F(TestColumn, ConvertIntToBitmap) {
     block.init(block_info);
 
     std::vector<std::string> val_string_array;
-    val_string_array.emplace_back("1");
-    val_string_array.emplace_back("1");
+    val_string_array.emplace_back("5");
+    val_string_array.emplace_back("4");
     val_string_array.emplace_back("2");
     val_string_array.emplace_back("3");
     OlapTuple tuple(val_string_array);
@@ -763,10 +763,10 @@ TEST_F(TestColumn, ConvertIntToBitmap) {
     mv_column_1->set_is_bf_column(false);
 
     ColumnPB* mv_column_2 = mv_tablet_schema_pb.add_column();
-    mv_column_2->set_unique_id(4);
+    mv_column_2->set_unique_id(2);
     mv_column_2->set_name("v1");
     mv_column_2->set_type("OBJECT");
-    mv_column_2->set_length(4);
+    mv_column_2->set_length(8);
     mv_column_2->set_is_key(false);
     mv_column_2->set_is_nullable(false);
     mv_column_2->set_is_bf_column(false);
@@ -793,9 +793,14 @@ TEST_F(TestColumn, ConvertIntToBitmap) {
     mutable_block.get_row(0, &mv_row_cursor);
 
     char* cell_ptr = mv_row_cursor.cell_ptr(1);
-    BitmapValue bitmapValue(cell_ptr);
+    
+    auto dst_slice = reinterpret_cast<Slice*>(mv_row_cursor.cell_ptr(1));
+    auto dst_bitmap = reinterpret_cast<BitmapValue*>(dst_slice->data);
+    std::cout << "size :" << dst_slice->size << std::endl;
+    std::cout <<"bitmap cardinality : " << dst_bitmap->cardinality() << std::endl;
+    BitmapValue bitmapValue(dst_slice->data);
     std::cout <<"bitmap cardinality : " << bitmapValue.cardinality() << std::endl;
-    std::cout << mv_row_cursor.to_string() << std::endl;
+    std::cout <<"mv row cursor : " << mv_row_cursor.to_string() << std::endl;
 }
 
 TEST_F(TestColumn, ConvertCharToHLL) {
@@ -881,7 +886,6 @@ TEST_F(TestColumn, ConvertCharToHLL) {
     HyperLogLog hll;
     hll.deserialize(Slice(cell_ptr));
     std::cout <<"hll estimate_cardinality : " << hll.estimate_cardinality() << std::endl;
-    std::cout << mv_row_cursor.to_string() << std::endl;
 }
 
 }

@@ -273,28 +273,36 @@ bool RowBlockChanger::change_row_block(
                     ref_block->get_row(row_index, &read_helper);
 
                     std::cout << "reader helper : " <<read_helper.to_string() << std::endl;
-                    if (_schema_mapping[i].materialized_function == "bitmap_union") {
+                    if (_schema_mapping[i].materialized_function == "to_bitmap") {
                         if (true == read_helper.is_null(ref_column)) {
                             write_helper.set_null(i);
                         } else {
                             write_helper.set_not_null(i);
                             char *src = read_helper.cell_ptr(ref_column);
+                            std::cout << *((int*) src) << std::endl;
                             StringParser::ParseResult parse_result = StringParser::PARSE_SUCCESS;
                             uint64_t int_value = StringParser::string_to_unsigned_int<uint64_t>(src, strlen(src),
                                                                                                 &parse_result);
-
-                            size_t size = mutable_block->tablet_schema().column(i).length();
-                            char *buf = reinterpret_cast<char *>(mem_pool->allocate(size));
-                            Slice dst(buf, size);
-
+                            
                             BitmapValue bitmap;
                             bitmap.add(int_value);
+                            int size_in_bytes = bitmap.getSizeInBytes();
+                            std::cout << "size in bytes " << bitmap.getSizeInBytes() << std::endl;
+                            char *buf = reinterpret_cast<char *>(mem_pool->allocate(size_in_bytes));
+                            
+                            Slice dst(buf, size_in_bytes);
                             bitmap.write(dst.data);
                             write_helper.set_field_content(i, reinterpret_cast<char *>(&dst), mem_pool);
+
+                            BitmapValue bitmap2(buf);
+                            
+                            std::cout <<"bitmap cardinality 1: " << bitmap.cardinality() << std::endl;
+                            std::cout <<"bitmap cardinality 2: " << bitmap2.cardinality() << std::endl;
                         }
-                    } else if (_schema_mapping[i].materialized_function == "hll_union") {
+                    } else if (_schema_mapping[i].materialized_function == "hll_hash") {
                         auto* src_slice = reinterpret_cast<Slice*>(read_helper.cell_ptr(ref_column));
                         HyperLogLog hll(*src_slice);
+                        std::cout << "size :" << hll.estimate_cardinality() << std::endl;
                         write_helper.set_field_content(i, reinterpret_cast<char *>(&hll), mem_pool);
                     }
                 }
@@ -319,7 +327,6 @@ bool RowBlockChanger::change_row_block(
                     mutable_block->get_row(new_row_index++, &write_helper);
                     ref_block->get_row(row_index, &read_helper);
 
-                    std::cout << "write helper : " <<write_helper.to_string() << std::endl;
 
                     if (true == read_helper.is_null(ref_column)) {
                         write_helper.set_null(i);
@@ -342,6 +349,7 @@ bool RowBlockChanger::change_row_block(
                             write_helper.set_field_content(i, src, mem_pool);
                         }
                     }
+                    std::cout << "write helper : " <<write_helper.to_string() << std::endl;
                 }
 
                 // 从ref_column 写入 i列。
