@@ -61,12 +61,15 @@ import org.apache.doris.mysql.MysqlChannel;
 import org.apache.doris.mysql.MysqlEofPacket;
 import org.apache.doris.mysql.MysqlSerializer;
 import org.apache.doris.mysql.privilege.PrivPredicate;
+import org.apache.doris.planner.PlanFragment;
 import org.apache.doris.planner.Planner;
+import org.apache.doris.planner.ScanNode;
 import org.apache.doris.proto.PQueryStatistics;
 import org.apache.doris.qe.QueryState.MysqlStateType;
 import org.apache.doris.rewrite.ExprRewriter;
 import org.apache.doris.rpc.RpcException;
 import org.apache.doris.task.LoadEtlTask;
+import org.apache.doris.thrift.TDescriptorTable;
 import org.apache.doris.thrift.TExplainLevel;
 import org.apache.doris.thrift.TQueryOptions;
 import org.apache.doris.thrift.TQueryType;
@@ -85,6 +88,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -112,6 +116,10 @@ public class StmtExecutor {
     private boolean isProxy;
     private ShowResultSet proxyResultSet = null;
     private PQueryStatistics statisticsForAuditLog;
+
+    public StmtExecutor(ConnectContext context) {
+        this.context = context;
+    }
 
     // this constructor is mainly for proxy
     public StmtExecutor(ConnectContext context, OriginStatement originStmt, boolean isProxy) {
@@ -213,6 +221,71 @@ public class StmtExecutor {
 
     public StatementBase getParsedStmt() {
         return parsedStmt;
+    }
+
+    public void executeV2(ConnectContext context, ArrayList<PlanFragment> fragments, List<ScanNode> scanNodes, TDescriptorTable descTable) throws Exception {
+        context.getState().setIsQuery(true);
+        int retryTime = Config.max_query_retry_time;
+        for (int i = 0; i < retryTime; i ++) {
+            try {
+                // Every time set no send flag and clean all data in buffer
+                context.getMysqlChannel().reset();
+                QueryStmt queryStmt = (QueryStmt) parsedStmt;
+
+                // assign query id before explain query return
+                UUID uuid = UUID.randomUUID();
+                context.setQueryId(new TUniqueId(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits()));
+                /*
+                if (queryStmt.isExplain()) {
+                    String explainString = planner.getExplainString(planner.getFragments(), TExplainLevel.VERBOSE);
+                    handleExplainStmt(explainString);
+                    return;
+                }
+
+                 */
+                //coord = new Coordinator(context, analyzer, planner);
+                coord = new Coordinator(context, fragments, scanNodes, descTable);
+
+                //QeProcessorImpl.INSTANCE.registerQuery(context.queryId(), new QeProcessorImpl.QueryInfo(context, originStmt.originStmt, coord));
+
+                coord.exec();
+
+                // if python's MysqlDb get error after sendfields, it can't catch the exception
+                // so We need to send fields after first batch arrived
+
+                // send result
+                RowBatch batch;
+                MysqlChannel channel = context.getMysqlChannel();
+                sendFields(queryStmt.getColLabels(), queryStmt.getResultExprs());
+                while (true) {
+                    batch = coord.getNext();
+                    if (batch.getBatch() != null) {
+                        for (ByteBuffer row : batch.getBatch().getRows()) {
+                            channel.sendOnePacket(row);
+                        }
+                        context.updateReturnRows(batch.getBatch().getRows().size());
+                    }
+                    if (batch.isEos()) {
+                        break;
+                    }
+                }
+
+                statisticsForAuditLog = batch.getQueryStatistics();
+                context.getState().setEof();
+                break;
+            } catch (RpcException e) {
+                if (i == retryTime - 1) {
+                    throw e;
+                }
+                if (!context.getMysqlChannel().isSend()) {
+                    LOG.warn("retry {} times. stmt: {}", (i + 1), context.getStmtId());
+                } else {
+                    throw e;
+                }
+            } finally {
+                QeProcessorImpl.INSTANCE.unregisterQuery(context.queryId());
+            }
+        }
     }
 
     // Execute one statement.

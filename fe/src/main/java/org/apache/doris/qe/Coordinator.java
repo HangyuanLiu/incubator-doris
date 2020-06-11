@@ -195,6 +195,31 @@ public class Coordinator {
     // parallel execute
     private final TUniqueId nextInstanceId;
 
+
+    public Coordinator(ConnectContext context, ArrayList<PlanFragment> fragments, List<ScanNode> scanNodes, TDescriptorTable descTable) {
+        this.isBlockQuery = false;
+        this.queryId = context.queryId();
+        this.fragments = fragments;
+        this.scanNodes = scanNodes;
+        this.descTable = descTable;
+        this.returnedAllResults = false;
+        this.queryOptions = context.getSessionVariable().toThrift();
+        this.queryGlobals.setNow_string(DATE_FORMAT.format(new Date()));
+        this.queryGlobals.setTimestamp_ms(new Date().getTime());
+        if (context.getSessionVariable().getTimeZone().equals("CST")) {
+            this.queryGlobals.setTime_zone(TimeUtils.DEFAULT_TIME_ZONE);
+        } else {
+            this.queryGlobals.setTime_zone(context.getSessionVariable().getTimeZone());
+        }
+        this.tResourceInfo = new TResourceInfo(context.getQualifiedUser(),
+                context.getSessionVariable().getResourceGroup());
+        this.needReport = context.getSessionVariable().isReportSucc();
+        this.clusterName = context.getClusterName();
+        this.nextInstanceId = new TUniqueId();
+        nextInstanceId.setHi(queryId.hi);
+        nextInstanceId.setLo(queryId.lo + 1);
+    }
+
     // Used for query/insert
     public Coordinator(ConnectContext context, Analyzer analyzer, Planner planner) {
         this.isBlockQuery = planner.isBlockQuery();

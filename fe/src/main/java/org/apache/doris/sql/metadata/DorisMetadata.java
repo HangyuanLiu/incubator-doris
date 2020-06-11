@@ -26,14 +26,15 @@ public class DorisMetadata implements ConnectorMetadata{
 
     @Override
     public ConnectorTableHandle getTableHandle(ConnectorSession session, SchemaTableName tableName) {
-        return new DorisTableHandle(tableName.getSchemaName(), tableName.getTableName());
+        Table table = dorisCatalog.getDb(tableName.getSchemaName()).getTable(tableName.getTableName());
+        return new DorisTableHandle(tableName.getSchemaName(), tableName.getTableName(), table);
     }
 
     @Override
     public Map<String, ColumnHandle> getColumnHandles(ConnectorSession session, ConnectorTableHandle tableHandle) {
         DorisTableHandle dorisTableHandle = (DorisTableHandle) tableHandle;
 
-        Database database = dorisCatalog.getDb("default_cluster:" + dorisTableHandle.getSchemaName());
+        Database database = dorisCatalog.getDb(dorisTableHandle.getSchemaName());
         Table table = database.getTable(dorisTableHandle.getTableName());
         List<Column> columnList = table.getBaseSchema();
 

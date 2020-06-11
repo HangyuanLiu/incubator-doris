@@ -17,6 +17,9 @@
 
 package org.apache.doris.qe;
 
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.KillStmt;
 import org.apache.doris.analysis.SqlParser;
 import org.apache.doris.analysis.SqlScanner;
@@ -28,6 +31,7 @@ import org.apache.doris.catalog.Database;
 import org.apache.doris.catalog.Table;
 import org.apache.doris.cluster.ClusterNamespace;
 import org.apache.doris.common.AnalysisException;
+import org.apache.doris.common.Config;
 import org.apache.doris.common.DdlException;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
@@ -41,14 +45,37 @@ import org.apache.doris.mysql.MysqlPacket;
 import org.apache.doris.mysql.MysqlProto;
 import org.apache.doris.mysql.MysqlSerializer;
 import org.apache.doris.mysql.MysqlServerStatusFlag;
+import org.apache.doris.planner.DistributedPlanner;
+import org.apache.doris.planner.PlanFragment;
+import org.apache.doris.planner.PlanNode;
+import org.apache.doris.planner.PlanNodeId;
+import org.apache.doris.planner.PlannerContext;
 import org.apache.doris.plugin.AuditEvent.EventType;
 import org.apache.doris.proto.PQueryStatistics;
+import org.apache.doris.rpc.RpcException;
 import org.apache.doris.service.FrontendOptions;
+import org.apache.doris.sql.analyzer.Analysis;
+import org.apache.doris.sql.analyzer.StatementAnalyzer;
+import org.apache.doris.sql.metadata.Metadata;
+import org.apache.doris.sql.metadata.MetadataManager;
+import org.apache.doris.sql.metadata.Session;
+import org.apache.doris.sql.parser.AstBuilder;
+import org.apache.doris.sql.parser.CaseInsensitiveStream;
+import org.apache.doris.sql.parser.ParsingOptions;
+import org.apache.doris.sql.parser.SqlBaseLexer;
+import org.apache.doris.sql.parser.SqlBaseParser;
+import org.apache.doris.sql.planner.LogicalPlanner;
+import org.apache.doris.sql.planner.PhysicalPlanner;
+import org.apache.doris.sql.planner.Plan;
+import org.apache.doris.sql.tree.Expression;
+import org.apache.doris.sql.tree.Node;
+import org.apache.doris.sql.tree.Statement;
 import org.apache.doris.thrift.TMasterOpRequest;
 import org.apache.doris.thrift.TMasterOpResult;
 
 import com.google.common.base.Strings;
 
+import org.apache.doris.thrift.TQueryOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -57,7 +84,9 @@ import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Process one mysql connection, receive one pakcet, process, send one packet.
@@ -167,6 +196,53 @@ public class ConnectProcessor {
             .setClientIp(ctx.getMysqlChannel().getRemoteHostPortString())
             .setUser(ctx.getQualifiedUser())
             .setDb(ctx.getDatabase());
+
+        try {
+            //parser
+            CaseInsensitiveStream stream = new CaseInsensitiveStream(CharStreams.fromString(originStmt));
+            SqlBaseLexer lexer = new SqlBaseLexer(stream);
+            CommonTokenStream tokens = new CommonTokenStream(lexer);
+            SqlBaseParser parser = new SqlBaseParser(tokens);
+            AstBuilder visitor = new AstBuilder(new ParsingOptions());
+            Node stmt = visitor.visit(parser.singleStatement());
+
+            //Session
+            Session session = new Session(ctx.getCatalog(), ctx);
+
+            //DorisMetadata
+            Metadata metadata = new MetadataManager();
+
+            //analyzer
+            ArrayList<Expression> parameters = new ArrayList<>();
+            Analysis analysis = new Analysis((Statement) stmt, parameters, true);
+            StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, session);
+            analyzer.analyze(stmt, Optional.empty());
+
+            //logical planner
+            LogicalPlanner logicalPlanner = new LogicalPlanner(PlanNodeId.createGenerator());
+            Plan plan = logicalPlanner.plan(analysis);
+
+            //physical plan
+            PhysicalPlanner physicalPlanner = new PhysicalPlanner();
+            DescriptorTable descTbl = new DescriptorTable();
+            PlanNode root = physicalPlanner.createPhysicalPlan(plan, descTbl);
+            System.out.println("DescriptorTable : " + descTbl.getTupleDescs());
+            //execute plan
+            TQueryOptions tQueryOptions = new TQueryOptions();
+            tQueryOptions.num_nodes = 3;
+            PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
+            DistributedPlanner distributedPlanner = new DistributedPlanner(plannerContext);
+            ArrayList<PlanFragment> fragments = distributedPlanner.createPlanFragments(root);
+            System.out.println("fragments : " + fragments);
+
+            //execute this query
+            ctx.getState().reset();
+            executor = new StmtExecutor(ctx);
+            executor.executeV2(ctx, fragments, new ArrayList<>(), descTbl.toThrift());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            LOG.debug("Query Fail");
+        }
 
         // execute this query.
         StatementBase parsedStmt = null;
