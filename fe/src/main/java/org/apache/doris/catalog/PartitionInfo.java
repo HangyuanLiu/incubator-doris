@@ -24,6 +24,7 @@ import org.apache.doris.common.io.Writable;
 import com.google.common.base.Preconditions;
 
 import org.apache.doris.thrift.TStorageMedium;
+import org.apache.doris.thrift.TTabletType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -50,17 +51,24 @@ public class PartitionInfo implements Writable {
 
     protected Map<Long, Boolean> idToInMemory;
 
+    // partition id -> tablet type
+    // Note: currently it's only used for testing, it may change/add more meta field later,
+    // so we defer adding meta serialization until memory engine feature is more complete.
+    protected Map<Long, TTabletType> idToTabletType;
+
     public PartitionInfo() {
-        this.idToDataProperty = new HashMap<Long, DataProperty>();
-        this.idToReplicationNum = new HashMap<Long, Short>();
+        this.idToDataProperty = new HashMap<>();
+        this.idToReplicationNum = new HashMap<>();
         this.idToInMemory = new HashMap<>();
+        this.idToTabletType = new HashMap<>();
     }
 
     public PartitionInfo(PartitionType type) {
         this.type = type;
-        this.idToDataProperty = new HashMap<Long, DataProperty>();
-        this.idToReplicationNum = new HashMap<Long, Short>();
+        this.idToDataProperty = new HashMap<>();
+        this.idToReplicationNum = new HashMap<>();
         this.idToInMemory = new HashMap<>();
+        this.idToTabletType = new HashMap<>();
     }
 
     public PartitionType getType() {
@@ -76,6 +84,9 @@ public class PartitionInfo implements Writable {
     }
 
     public short getReplicationNum(long partitionId) {
+        if (!idToReplicationNum.containsKey(partitionId)) {
+            LOG.debug("failed to get replica num for partition: {}", partitionId);
+        }
         return idToReplicationNum.get(partitionId);
     }
 
@@ -89,6 +100,17 @@ public class PartitionInfo implements Writable {
 
     public void setIsInMemory(long partitionId, boolean isInMemory) {
         idToInMemory.put(partitionId, isInMemory);
+    }
+
+    public TTabletType getTabletType(long partitionId) {
+        if (!idToTabletType.containsKey(partitionId)) {
+            return TTabletType.TABLET_TYPE_DISK;
+        }
+        return idToTabletType.get(partitionId);
+    }
+
+    public void setTabletType(long partitionId, TTabletType tabletType) {
+        idToTabletType.put(partitionId, tabletType);
     }
 
     public void dropPartition(long partitionId) {

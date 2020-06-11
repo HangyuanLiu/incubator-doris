@@ -67,7 +67,6 @@ public:
 
     ~MemoryScratchSinkTest() {
         delete _state;
-        delete _row_desc;
         delete _mem_tracker;
         delete _exec_env->_result_queue_mgr;
         delete _exec_env->_thread_mgr;
@@ -264,7 +263,6 @@ int main(int argc, char** argv) {
         fprintf(stderr, "error read config file. \n");
         return -1;
     }
-    doris::init_glog("be-test");
     ::testing::InitGoogleTest(&argc, argv);
     doris::CpuInfo::init();
     return RUN_ALL_TESTS();

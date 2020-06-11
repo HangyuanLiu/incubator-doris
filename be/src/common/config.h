@@ -30,11 +30,14 @@ namespace config {
     // port for brpc
     CONF_Int32(brpc_port, "8060");
 
+    // the number of bthreads for brpc, the default value is set to -1, which means the number of bthreads is #cpu-cores
+    CONF_Int32(brpc_num_threads, "-1")
+
     // Declare a selection strategy for those servers have many ips.
     // Note that there should at most one ip match this list.
     // this is a list in semicolon-delimited format, in CIDR notation, e.g. 10.10.10.0/24
     // If no ip match this rule, will choose one randomly.
-    CONF_String(priority_networks, "")
+    CONF_String(priority_networks, "");
 
     ////
     //// tcmalloc gc parameter
@@ -43,6 +46,16 @@ namespace config {
     CONF_mInt64(tc_use_memory_min, "10737418240");
     // free memory rate.[0-100]
     CONF_mInt64(tc_free_memory_rate, "20");
+
+    // Bound on the total amount of bytes allocated to thread caches.
+    // This bound is not strict, so it is possible for the cache to go over this bound
+    // in certain circumstances. This value defaults to 1GB
+    // If you suspect your application is not scaling to many threads due to lock contention in TCMalloc,
+    // you can try increasing this value. This may improve performance, at a cost of extra memory
+    // use by TCMalloc.
+    // reference: https://gperftools.github.io/gperftools/tcmalloc.html: TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES
+    //            https://github.com/gperftools/gperftools/issues/1111
+    CONF_Int64(tc_max_total_thread_cache_bytes, "1073741824");
 
     // process memory limit specified as number of bytes
     // ('<int>[bB]?'), megabytes ('<float>[mM]'), gigabytes ('<float>[gG]'),
@@ -65,7 +78,7 @@ namespace config {
     // the count of thread to high priority batch load
     CONF_Int32(push_worker_count_high_priority, "3");
     // the count of thread to publish version
-    CONF_Int32(publish_version_worker_count, "2");
+    CONF_Int32(publish_version_worker_count, "8");
     // the count of thread to clear transaction task
     CONF_Int32(clear_transaction_task_worker_count, "1");
     // the count of thread to delete
@@ -179,6 +192,9 @@ namespace config {
     CONF_mInt32(doris_scanner_row_num, "16384");
     // number of max scan keys
     CONF_mInt32(doris_max_scan_key_num, "1024");
+    // the max number of push down values of a single column.
+    // if exceed, no conditions will be pushed down for that column.
+    CONF_mInt32(max_pushdown_conditions_per_column, "1024");
     // return_row / total_row
     CONF_mInt32(doris_max_pushdown_conjuncts_return_rate, "90");
     // (Advanced) Maximum size of per-query receive-side buffer
@@ -221,7 +237,7 @@ namespace config {
     // 仅仅是建议值，当磁盘空间不足时，trash下的文件保存期可不遵守这个参数
     CONF_mInt32(trash_file_expire_time_sec, "259200");
     // check row nums for BE/CE and schema change. true is open, false is closed.
-    CONF_mBool(row_nums_check, "true")
+    CONF_mBool(row_nums_check, "true");
     //file descriptors cache, by default, cache 32768 descriptors
     CONF_Int32(file_descriptor_cache_capacity, "32768");
     // minimum file descriptor number
@@ -259,7 +275,7 @@ namespace config {
 
     // if compaction of a tablet failed, this tablet should not be chosen to
     // compaction until this interval passes.
-    CONF_mInt64(min_compaction_failure_interval_sec, "600") // 10 min
+    CONF_mInt64(min_compaction_failure_interval_sec, "600"); // 10 min
     // Too many compaction tasks may run out of memory.
     // This config is to limit the max concurrency of running compaction tasks.
     // -1 means no limit, and the max concurrency will be:
@@ -271,7 +287,7 @@ namespace config {
     // Port to start debug webserver on
     CONF_Int32(webserver_port, "8040");
     // Number of webserver workers
-    CONF_Int32(webserver_num_workers, "5");
+    CONF_Int32(webserver_num_workers, "48");
     // Period to update rate counters and sampling counters in ms.
     CONF_mInt32(periodic_counter_update_period_ms, "500");
 
@@ -345,11 +361,11 @@ namespace config {
     CONF_Bool(enable_quadratic_probing, "false");
 
     // for pprof
-    CONF_String(pprof_profile_dir, "${DORIS_HOME}/log")
+    CONF_String(pprof_profile_dir, "${DORIS_HOME}/log");
 
     // for partition
     // CONF_Bool(enable_partitioned_hash_join, "false")
-    CONF_Bool(enable_partitioned_aggregation, "true")
+    CONF_Bool(enable_partitioned_aggregation, "true");
 
     // to forward compatibility, will be removed later
     CONF_mBool(enable_token_check, "true");
@@ -478,7 +494,7 @@ namespace config {
     // The percent of max used capacity of a data dir
     CONF_mInt32(storage_flood_stage_usage_percent, "95");    // 95%
     // The min bytes that should be left of a data dir
-    CONF_mInt64(storage_flood_stage_left_capacity_bytes, "1073741824")   // 1GB
+    CONF_mInt64(storage_flood_stage_left_capacity_bytes, "1073741824");   // 1GB
     // number of thread for flushing memtable per store
     CONF_Int32(flush_thread_num_per_store, "2");
 
@@ -490,8 +506,10 @@ namespace config {
     // Valid configs: ALPHA, BETA
     CONF_String(default_rowset_type, "ALPHA");
 
-    // brpc config, 200M
-    CONF_Int64(brpc_max_body_size, "209715200")
+    // Maximum size of a single message body in all protocols
+    CONF_Int64(brpc_max_body_size, "209715200");
+    // Max unwritten bytes in each socket, if the limit is reached, Socket.Write fails with EOVERCROWDED
+    CONF_Int64(brpc_socket_max_unwritten_bytes, "67108864");
 
     // max number of txns for every txn_partition_map in txn manager
     // this is a self protection to avoid too many txns saving in manager
@@ -501,7 +519,7 @@ namespace config {
     // this is a an enhancement for better performance to manage tablet
     CONF_Int32(tablet_map_shard_size, "1");
 
-    CONF_String(plugin_path, "${DORIS_HOME}/plugin")
+    CONF_String(plugin_path, "${DORIS_HOME}/plugin");
 
     // txn_map_lock shard size, the value is 2^n, n=0,1,2,3,4
     // this is a an enhancement for better performance to manage txn
@@ -509,7 +527,10 @@ namespace config {
 
     // txn_lock shard size, the value is 2^n, n=0,1,2,3,4
     // this is a an enhancement for better performance to commit and publish txn
-    CONF_Int32(txn_shard_size, "1024")
+    CONF_Int32(txn_shard_size, "1024");
+
+    // Whether to continue to start be when load tablet from header failed.
+    CONF_Bool(ignore_load_tablet_failure, "false");
 
 } // namespace config
 

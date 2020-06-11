@@ -371,8 +371,6 @@ FE 的配置项有两种方式进行配置：
 
 ### `max_connection_scheduler_threads_num`
 
-### `max_conn_per_user`
-
 ### `max_create_table_timeout_second`
 
 ### `max_distribution_pruner_recursion_depth`
@@ -546,6 +544,12 @@ current running txns on db xxx is xx, larger than limit xx
 ### `test_materialized_view`
 
 ### `thrift_backlog_num`
+
+### `thrift_client_timeout_ms`
+
+这是 thrift 服务端的关于连接超时和socket读取数据超时的配置。
+   
+thrift_client_timeout_ms 的值被设置为大于0来避免线程卡在java.net.SocketInputStream.socketRead0的问题.
 
 ### `thrift_server_max_worker_threads`
 

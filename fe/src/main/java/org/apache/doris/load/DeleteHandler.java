@@ -29,6 +29,7 @@ import org.apache.doris.catalog.Database;
 import org.apache.doris.catalog.KeysType;
 import org.apache.doris.catalog.MaterializedIndex;
 import org.apache.doris.catalog.MaterializedIndex.IndexExtState;
+import org.apache.doris.catalog.MaterializedIndexMeta;
 import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.catalog.Partition;
 import org.apache.doris.catalog.PartitionType;
@@ -119,7 +120,7 @@ public class DeleteHandler implements Writable {
         String tableName = stmt.getTableName();
         String partitionName = stmt.getPartitionName();
         List<Predicate> conditions = stmt.getDeleteConditions();
-        Database db = Catalog.getInstance().getDb(dbName);
+        Database db = Catalog.getCurrentCatalog().getDb(dbName);
         if (db == null) {
             throw new DdlException("Db does not exist. name: " + dbName);
         }
@@ -238,7 +239,7 @@ public class DeleteHandler implements Writable {
             } catch (Throwable t) {
                 LOG.warn("error occurred during delete process", t);
                 // if transaction has been begun, need to abort it
-                if (Catalog.getCurrentGlobalTransactionMgr().getTransactionState(transactionId) != null) {
+                if (Catalog.getCurrentGlobalTransactionMgr().getTransactionState(db.getId(), transactionId) != null) {
                     cancelJob(deleteJob, CancelType.UNKNOWN, t.getMessage());
                 }
                 throw new DdlException(t.getMessage(), t);
@@ -319,7 +320,7 @@ public class DeleteHandler implements Writable {
         try {
             unprotectedCommitJob(job, db, timeoutMs);
             status = Catalog.getCurrentGlobalTransactionMgr().
-                    getTransactionState(job.getTransactionId()).getTransactionStatus();
+                    getTransactionState(db.getId(), job.getTransactionId()).getTransactionStatus();
         } catch (UserException e) {
             if (cancelJob(job, CancelType.COMMIT_FAIL, e.getMessage())) {
                 throw new DdlException(e.getMessage(), e);
@@ -428,10 +429,10 @@ public class DeleteHandler implements Writable {
         GlobalTransactionMgr globalTransactionMgr = Catalog.getCurrentGlobalTransactionMgr();
         try {
             if (job != null) {
-                globalTransactionMgr.abortTransaction(job.getTransactionId(), reason);
+                globalTransactionMgr.abortTransaction(job.getDeleteInfo().getDbId(), job.getTransactionId(), reason);
             }
         } catch (Exception e) {
-            TransactionState state = globalTransactionMgr.getTransactionState(job.getTransactionId());
+            TransactionState state = globalTransactionMgr.getTransactionState(job.getDeleteInfo().getDbId(), job.getTransactionId());
             if (state == null) {
                 LOG.warn("cancel delete job failed because txn not found, transactionId: {}", job.getTransactionId());
             } else if (state.getTransactionStatus() == TransactionStatus.COMMITTED || state.getTransactionStatus() == TransactionStatus.VISIBLE) {
@@ -478,9 +479,14 @@ public class DeleteHandler implements Writable {
             }
 
             Column column = nameToColumn.get(columnName);
-            if (!column.isKey()) {
+            // Due to rounding errors, most floating-point numbers end up being slightly imprecise,
+            // it also means that numbers expected to be equal often differ slightly, so we do not allow compare with
+            // floating-point numbers, floating-point number not allowed in where clause
+            if (!column.isKey() && table.getKeysType() != KeysType.DUP_KEYS
+                    || column.getDataType().isFloatingPointType()) {
                 // ErrorReport.reportDdlException(ErrorCode.ERR_NOT_KEY_COLUMN, columnName);
-                throw new DdlException("Column[" + columnName + "] is not key column");
+                throw new DdlException("Column[" + columnName + "] is not key column or storage model " +
+                        "is not duplicate or column type is float or double.");
             }
 
             if (condition instanceof BinaryPredicate) {
@@ -517,10 +523,11 @@ public class DeleteHandler implements Writable {
                 }
                 Column column = indexColNameToColumn.get(columnName);
                 if (column == null) {
-                    ErrorReport.reportDdlException(ErrorCode.ERR_BAD_FIELD_ERROR, columnName, indexName);
+                    ErrorReport.reportDdlException(ErrorCode.ERR_BAD_FIELD_ERROR, columnName,
+                            table.getBaseIndexId() == index.getId()? indexName : "index[" + indexName +"]");
                 }
-
-                if (table.getKeysType() == KeysType.DUP_KEYS && !column.isKey()) {
+                MaterializedIndexMeta indexMeta = table.getIndexIdToMeta().get(index.getId());
+                if (indexMeta.getKeysType() != KeysType.DUP_KEYS && !column.isKey()) {
                     throw new DdlException("Column[" + columnName + "] is not key column in index[" + indexName + "]");
                 }
             }
@@ -559,7 +566,7 @@ public class DeleteHandler implements Writable {
     // show delete stmt
     public List<List<Comparable>> getDeleteInfosByDb(long dbId, boolean forUser) {
         LinkedList<List<Comparable>> infos = new LinkedList<List<Comparable>>();
-        Database db = Catalog.getInstance().getDb(dbId);
+        Database db = Catalog.getCurrentCatalog().getDb(dbId);
         if (db == null) {
             return infos;
         }

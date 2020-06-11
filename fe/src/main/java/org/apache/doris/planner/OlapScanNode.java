@@ -45,7 +45,6 @@ import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.Config;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
-import org.apache.doris.common.FeConstants;
 import org.apache.doris.common.UserException;
 import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.qe.SessionVariable;
@@ -276,6 +275,10 @@ public class OlapScanNode extends ScanNode {
             }
             numNodes = scanBackendIds.size();
         }
+        // even current node scan has no data,at least on backend will be assigned when the fragment actually execute
+        numNodes = numNodes <= 0 ? 1 : numNodes;
+        // when node scan has no data, cardinality should be 0 instead of a invalid value after computeStats()
+        cardinality = cardinality == -1 ? 0 : cardinality;
     }
 
     private Collection<Long> partitionPrune(RangePartitionInfo partitionInfo, PartitionNames partitionNames) throws AnalysisException {
@@ -432,9 +435,7 @@ public class OlapScanNode extends ScanNode {
         selectedPartitionNum = selectedPartitionIds.size();
         LOG.debug("partition prune cost: {} ms, partitions: {}",
                   (System.currentTimeMillis() - start), selectedPartitionIds);
-        // The fe unit test need to check the selected index id without any data.
-        // So the step2 needs to be continued although selectedPartitionIds is 0.
-        if (selectedPartitionIds.size() == 0 && !FeConstants.runningUnitTest) {
+        if (selectedPartitionIds.size() == 0) {
             return;
         }
 

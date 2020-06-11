@@ -17,8 +17,6 @@
 
 package org.apache.doris.service;
 
-import static org.apache.doris.thrift.TStatusCode.NOT_IMPLEMENTED_ERROR;
-
 import org.apache.doris.analysis.SetType;
 import org.apache.doris.analysis.UserIdentity;
 import org.apache.doris.catalog.Catalog;
@@ -34,6 +32,7 @@ import org.apache.doris.common.CaseSensibility;
 import org.apache.doris.common.Config;
 import org.apache.doris.common.DuplicatedRequestException;
 import org.apache.doris.common.LabelAlreadyUsedException;
+import org.apache.doris.common.MetaNotFoundException;
 import org.apache.doris.common.PatternMatcher;
 import org.apache.doris.common.ThriftServerContext;
 import org.apache.doris.common.ThriftServerEventProcessor;
@@ -43,6 +42,7 @@ import org.apache.doris.load.EtlStatus;
 import org.apache.doris.load.LoadJob;
 import org.apache.doris.load.MiniEtlTaskInfo;
 import org.apache.doris.master.MasterImpl;
+import org.apache.doris.metric.MetricRepo;
 import org.apache.doris.mysql.privilege.PrivPredicate;
 import org.apache.doris.planner.StreamLoadPlanner;
 import org.apache.doris.plugin.AuditEvent;
@@ -102,9 +102,9 @@ import org.apache.doris.thrift.TUpdateExportTaskStatusRequest;
 import org.apache.doris.thrift.TUpdateMiniEtlTaskStatusRequest;
 import org.apache.doris.transaction.TabletCommitInfo;
 import org.apache.doris.transaction.TransactionState;
-import org.apache.doris.transaction.TxnCommitAttachment;
-import org.apache.doris.transaction.TransactionState.TxnSourceType;
 import org.apache.doris.transaction.TransactionState.TxnCoordinator;
+import org.apache.doris.transaction.TransactionState.TxnSourceType;
+import org.apache.doris.transaction.TxnCommitAttachment;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -120,6 +120,8 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.doris.thrift.TStatusCode.NOT_IMPLEMENTED_ERROR;
 
 // Frontend service used to serve all request for this frontend through
 // thrift protocol
@@ -193,7 +195,7 @@ public class FrontendServiceImpl implements FrontendService.Iface {
 
         // database privs should be checked in analysis phrase
 
-        Database db = Catalog.getInstance().getDb(params.db);
+        Database db = Catalog.getCurrentCatalog().getDb(params.db);
         UserIdentity currentUser = null;
         if (params.isSetCurrent_user_ident()) {
             currentUser = UserIdentity.fromThrift(params.current_user_ident);
@@ -235,7 +237,7 @@ public class FrontendServiceImpl implements FrontendService.Iface {
 
         // database privs should be checked in analysis phrase
 
-        Database db = Catalog.getInstance().getDb(params.db);
+        Database db = Catalog.getCurrentCatalog().getDb(params.db);
         UserIdentity currentUser = null;
         if (params.isSetCurrent_user_ident()) {
             currentUser = UserIdentity.fromThrift(params.current_user_ident);
@@ -298,7 +300,7 @@ public class FrontendServiceImpl implements FrontendService.Iface {
             return result;
         }
 
-        Database db = Catalog.getInstance().getDb(params.db);
+        Database db = Catalog.getCurrentCatalog().getDb(params.db);
         if (db != null) {
             db.readLock();
             try {
@@ -384,7 +386,7 @@ public class FrontendServiceImpl implements FrontendService.Iface {
         context.setCluster(cluster);
         context.setDatabase(ClusterNamespace.getFullName(cluster, request.db));
         context.setQualifiedUser(ClusterNamespace.getFullName(cluster, request.user));
-        context.setCatalog(Catalog.getInstance());
+        context.setCatalog(Catalog.getCurrentCatalog());
         context.getState().reset();
         context.setThreadLocalInfo();
 
@@ -395,7 +397,7 @@ public class FrontendServiceImpl implements FrontendService.Iface {
                 ExecuteEnv.getInstance().getMultiLoadMgr().load(request);
             } else {
                 // try to add load job, label will be checked here.
-                if (Catalog.getInstance().getLoadManager().createLoadJobV1FromRequest(request)) {
+                if (Catalog.getCurrentCatalog().getLoadManager().createLoadJobV1FromRequest(request)) {
                     try {
                         // generate mini load audit log
                         logMiniLoadStmt(request);
@@ -472,7 +474,7 @@ public class FrontendServiceImpl implements FrontendService.Iface {
         TUniqueId etlTaskId = request.getEtlTaskId();
         long jobId = etlTaskId.getHi();
         long taskId = etlTaskId.getLo();
-        LoadJob job = Catalog.getInstance().getLoadInstance().getLoadJob(jobId);
+        LoadJob job = Catalog.getCurrentCatalog().getLoadInstance().getLoadJob(jobId);
         if (job == null) {
             String failMsg = "job does not exist. id: " + jobId;
             LOG.warn(failMsg);
@@ -562,7 +564,7 @@ public class FrontendServiceImpl implements FrontendService.Iface {
     public TMasterOpResult forward(TMasterOpRequest params) throws TException {
         TNetworkAddress clientAddr = getClientAddr();
         if (clientAddr != null) {
-            Frontend fe = Catalog.getInstance().getFeByHost(clientAddr.getHostname());
+            Frontend fe = Catalog.getCurrentCatalog().getFeByHost(clientAddr.getHostname());
             if (fe == null) {
                 LOG.warn("reject request from invalid host. client: {}", clientAddr);
                 throw new TException("request from invalid host was rejected.");
@@ -671,7 +673,7 @@ public class FrontendServiceImpl implements FrontendService.Iface {
             throw new UserException("empty label in begin request");
         }
         // check database
-        Catalog catalog = Catalog.getInstance();
+        Catalog catalog = Catalog.getCurrentCatalog();
         String fullDbName = ClusterNamespace.getFullName(cluster, request.getDb());
         Database db = catalog.getDb(fullDbName);
         if (db == null) {
@@ -695,6 +697,7 @@ public class FrontendServiceImpl implements FrontendService.Iface {
 
         // begin
         long timeoutSecond = request.isSetTimeout() ? request.getTimeout() : Config.stream_load_default_timeout_second;
+        MetricRepo.COUNTER_LOAD_ADD.increase(1L);
         return Catalog.getCurrentGlobalTransactionMgr().beginTransaction(
                 db.getId(), Lists.newArrayList(table.getId()), request.getLabel(), request.getRequest_id(),
                 new TxnCoordinator(TxnSourceType.BE, clientIp),
@@ -745,7 +748,7 @@ public class FrontendServiceImpl implements FrontendService.Iface {
         }
 
         // get database
-        Catalog catalog = Catalog.getInstance();
+        Catalog catalog = Catalog.getCurrentCatalog();
         String fullDbName = ClusterNamespace.getFullName(cluster, request.getDb());
         Database db = catalog.getDb(fullDbName);
         if (db == null) {
@@ -756,10 +759,15 @@ public class FrontendServiceImpl implements FrontendService.Iface {
             throw new UserException("unknown database, database=" + dbName);
         }
 
-        return Catalog.getCurrentGlobalTransactionMgr().commitAndPublishTransaction(
-                db, request.getTxnId(),
-                TabletCommitInfo.fromThrift(request.getCommitInfos()),
-                5000, TxnCommitAttachment.fromThrift(request.txnCommitAttachment));
+        boolean ret = Catalog.getCurrentGlobalTransactionMgr().commitAndPublishTransaction(
+                        db, request.getTxnId(),
+                        TabletCommitInfo.fromThrift(request.getCommitInfos()),
+                        5000, TxnCommitAttachment.fromThrift(request.txnCommitAttachment));
+        if (ret) {
+            // if commit and publish is success, load can be regarded as success
+            MetricRepo.COUNTER_LOAD_FINISHED.increase(1L);
+        }
+        return ret;
     }
 
     @Override
@@ -800,8 +808,13 @@ public class FrontendServiceImpl implements FrontendService.Iface {
             checkPasswordAndPrivs(cluster, request.getUser(), request.getPasswd(), request.getDb(),
                     request.getTbl(), request.getUser_ip(), PrivPredicate.LOAD);
         }
-
-        Catalog.getCurrentGlobalTransactionMgr().abortTransaction(request.getTxnId(),
+        String dbName = ClusterNamespace.getFullName(cluster, request.getDb());
+        Database db = Catalog.getCurrentCatalog().getDb(dbName);
+        if (db == null) {
+            throw new MetaNotFoundException("db " + request.getDb() + " does not exist");
+        }
+        long dbId = db.getId();
+        Catalog.getCurrentGlobalTransactionMgr().abortTransaction(dbId, request.getTxnId(),
                                                                   request.isSetReason() ? request.getReason() : "system cancel",
                                                                   TxnCommitAttachment.fromThrift(request.getTxnCommitAttachment()));
     }
@@ -858,11 +871,11 @@ public class FrontendServiceImpl implements FrontendService.Iface {
             if (!(table instanceof OlapTable)) {
                 throw new UserException("load table type is not OlapTable, type=" + table.getClass());
             }
-            StreamLoadTask streamLoadTask = StreamLoadTask.fromTStreamLoadPutRequest(request);
+            StreamLoadTask streamLoadTask = StreamLoadTask.fromTStreamLoadPutRequest(request, db);
             StreamLoadPlanner planner = new StreamLoadPlanner(db, (OlapTable) table, streamLoadTask);
             TExecPlanFragmentParams plan = planner.plan(streamLoadTask.getId());
             // add table indexes to transaction state
-            TransactionState txnState = Catalog.getCurrentGlobalTransactionMgr().getTransactionState(request.getTxnId());
+            TransactionState txnState = Catalog.getCurrentGlobalTransactionMgr().getTransactionState(db.getId(), request.getTxnId());
             if (txnState == null) {
                 throw new UserException("txn does not exist: " + request.getTxnId());
             }

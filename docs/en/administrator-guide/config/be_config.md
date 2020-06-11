@@ -41,25 +41,25 @@ This document mainly introduces the relevant configuration items of BE.
 
 ## Configurations
 
-### alter_tablet_worker_count
+### `alter_tablet_worker_count`
 
-### base_compaction_check_interval_seconds
+### `base_compaction_check_interval_seconds`
 
-### base_compaction_interval_seconds_since_last_operation
+### `base_compaction_interval_seconds_since_last_operation`
 
-### base_compaction_num_cumulative_deltas
+### `base_compaction_num_cumulative_deltas`
 
-### base_compaction_num_threads_per_disk
+### `base_compaction_num_threads_per_disk`
 
-### base_compaction_write_mbytes_per_sec
+### `base_compaction_write_mbytes_per_sec`
 
-### base_cumulative_delta_ratio
+### `base_cumulative_delta_ratio`
 
-### be_port
+### `be_port`
 
-### be_service_threads
+### `be_service_threads`
 
-### brpc_max_body_size
+### `brpc_max_body_size`
 
 This configuration is mainly used to modify the parameter `max_body_size` of brpc.
 
@@ -69,324 +69,396 @@ This error indicates that the packet size of brpc exceeds the configured value. 
 
 Since this is a brpc configuration, users can also modify this parameter directly during operation. Modify by visiting `http://be_host:brpc_port/flags`.
 
-### brpc_port
+### `brpc_socket_max_unwritten_bytes`
 
-### buffer_pool_clean_pages_limit
+This configuration is mainly used to modify the parameter `socket_max_unwritten_bytes` of brpc.
 
-### buffer_pool_limit
+Sometimes the query fails and an error message of `The server is overcrowded` will appear in the BE log. This means there are too many messages to buffer at the sender side, which may happen when the SQL needs to send large bitmap value. You can avoid this error by increasing the configuration.
 
-### check_consistency_worker_count
+Since this is a brpc configuration, users can also modify this parameter directly during operation. Modify by visiting `http://be_host:brpc_port/flags`.
 
-### chunk_reserved_bytes_limit
+### `brpc_num_threads`
 
-### clear_transaction_task_worker_count
+This configuration is mainly used to modify the number of bthreads for brpc. The default value is set to -1, which means the number of bthreads is #cpu-cores.
 
-### clone_worker_count
+User can set this configuration to a larger value to get better QPS performance. For more information, please refer to `https://github.com/apache/incubator-brpc/blob/master/docs/cn/benchmark.md`
 
-### cluster_id
+### `brpc_port`
 
-### column_dictionary_key_ratio_threshold
+### `buffer_pool_clean_pages_limit`
 
-### column_dictionary_key_size_threshold
+### `buffer_pool_limit`
 
-### compress_rowbatches
+### `check_consistency_worker_count`
 
-### create_tablet_worker_count
+### `chunk_reserved_bytes_limit`
 
-### cumulative_compaction_budgeted_bytes
+### `clear_transaction_task_worker_count`
 
-### cumulative_compaction_check_interval_seconds
+### `clone_worker_count`
 
-### cumulative_compaction_num_threads_per_disk
+### `cluster_id`
 
-### cumulative_compaction_skip_window_seconds
+### `column_dictionary_key_ratio_threshold`
 
-### default_num_rows_per_column_file_block
+### `column_dictionary_key_size_threshold`
 
-### default_query_options
+### `compress_rowbatches`
 
-### default_rowset_type
+### `create_tablet_worker_count`
 
-### delete_worker_count
+### `cumulative_compaction_budgeted_bytes`
 
-### disable_mem_pools
+### `cumulative_compaction_check_interval_seconds`
 
-### disable_storage_page_cache
+### `cumulative_compaction_num_threads_per_disk`
 
-### disk_stat_monitor_interval
+### `cumulative_compaction_skip_window_seconds`
 
-### doris_cgroups
+### `default_num_rows_per_column_file_block`
 
-### doris_max_pushdown_conjuncts_return_rate
+### `default_query_options`
 
-### doris_max_scan_key_num
+### `default_rowset_type`
 
-### doris_scan_range_row_count
+### `delete_worker_count`
 
-### doris_scanner_queue_size
+### `disable_mem_pools`
 
-### doris_scanner_row_num
+### `disable_storage_page_cache`
 
-### doris_scanner_thread_pool_queue_size
+### `disk_stat_monitor_interval`
 
-### doris_scanner_thread_pool_thread_num
+### `doris_cgroups`
 
-### download_low_speed_limit_kbps
+### `doris_max_pushdown_conjuncts_return_rate`
 
-### download_low_speed_time
+### `doris_max_scan_key_num`
 
-### download_worker_count
+* Type: int
+* Description: Used to limit the maximum number of scan keys that a scan node can split in a query request. When a conditional query request reaches the scan node, the scan node will try to split the conditions related to the key column in the query condition into multiple scan key ranges. After that, these scan key ranges will be assigned to multiple scanner threads for data scanning. A larger value usually means that more scanner threads can be used to increase the parallelism of the scanning operation. However, in high concurrency scenarios, too many threads may bring greater scheduling overhead and system load, and will slow down the query response speed. An empirical value is 50. This configuration can be configured separately at the session level. For details, please refer to the description of `max_scan_key_num` in [Variables](../variables.md).
+* Default value: 1024
 
-### drop_tablet_worker_count
+When the concurrency cannot be improved in high concurrency scenarios, try to reduce this value and observe the impact.
 
-### enable_metric_calculator
+### `doris_scan_range_row_count`
 
-### enable_partitioned_aggregation
+### `doris_scanner_queue_size`
 
-### enable_prefetch
+### `doris_scanner_row_num`
 
-### enable_quadratic_probing
+### `doris_scanner_thread_pool_queue_size`
 
-### enable_system_metrics
+### `doris_scanner_thread_pool_thread_num`
 
-### enable_token_check
+### `download_low_speed_limit_kbps`
 
-### es_http_timeout_ms
+### `download_low_speed_time`
 
-### es_scroll_keepalive
+### `download_worker_count`
 
-### etl_thread_pool_queue_size
+### `drop_tablet_worker_count`
 
-### etl_thread_pool_size
+### `enable_metric_calculator`
 
-### exchg_node_buffer_size_bytes
+### `enable_partitioned_aggregation`
 
-### file_descriptor_cache_capacity
+### `enable_prefetch`
 
-### file_descriptor_cache_clean_interval
+### `enable_quadratic_probing`
 
-### flush_thread_num_per_store
+### `enable_system_metrics`
 
-### force_recovery
+### `enable_token_check`
 
-### fragment_pool_queue_size
+### `es_http_timeout_ms`
 
-### fragment_pool_thread_num
+### `es_scroll_keepalive`
 
-### heartbeat_service_port
+### `etl_thread_pool_queue_size`
 
-### heartbeat_service_thread_count
+### `etl_thread_pool_size`
 
-### ignore_broken_disk
+### `exchg_node_buffer_size_bytes`
+
+### `file_descriptor_cache_capacity`
+
+### `file_descriptor_cache_clean_interval`
+
+### `flush_thread_num_per_store`
+
+### `force_recovery`
+
+### `fragment_pool_queue_size`
+
+### `fragment_pool_thread_num`
+
+### `heartbeat_service_port`
+
+### `heartbeat_service_thread_count`
+
+### `ignore_broken_disk`
+
+### `ignore_load_tablet_failure`
+When BE starts, it will check all the paths under the `storage_root_path` in  configuration.
+
+- `ignore_broken_disk=true`
+
+  If the path does not exist or the file under the path cannot be read or written (broken disk), it will be ignored. If there are any other available paths, the startup will not be interrupted.
+
+- `ignore_broken_disk=false`
+
+  If the path does not exist or the file under the path cannot be read or written (bad disk), the startup will fail and exit.
+
+The default value is `false`.
 
 ### inc_rowset_expired_sec
 
-### index_stream_cache_capacity
+* Type: boolean
+* Description: Whether to continue to start be when load tablet from header failed.
+* Default: false
 
-### load_data_reserve_hours
+When the BE starts, it will start a separate thread for each data directory to load the tablet header meta information. In the default configuration, if a tablet fails to load its header, the startup process is terminated. At the same time, you will see the following error message in the `be.INFO`:
 
-### load_error_log_reserve_hours
+```
+load tablets from header failed, failed tablets size: xxx, path=xxx
+```
 
-### load_process_max_memory_limit_bytes
+Indicates how many tablets in this data directory failed to load. At the same time, the log will also have specific information about the tablet that failed to load. In this case, manual intervention is required to troubleshoot the cause of the error. After troubleshooting, there are usually two ways to recover:
 
-### load_process_max_memory_limit_percent
+1. If the tablet information is not repairable, you can delete the wrong tablet through the `meta_tool` tool under the condition that other copies are normal.
+2. Set `ignore_load_tablet_failure` to true, BE will ignore these wrong tablets and start normally.
 
-### local_library_dir
+### `inc_rowset_expired_sec`
 
-### log_buffer_level
+### `index_stream_cache_capacity`
 
-### madvise_huge_pages
+### `load_data_reserve_hours`
 
-### make_snapshot_worker_count
+### `load_error_log_reserve_hours`
 
-### max_client_cache_size_per_host
+### `load_process_max_memory_limit_bytes`
 
-### max_compaction_concurrency
+### `load_process_max_memory_limit_percent`
 
-### max_consumer_num_per_group
+### `local_library_dir`
 
-### max_cumulative_compaction_num_singleton_deltas
+### `log_buffer_level`
 
-### max_download_speed_kbps
+### `madvise_huge_pages`
 
-### max_free_io_buffers
+### `make_snapshot_worker_count`
 
-### max_garbage_sweep_interval
+### `max_client_cache_size_per_host`
 
-### max_memory_sink_batch_count
+### `max_compaction_concurrency`
 
-### max_percentage_of_error_disk
+### `max_consumer_num_per_group`
 
-### max_runnings_transactions_per_txn_map
+### `max_cumulative_compaction_num_singleton_deltas`
 
-### max_tablet_num_per_shard
+### `max_download_speed_kbps`
 
-### mem_limit
+### `max_free_io_buffers`
 
-### memory_limitation_per_thread_for_schema_change
+### `max_garbage_sweep_interval`
 
-### memory_maintenance_sleep_time_s
+### `max_memory_sink_batch_count`
 
-### memory_max_alignment
+### `max_percentage_of_error_disk`
 
-### min_buffer_size
+### `max_pushdown_conditions_per_column`
 
-### min_compaction_failure_interval_sec
+* Type: int
+* Description: Used to limit the maximum number of conditions that can be pushed down to the storage engine for a single column in a query request. During the execution of the query plan, the filter conditions on some columns can be pushed down to the storage engine, so that the index information in the storage engine can be used for data filtering, reducing the amount of data that needs to be scanned by the query. Such as equivalent conditions, conditions in IN predicates, etc. In most cases, this parameter only affects queries containing IN predicates. Such as `WHERE colA IN (1,2,3,4, ...)`. A larger number means that more conditions in the IN predicate can be pushed to the storage engine, but too many conditions may cause an increase in random reads, and in some cases may reduce query efficiency. This configuration can be individually configured for session level. For details, please refer to the description of `max_pushdown_conditions_per_column` in [Variables](../ variables.md).
+* Default value: 1024
 
-### min_cumulative_compaction_num_singleton_deltas
+* Example
 
-### min_file_descriptor_number
+    The table structure is `id INT, col2 INT, col3 varchar (32), ...`.
 
-### min_garbage_sweep_interval
+    The query is `... WHERE id IN (v1, v2, v3, ...)`
 
-### mmap_buffers
+    If the number of conditions in the IN predicate exceeds the configuration, try to increase the configuration value and observe whether the query response has improved.
 
-### num_cores
+### `max_runnings_transactions_per_txn_map`
 
-### num_disks
+### `max_tablet_num_per_shard`
 
-### num_threads_per_core
+### `mem_limit`
 
-### num_threads_per_disk
+### `memory_limitation_per_thread_for_schema_change`
 
-### number_tablet_writer_threads
+### `memory_maintenance_sleep_time_s`
 
-### path_gc_check
+### `memory_max_alignment`
 
-### path_gc_check_interval_second
+### `min_buffer_size`
 
-### path_gc_check_step
+### `min_compaction_failure_interval_sec`
 
-### path_gc_check_step_interval_ms
+### `min_cumulative_compaction_num_singleton_deltas`
 
-### path_scan_interval_second
+### `min_file_descriptor_number`
 
-### pending_data_expire_time_sec
+### `min_garbage_sweep_interval`
 
-### periodic_counter_update_period_ms
+### `mmap_buffers`
 
-### plugin_path
+### `num_cores`
 
-### port
+### `num_disks`
 
-### pprof_profile_dir
+### `num_threads_per_core`
 
-### priority_networks
+### `num_threads_per_disk`
 
-### priority_queue_remaining_tasks_increased_frequency
+### `number_tablet_writer_threads`
 
-### publish_version_worker_count
+### `path_gc_check`
 
-### pull_load_task_dir
+### `path_gc_check_interval_second`
 
-### push_worker_count_high_priority
+### `path_gc_check_step`
 
-### push_worker_count_normal_priority
+### `path_gc_check_step_interval_ms`
 
-### push_write_mbytes_per_sec
+### `path_scan_interval_second`
 
-### query_scratch_dirs
+### `pending_data_expire_time_sec`
 
-### read_size
+### `periodic_counter_update_period_ms`
 
-### release_snapshot_worker_count
+### `plugin_path`
 
-### report_disk_state_interval_seconds
+### `port`
 
-### report_tablet_interval_seconds
+### `pprof_profile_dir`
 
-### report_task_interval_seconds
+### `priority_networks`
 
-### result_buffer_cancelled_interval_time
+### `priority_queue_remaining_tasks_increased_frequency`
 
-### routine_load_thread_pool_size
+### `publish_version_worker_count`
 
-### row_nums_check
+### `pull_load_task_dir`
 
-### scan_context_gc_interval_min
+### `push_worker_count_high_priority`
 
-### scratch_dirs
+### `push_worker_count_normal_priority`
 
-### serialize_batch
+### `push_write_mbytes_per_sec`
 
-### sleep_five_seconds
+### `query_scratch_dirs`
 
-### sleep_one_second
+### `read_size`
 
-### small_file_dir
+### `release_snapshot_worker_count`
 
-### snapshot_expire_time_sec
+### `report_disk_state_interval_seconds`
 
-### sorter_block_size
+### `report_tablet_interval_seconds`
 
-### status_report_interval
+### `report_task_interval_seconds`
 
-### storage_flood_stage_left_capacity_bytes
+### `result_buffer_cancelled_interval_time`
 
-### storage_flood_stage_usage_percent
+### `routine_load_thread_pool_size`
 
-### storage_medium_migrate_count
+### `row_nums_check`
 
-### storage_page_cache_limit
+### `scan_context_gc_interval_min`
 
-### storage_root_path
+### `scratch_dirs`
 
-### streaming_load_max_mb
+### `serialize_batch`
 
-### streaming_load_rpc_max_alive_time_sec
+### `sleep_five_seconds`
 
-### sync_tablet_meta
+### `sleep_one_second`
 
-### sys_log_dir
+### `small_file_dir`
 
-### sys_log_level
+### `snapshot_expire_time_sec`
 
-### sys_log_roll_mode
+### `sorter_block_size`
 
-### sys_log_roll_num
+### `status_report_interval`
 
-### sys_log_verbose_level
+### `storage_flood_stage_left_capacity_bytes`
 
-### sys_log_verbose_modules
+### `storage_flood_stage_usage_percent`
 
-### tablet_map_shard_size
+### `storage_medium_migrate_count`
 
-### tablet_meta_checkpoint_min_interval_secs
+### `storage_page_cache_limit`
 
-### tablet_meta_checkpoint_min_new_rowsets_num
+### `storage_root_path`
 
-### tablet_stat_cache_update_interval_second
+### `streaming_load_max_mb`
 
-### tablet_writer_open_rpc_timeout_sec
+### `streaming_load_rpc_max_alive_time_sec`
 
-### tc_free_memory_rate
+### `sync_tablet_meta`
 
-### tc_use_memory_min
+### `sys_log_dir`
 
-### thrift_connect_timeout_seconds
+### `sys_log_level`
 
-### thrift_rpc_timeout_ms
+### `sys_log_roll_mode`
 
-### trash_file_expire_time_sec
+### `sys_log_roll_num`
 
-### txn_commit_rpc_timeout_ms
+### `sys_log_verbose_level`
 
-### txn_map_shard_size
+### `sys_log_verbose_modules`
 
-### txn_shard_size
+### `tablet_map_shard_size`
 
-### unused_rowset_monitor_interval
+### `tablet_meta_checkpoint_min_interval_secs`
 
-### upload_worker_count
+### `tablet_meta_checkpoint_min_new_rowsets_num`
 
-### use_mmap_allocate_chunk
+### `tablet_stat_cache_update_interval_second`
 
-### user_function_dir
+### `tablet_writer_open_rpc_timeout_sec`
 
-### web_log_bytes
+### `tc_free_memory_rate`
 
-### webserver_num_workers
+### `tc_max_total_thread_cache_bytes`
 
-### webserver_port
+* Type: int64
+* Description: Used to limit the total thread cache size in tcmalloc. This limit is not a hard limit, so the actual thread cache usage may exceed this limit. For details, please refer to [TCMALLOC\_MAX\_TOTAL\_THREAD\_CACHE\_BYTES](https://gperftools.github.io/gperftools/tcmalloc.html)
+* Default: 1073741824
 
-### write_buffer_size
+If the system is found to be in a high-stress scenario and a large number of threads are found in the tcmalloc lock competition phase through the BE thread stack, such as a large number of `SpinLock` related stacks, you can try increasing this parameter to improve system performance. [Reference] (https://github.com/gperftools/gperftools/issues/1111)
+
+### `tc_use_memory_min`
+
+### `thrift_connect_timeout_seconds`
+
+### `thrift_rpc_timeout_ms`
+
+### `trash_file_expire_time_sec`
+
+### `txn_commit_rpc_timeout_ms`
+
+### `txn_map_shard_size`
+
+### `txn_shard_size`
+
+### `unused_rowset_monitor_interval`
+
+### `upload_worker_count`
+
+### `use_mmap_allocate_chunk`
+
+### `user_function_dir`
+
+### `web_log_bytes`
+
+### `webserver_num_workers`
+
+### `webserver_port`
+
+### `write_buffer_size`

@@ -437,6 +437,8 @@ public class SelectStmt extends QueryStmt {
         }
 
         if (whereClause != null) {
+            // do this before whereClause.analyze , some expr is not analyzed, this may cause some
+            // function not work as expected such as equals;
             whereClauseRewrite();
             if (checkGroupingFn(whereClause)) {
                 throw new AnalysisException("grouping operations are not allowed in WHERE.");
@@ -608,7 +610,7 @@ public class SelectStmt extends QueryStmt {
         if (clearExprs.size() == 1) {
             return makeCompound(clearExprs.get(0), CompoundPredicate.Operator.AND);
         }
-        // 2. find duplcate cross the clause
+        // 2. find duplicate cross the clause
         List<Expr> cloneExprs = new ArrayList<>(clearExprs.get(0));
         for (int i = 1; i < clearExprs.size(); ++i) {
             cloneExprs.retainAll(clearExprs.get(i));
@@ -618,17 +620,36 @@ public class SelectStmt extends QueryStmt {
             temp.add(makeCompound(cloneExprs, CompoundPredicate.Operator.AND));
         }
 
+        Expr result;
+        boolean isReturnCommonFactorExpr = false;
         for (List<Expr> exprList : clearExprs) {
             exprList.removeAll(cloneExprs);
+            if (exprList.size() == 0) {
+                // For example, the sql is "where (a = 1) or (a = 1 and B = 2)"
+                // if "(a = 1)" is extracted as a common factor expression, then the first expression "(a = 1)" has no expression
+                // other than a common factor expression, and the second expression "(a = 1 and B = 2)" has an expression of "(B = 2)"
+                //
+                // In this case, the common factor expression ("a = 1") can be directly used to replace the whole CompoundOrPredicate.
+                // In Fact, the common factor expression is actually the parent set of expression "(a = 1)" and expression "(a = 1 and B = 2)"
+                //
+                // exprList.size() == 0 means one child of CompoundOrPredicate has no expression other than a common factor expression.
+                isReturnCommonFactorExpr = true;
+                break;
+            }
             temp.add(makeCompound(exprList, CompoundPredicate.Operator.AND));
         }
-
-        // rebuild CompoundPredicate if found duplicate predicate will build （predcate) and (.. or ..)  predicate in
-        // step 1: will build (.. or ..)
-        Expr result = CollectionUtils.isNotEmpty(cloneExprs) ? new CompoundPredicate(CompoundPredicate.Operator.AND,
-                temp.get(0), makeCompound(temp.subList(1, temp.size()), CompoundPredicate.Operator.OR))
-                : makeCompound(temp, CompoundPredicate.Operator.OR);
-        LOG.debug("rewrite ors: " + result.toSql());
+        if (isReturnCommonFactorExpr) {
+            result = temp.get(0);
+        } else {
+            // rebuild CompoundPredicate if found duplicate predicate will build （predicate) and (.. or ..)  predicate in
+            // step 1: will build (.. or ..)
+            result = CollectionUtils.isNotEmpty(cloneExprs) ? new CompoundPredicate(CompoundPredicate.Operator.AND,
+                    temp.get(0), makeCompound(temp.subList(1, temp.size()), CompoundPredicate.Operator.OR))
+                    : makeCompound(temp, CompoundPredicate.Operator.OR);
+        }
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("rewrite ors: " + result.toSql());
+        }
         return result;
     }
 
@@ -1382,29 +1403,9 @@ public class SelectStmt extends QueryStmt {
 
     private void rewriteSelectList(ExprRewriter rewriter) throws AnalysisException {
         for (SelectListItem item : selectList.getItems()) {
-            if (!(item.getExpr() instanceof CaseExpr)) {
-                continue;
+            if (item.getExpr() instanceof CaseExpr && item.getExpr().contains(Predicates.instanceOf(Subquery.class))) {
+                rewriteSubquery(item.getExpr(), analyzer);
             }
-            if (!item.getExpr().contains(Predicates.instanceOf(Subquery.class))) {
-                continue;
-            }
-            CaseExpr caseExpr = (CaseExpr) item.getExpr();
-
-            int childIdx = 0;
-            if (caseExpr.hasCaseExpr()
-                    && caseExpr.getChild(childIdx++).contains(Predicates.instanceOf(Subquery.class))) {
-                throw new AnalysisException("Only support subquery in binary predicate in case statement.");
-            }
-            while (childIdx + 2 <= caseExpr.getChildren().size()) {
-                Expr child = caseExpr.getChild(childIdx++);
-                // when
-                if (!(child instanceof BinaryPredicate) && child.contains(Predicates.instanceOf(Subquery.class))) {
-                    throw new AnalysisException("Only support subquery in binary predicate in case statement.");
-                }
-                // then
-                childIdx++;
-            }
-            rewriteSubquery(item.getExpr(), analyzer);
         }
         selectList.rewriteExprs(rewriter, analyzer);
     }
@@ -1447,13 +1448,17 @@ public class SelectStmt extends QueryStmt {
             throws AnalysisException {
         if (expr instanceof Subquery) {
             if (!(((Subquery) expr).getStatement() instanceof SelectStmt)) {
-                throw new AnalysisException("Only support select subquery in case statement.");
+                throw new AnalysisException("Only support select subquery in case-when clause.");
+            }
+            if (expr.isCorrelatedPredicate(getTableRefIds())) {
+                throw new AnalysisException("The correlated subquery in case-when clause is not supported");
             }
             SelectStmt subquery = (SelectStmt) ((Subquery) expr).getStatement();
             if (subquery.resultExprs.size() != 1 || !subquery.returnsSingleRow()) {
-                throw new AnalysisException("Only support select subquery produce one column in case statement.");
+                throw new AnalysisException("Subquery in case-when must return scala type");
             }
             subquery.reset();
+            subquery.setAssertNumRowsElement(1, AssertNumRowsElement.Assertion.EQ);
             String alias = getTableAliasGenerator().getNextAlias();
             String colAlias = getColumnAliasGenerator().getNextAlias();
             InlineViewRef inlineViewRef = new InlineViewRef(alias, subquery, Arrays.asList(colAlias));
@@ -1536,6 +1541,10 @@ public class SelectStmt extends QueryStmt {
         // Limit clause.
         if (hasLimitClause()) {
             strBuilder.append(limitElement.toSql());
+        }
+
+        if (hasOutFileClause()) {
+            strBuilder.append(outFileClause.toSql());
         }
         return strBuilder.toString();
     }

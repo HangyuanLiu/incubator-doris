@@ -36,6 +36,7 @@ import org.apache.doris.task.DropReplicaTask;
 import org.apache.doris.thrift.TStorageMedium;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
@@ -147,13 +148,16 @@ public class CatalogRecycleBin extends MasterDaemon implements Writable {
                 idToRecycleTime.remove(entry.getKey());
 
                 // remove jobs
-                Catalog.getInstance().getLoadInstance().removeDbLoadJob(db.getId());
-                Catalog.getInstance().getLoadInstance().removeDbDeleteJob(db.getId());
-                Catalog.getInstance().getSchemaChangeHandler().removeDbAlterJob(db.getId());
-                Catalog.getInstance().getRollupHandler().removeDbAlterJob(db.getId());
+                Catalog.getCurrentCatalog().getLoadInstance().removeDbLoadJob(db.getId());
+                Catalog.getCurrentCatalog().getLoadInstance().removeDbDeleteJob(db.getId());
+                Catalog.getCurrentCatalog().getSchemaChangeHandler().removeDbAlterJob(db.getId());
+                Catalog.getCurrentCatalog().getRollupHandler().removeDbAlterJob(db.getId());
+
+                // remove database transaction manager
+                Catalog.getCurrentCatalog().getGlobalTransactionMgr().removeDatabaseTransactionMgr(db.getId());
 
                 // log
-                Catalog.getInstance().getEditLog().logEraseDb(entry.getKey());
+                Catalog.getCurrentCatalog().getEditLog().logEraseDb(entry.getKey());
                 LOG.info("erase db[{}]", entry.getKey());
             }
         }
@@ -169,6 +173,9 @@ public class CatalogRecycleBin extends MasterDaemon implements Writable {
                 iterator.remove();
                 idToRecycleTime.remove(entry.getKey());
 
+                // remove database transaction manager
+                Catalog.getCurrentCatalog().getGlobalTransactionMgr().removeDatabaseTransactionMgr(db.getId());
+
                 LOG.info("erase database[{}] name: {}", db.getId(), dbName);
             }
         }
@@ -179,11 +186,13 @@ public class CatalogRecycleBin extends MasterDaemon implements Writable {
         idToRecycleTime.remove(dbId);
 
         // remove jobs
-        Catalog.getInstance().getLoadInstance().removeDbLoadJob(dbId);
-        Catalog.getInstance().getLoadInstance().removeDbDeleteJob(dbId);
-        Catalog.getInstance().getSchemaChangeHandler().removeDbAlterJob(dbId);
-        Catalog.getInstance().getRollupHandler().removeDbAlterJob(dbId);
+        Catalog.getCurrentCatalog().getLoadInstance().removeDbLoadJob(dbId);
+        Catalog.getCurrentCatalog().getLoadInstance().removeDbDeleteJob(dbId);
+        Catalog.getCurrentCatalog().getSchemaChangeHandler().removeDbAlterJob(dbId);
+        Catalog.getCurrentCatalog().getRollupHandler().removeDbAlterJob(dbId);
 
+        // remove database transaction manager
+        Catalog.getCurrentCatalog().getGlobalTransactionMgr().removeDatabaseTransactionMgr(dbId);
         LOG.info("replay erase db[{}]", dbId);
     }
 
@@ -205,7 +214,7 @@ public class CatalogRecycleBin extends MasterDaemon implements Writable {
                 idToRecycleTime.remove(tableId);
 
                 // log
-                Catalog.getInstance().getEditLog().logEraseTable(tableId);
+                Catalog.getCurrentCatalog().getEditLog().logEraseTable(tableId);
                 LOG.info("erase table[{}]", tableId);
             }
         } // end for tables
@@ -319,7 +328,7 @@ public class CatalogRecycleBin extends MasterDaemon implements Writable {
                 idToRecycleTime.remove(partitionId);
 
                 // log
-                Catalog.getInstance().getEditLog().logErasePartition(partitionId);
+                Catalog.getCurrentCatalog().getEditLog().logErasePartition(partitionId);
                 LOG.info("erase partition[{}]", partitionId);
             }
         } // end for partitions
@@ -460,7 +469,7 @@ public class CatalogRecycleBin extends MasterDaemon implements Writable {
 
             // log
             RecoverInfo recoverInfo = new RecoverInfo(dbId, table.getId(), -1L);
-            Catalog.getInstance().getEditLog().logRecoverTable(recoverInfo);
+            Catalog.getCurrentCatalog().getEditLog().logRecoverTable(recoverInfo);
             LOG.info("recover db[{}] with table[{}]: {}", dbId, table.getId(), table.getName());
             return true;
         }
@@ -538,7 +547,7 @@ public class CatalogRecycleBin extends MasterDaemon implements Writable {
 
         // log
         RecoverInfo recoverInfo = new RecoverInfo(dbId, table.getId(), partitionId);
-        Catalog.getInstance().getEditLog().logRecoverPartition(recoverInfo);
+        Catalog.getCurrentCatalog().getEditLog().logRecoverPartition(recoverInfo);
         LOG.info("recover partition[{}]", partitionId);
     }
 
@@ -613,7 +622,7 @@ public class CatalogRecycleBin extends MasterDaemon implements Writable {
             // we need to get olap table to get schema hash info
             // first find it in catalog. if not found, it should be in recycle bin
             OlapTable olapTable = null;
-            Database db = Catalog.getInstance().getDb(dbId);
+            Database db = Catalog.getCurrentCatalog().getDb(dbId);
             if (db == null) {
                 // just log. db should be in recycle bin
                 if (!idToDatabase.containsKey(dbId)) {
@@ -881,5 +890,10 @@ public class CatalogRecycleBin extends MasterDaemon implements Writable {
                 isInMemory = in.readBoolean();
             }
         }
+    }
+    
+    // currently only used when loading image. So no synchronized protected.
+    public List<Long> getAllDbIds() {
+        return Lists.newArrayList(idToDatabase.keySet());
     }
 }
