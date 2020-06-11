@@ -282,7 +282,7 @@ public class Main {
         Session session = new Session(catalog, context);
 
         //DorisMetadata
-        Metadata metadata = new MetadataManager();
+        Metadata metadata = new MetadataManager(catalog);
 
         //analyzer
         ArrayList<Expression> parameters = new ArrayList<>();

@@ -13,8 +13,8 @@ public class MetadataManager implements Metadata {
     //目前只有DorisMetadata，未来可以拓展
     private ConnectorMetadata metadata;
 
-    public MetadataManager() {
-        this.metadata = new DorisMetadata(Catalog.getCurrentCatalog());
+    public MetadataManager(Catalog catalog) {
+        this.metadata = new DorisMetadata(catalog);
     }
 
     @Override

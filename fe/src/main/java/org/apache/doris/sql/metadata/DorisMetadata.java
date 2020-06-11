@@ -26,7 +26,8 @@ public class DorisMetadata implements ConnectorMetadata{
 
     @Override
     public ConnectorTableHandle getTableHandle(ConnectorSession session, SchemaTableName tableName) {
-        Table table = dorisCatalog.getDb(tableName.getSchemaName()).getTable(tableName.getTableName());
+        Database db = dorisCatalog.getDb("default_cluster:" + tableName.getSchemaName());
+        Table table = db.getTable(tableName.getTableName());
         return new DorisTableHandle(tableName.getSchemaName(), tableName.getTableName(), table);
     }
 
