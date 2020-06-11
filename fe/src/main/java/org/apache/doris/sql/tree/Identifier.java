@@ -38,7 +38,7 @@ public class Identifier
         this.value = value;
         this.delimited = delimited;
 
-        checkArgument(delimited || NAME_PATTERN.matcher(value).matches(), "value contains illegal characters: %s", value);
+        //checkArgument(delimited || NAME_PATTERN.matcher(value).matches(), "value contains illegal characters: %s", value);
     }
 
     public String getValue()

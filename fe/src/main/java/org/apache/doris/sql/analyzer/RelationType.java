@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkElementIndex;
@@ -52,7 +53,7 @@ public class RelationType
     {
         requireNonNull(field, "field cannot be null");
         Integer index = fieldIndexes.get(field);
-        checkArgument(index != null, "Field %s not found", field);
+        //checkArgument(index != null, "Field %s not found", field);
         return index;
     }
 
@@ -115,7 +116,7 @@ public class RelationType
     {
         return allFields.stream()
                 .filter(input -> input.canResolve(name))
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 
     public boolean canResolve(QualifiedName name)

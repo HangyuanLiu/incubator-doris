@@ -35,7 +35,7 @@ public class DorisMetadata implements ConnectorMetadata{
     public Map<String, ColumnHandle> getColumnHandles(ConnectorSession session, ConnectorTableHandle tableHandle) {
         DorisTableHandle dorisTableHandle = (DorisTableHandle) tableHandle;
 
-        Database database = dorisCatalog.getDb(dorisTableHandle.getSchemaName());
+        Database database = dorisCatalog.getDb("default_cluster:" + dorisTableHandle.getSchemaName());
         Table table = database.getTable(dorisTableHandle.getTableName());
         List<Column> columnList = table.getBaseSchema();
 

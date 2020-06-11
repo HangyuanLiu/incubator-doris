@@ -21,7 +21,7 @@ public final class FieldId
     {
         this.relationId = requireNonNull(relationId, "relationId is null");
 
-        checkArgument(fieldIndex >= 0, "fieldIndex must be non-negative, got: %s", fieldIndex);
+        //checkArgument(fieldIndex >= 0, "fieldIndex must be non-negative, got: %s", fieldIndex);
         this.fieldIndex = fieldIndex;
     }
 

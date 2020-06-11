@@ -199,6 +199,7 @@ public class ConnectProcessor {
             .setDb(ctx.getDatabase());
 
         try {
+            LOG.debug("Query :" + originStmt);
             //parser
             CaseInsensitiveStream stream = new CaseInsensitiveStream(CharStreams.fromString(originStmt));
             SqlBaseLexer lexer = new SqlBaseLexer(stream);
@@ -211,7 +212,7 @@ public class ConnectProcessor {
             Session session = new Session(ctx.getCatalog(), ctx);
 
             //DorisMetadata
-            Metadata metadata = new MetadataManager();
+            Metadata metadata = new MetadataManager(ctx.getCatalog());
 
             //analyzer
             ArrayList<Expression> parameters = new ArrayList<>();
