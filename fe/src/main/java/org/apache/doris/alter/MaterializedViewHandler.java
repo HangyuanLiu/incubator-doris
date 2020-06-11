@@ -41,6 +41,7 @@ import org.apache.doris.catalog.Table;
 import org.apache.doris.catalog.Tablet;
 import org.apache.doris.catalog.TabletInvertedIndex;
 import org.apache.doris.catalog.TabletMeta;
+import org.apache.doris.catalog.Type;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.Config;
 import org.apache.doris.common.DdlException;
@@ -56,6 +57,7 @@ import org.apache.doris.persist.BatchDropInfo;
 import org.apache.doris.persist.DropInfo;
 import org.apache.doris.persist.EditLog;
 import org.apache.doris.qe.ConnectContext;
+import org.apache.doris.qe.OriginStatement;
 import org.apache.doris.thrift.TStorageFormat;
 import org.apache.doris.thrift.TStorageMedium;
 
@@ -115,7 +117,8 @@ public class MaterializedViewHandler extends AlterHandler {
     // return true iff job is actually added this time
     private boolean addAlterJobV2ToTableNotFinalStateJobMap(AlterJobV2 alterJobV2) {
         if (alterJobV2.isDone()) {
-            LOG.warn("try to add a final job({}) to a unfinal set", alterJobV2.getJobId());
+            LOG.warn("try to add a final job({}) to a unfinal set. db: {}, tbl: {}",
+                    alterJobV2.getJobId(), alterJobV2.getDbId(), alterJobV2.getTableId());
             return false;
         }
 
@@ -197,7 +200,7 @@ public class MaterializedViewHandler extends AlterHandler {
 
         // Step2: create mv job
         RollupJobV2 rollupJobV2 = createMaterializedViewJob(mvIndexName, baseIndexName, mvColumns, addMVClause
-                .getProperties(), olapTable, db, baseIndexId, addMVClause.getMVKeysType());
+                .getProperties(), olapTable, db, baseIndexId, addMVClause.getMVKeysType(), addMVClause.getOrigStmt());
 
         addAlterJobV2(rollupJobV2);
 
@@ -231,7 +234,6 @@ public class MaterializedViewHandler extends AlterHandler {
 
                 // step 1 check whether current alter is change storage format
                 String rollupIndexName = addRollupClause.getRollupName();
-                String newStorageFormatIndexName = "__v2_" + olapTable.getName();
                 boolean changeStorageFormat = false;
                 if (rollupIndexName.equalsIgnoreCase(olapTable.getName())) {
                     // for upgrade test to create segment v2 rollup index by using the sql:
@@ -242,7 +244,7 @@ public class MaterializedViewHandler extends AlterHandler {
                         throw new DdlException("Table[" + olapTable.getName() + "] can not " +
                                 "add segment v2 rollup index without setting storage format to v2.");
                     }
-                    rollupIndexName = newStorageFormatIndexName;
+                    rollupIndexName = NEW_STORAGE_FORMAT_INDEX_NAME_PREFIX + olapTable.getName();
                     changeStorageFormat = true;
                 }
 
@@ -262,7 +264,7 @@ public class MaterializedViewHandler extends AlterHandler {
 
                 // step 3 create rollup job
                 RollupJobV2 alterJobV2 = createMaterializedViewJob(rollupIndexName, baseIndexName, rollupSchema, addRollupClause.getProperties(),
-                        olapTable, db, baseIndexId, olapTable.getKeysType());
+                        olapTable, db, baseIndexId, olapTable.getKeysType(), null);
 
                 rollupNameJobMap.put(addRollupClause.getRollupName(), alterJobV2);
                 logJobIdSet.add(alterJobV2.getJobId());
@@ -311,7 +313,7 @@ public class MaterializedViewHandler extends AlterHandler {
      */
     private RollupJobV2 createMaterializedViewJob(String mvName, String baseIndexName,
             List<Column> mvColumns, Map<String, String> properties, OlapTable
-            olapTable, Database db, long baseIndexId, KeysType mvKeysType)
+            olapTable, Database db, long baseIndexId, KeysType mvKeysType, OriginStatement origStmt)
             throws DdlException, AnalysisException {
         if (mvKeysType == null) {
             // assign rollup index's key type, same as base index's
@@ -335,7 +337,7 @@ public class MaterializedViewHandler extends AlterHandler {
         RollupJobV2 mvJob = new RollupJobV2(jobId, dbId, tableId, olapTable.getName(), timeoutMs,
                                             baseIndexId, mvIndexId, baseIndexName, mvName,
                                             mvColumns, baseSchemaHash, mvSchemaHash,
-                                            mvKeysType, mvShortKeyColumnCount);
+                                            mvKeysType, mvShortKeyColumnCount, origStmt);
         String newStorageFormatIndexName = NEW_STORAGE_FORMAT_INDEX_NAME_PREFIX + olapTable.getName();
         if (mvName.equals(newStorageFormatIndexName)) {
             mvJob.setStorageFormat(TStorageFormat.V2);
@@ -460,6 +462,18 @@ public class MaterializedViewHandler extends AlterHandler {
             Column newMVColumn = new Column(baseColumn);
             newMVColumn.setIsKey(mvColumnItem.isKey());
             newMVColumn.setAggregationType(mvAggregationType, mvColumnItem.isAggregationTypeImplicit());
+            if (mvColumnItem.getDefineExpr() != null) {
+                if (mvAggregationType.equals(AggregateType.BITMAP_UNION)) {
+                    newMVColumn.setType(Type.BITMAP);
+                } else if (mvAggregationType.equals(AggregateType.HLL_UNION)){
+                    newMVColumn.setType(Type.HLL);
+                } else {
+                    throw new DdlException("The define expr of column is only support bitmap_union or hll_union");
+                }
+                newMVColumn.setIsKey(false);
+                newMVColumn.setIsAllowNull(false);
+                newMVColumn.setDefineExpr(mvColumnItem.getDefineExpr());
+            }
             newMVColumns.add(newMVColumn);
         }
         return newMVColumns;
@@ -549,7 +563,10 @@ public class MaterializedViewHandler extends AlterHandler {
                     }
                     keyStorageLayoutBytes += baseColumn.getType().getStorageLayoutBytes();
                     Column rollupColumn = new Column(baseColumn);
-                    if ((i + 1) <= FeConstants.shortkey_max_column_count
+                    if(changeStorageFormat) {
+                        rollupColumn.setIsKey(baseColumn.isKey());
+                        rollupColumn.setAggregationType(baseColumn.getAggregationType(), true);
+                    } else if ((i + 1) <= FeConstants.shortkey_max_column_count
                             || keyStorageLayoutBytes < FeConstants.shortkey_maxsize_bytes) {
                         rollupColumn.setIsKey(true);
                         rollupColumn.setAggregationType(null, false);
@@ -662,7 +679,7 @@ public class MaterializedViewHandler extends AlterHandler {
             }
 
             // batch log drop rollup operation
-            EditLog editLog = Catalog.getInstance().getEditLog();
+            EditLog editLog = Catalog.getCurrentCatalog().getEditLog();
             long dbId = db.getId();
             long tableId = olapTable.getId();
             editLog.logBatchDropRollup(new BatchDropInfo(dbId, tableId, indexIdSet));
@@ -682,7 +699,7 @@ public class MaterializedViewHandler extends AlterHandler {
             // Step2; drop data in memory
             long mvIndexId = dropMaterializedView(mvName, olapTable);
             // Step3: log drop mv operation
-            EditLog editLog = Catalog.getInstance().getEditLog();
+            EditLog editLog = Catalog.getCurrentCatalog().getEditLog();
             editLog.logDropRollup(new DropInfo(db.getId(), olapTable.getId(), mvIndexId));
             LOG.info("finished drop materialized view [{}] in table [{}]", mvName, olapTable.getName());
         } catch (MetaNotFoundException e) {
@@ -992,7 +1009,7 @@ public class MaterializedViewHandler extends AlterHandler {
 
         // handle cancelled rollup jobs
         for (AlterJob rollupJob : cancelledJobs) {
-            Database db = Catalog.getInstance().getDb(rollupJob.getDbId());
+            Database db = Catalog.getCurrentCatalog().getDb(rollupJob.getDbId());
             if (db == null) {
                 cancelInternal(rollupJob, null, null);
                 continue;
@@ -1017,7 +1034,7 @@ public class MaterializedViewHandler extends AlterHandler {
             // then schema change job will be failed.
             alterJob.finishJob();
             jobDone(alterJob);
-            Catalog.getInstance().getEditLog().logFinishRollup((RollupJob) alterJob);
+            Catalog.getCurrentCatalog().getEditLog().logFinishRollup((RollupJob) alterJob);
         }
     }
 
@@ -1116,7 +1133,7 @@ public class MaterializedViewHandler extends AlterHandler {
         Preconditions.checkState(!Strings.isNullOrEmpty(dbName));
         Preconditions.checkState(!Strings.isNullOrEmpty(tableName));
 
-        Database db = Catalog.getInstance().getDb(dbName);
+        Database db = Catalog.getCurrentCatalog().getDb(dbName);
         if (db == null) {
             ErrorReport.reportDdlException(ErrorCode.ERR_BAD_DB_ERROR, dbName);
         }

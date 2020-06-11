@@ -17,6 +17,7 @@
 
 package org.apache.doris.http.action;
 
+import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.doris.analysis.RedirectStatus;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.common.AnalysisException;
@@ -71,7 +72,9 @@ public class SystemAction extends WebBaseAction {
     private void appendSystemInfo(StringBuilder buffer, String procPath, String path) {
         buffer.append("<h2>System Info</h2>");
         buffer.append("<p>This page lists the system info, like /proc in Linux.</p>");
-        buffer.append("<p class=\"text-info\"> Current path: " + path + "</p>");
+        buffer.append("<p class=\"text-info\"> Current path: " + path + "<a href=\"?path=" + getParentPath(path)
+                + "\" class=\"btn btn-primary\" style=\"float: right;\">"
+                + "Parent Dir</a></p><br/>");
 
         ProcNodeInterface procNode = getProcNode(procPath);
         if (procNode == null) {
@@ -124,20 +127,13 @@ public class SystemAction extends WebBaseAction {
         Preconditions.checkNotNull(columnNames);
         Preconditions.checkNotNull(rows);
 
-        appendBackButton(buffer, path);
         appendTableHeader(buffer, columnNames);
         appendSystemTableBody(buffer, rows, isDir, path);
         appendTableFooter(buffer);
     }
 
-    private void appendBackButton(StringBuilder buffer, String path) {
-        String parentDir = getParentPath(path);
-        buffer.append("<a href=\"?path=" + parentDir
-                + "\" class=\"btn btn-primary\">"
-                + "parent dir</a>");
-    }
-
     private void appendSystemTableBody(StringBuilder buffer, List<List<String>> rows, boolean isDir, String path) {
+        UrlValidator validator = new UrlValidator();
         for ( List<String> strList : rows) {
             buffer.append("<tr>");
             int columnIndex = 1;
@@ -147,6 +143,10 @@ public class SystemAction extends WebBaseAction {
                     String escapeStr = str.replace("%", "%25");
                     buffer.append("<a href=\"?path=" + path + "/" + escapeStr + "\">");
                     buffer.append(str);
+                    buffer.append("</a>");
+                } else if (validator.isValid(str)) {
+                    buffer.append("<a href=\"" + str + "\">");
+                    buffer.append("URL");
                     buffer.append("</a>");
                 } else {
                     buffer.append(str.replaceAll("\\n", "<br/>"));

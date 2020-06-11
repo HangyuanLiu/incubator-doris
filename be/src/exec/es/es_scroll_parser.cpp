@@ -198,11 +198,12 @@ static Status get_float_value(const rapidjson::Value &col, PrimitiveType type, v
     return Status::OK();
 }
 
-ScrollParser::ScrollParser() :
+ScrollParser::ScrollParser(bool doc_value_mode) :
     _scroll_id(""),
     _total(0),
     _size(0),
-    _line_index(0) {
+    _line_index(0),
+    _doc_value_mode(doc_value_mode) {
 }
 
 ScrollParser::~ScrollParser() {
@@ -229,6 +230,7 @@ Status ScrollParser::parse(const std::string& scroll_result, bool exactly_once) 
     const rapidjson::Value &outer_hits_node = _document_node[FIELD_HITS];
     const rapidjson::Value &field_total = outer_hits_node[FIELD_TOTAL];
     // after es 7.x "total": { "value": 1, "relation": "eq" }
+    // it is not necessary to parse `total`, this logic would be removed the another pr.
     if (field_total.IsObject()) {
         const rapidjson::Value &field_relation_value = field_total["relation"];
         std::string relation = field_relation_value.GetString();
@@ -241,16 +243,16 @@ Status ScrollParser::parse(const std::string& scroll_result, bool exactly_once) 
     } else {
         _total = field_total.GetInt();
     }
-
+    // just used for the first scroll, maybe we should remove this logic from the `get_next`
     if (_total == 0) {
         return Status::OK();
     }
 
     VLOG(1) << "es_scan_reader parse scroll result: " << scroll_result;
     const rapidjson::Value &inner_hits_node = outer_hits_node[FIELD_INNER_HITS];
+    // this happened just the end of scrolling
     if (!inner_hits_node.IsArray()) {
-        LOG(WARNING) << "exception maybe happend on es cluster, reponse:" << scroll_result;
-        return Status::InternalError("inner hits node is not an array");
+        return Status::OK();
     }
 
     rapidjson::Document::AllocatorType& a = _document_node.GetAllocator();
@@ -275,6 +277,7 @@ int ScrollParser::get_total() {
 Status ScrollParser::fill_tuple(const TupleDescriptor* tuple_desc, 
             Tuple* tuple, MemPool* tuple_pool, bool* line_eof, const std::map<std::string, std::string>& docvalue_context) {
     *line_eof = true;
+
     if (_size <= 0 || _line_index >= _size) {
         return Status::OK();
     }

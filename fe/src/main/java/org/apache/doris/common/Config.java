@@ -283,6 +283,13 @@ public class Config extends ConfigBase {
     @ConfField public static int http_backlog_num = 1024;
 
     /*
+     * The connection timeout and socket timeout config for thrift server
+     * The value for thrift_client_timeout_ms is set to be larger than zero to prevent
+     * some hang up problems in java.net.SocketInputStream.socketRead0
+     */
+    @ConfField public static int thrift_client_timeout_ms = 30000;
+
+    /*
      * The backlog_num for thrift server
      * When you enlarge this backlog_num, you should ensure it's value larger than
      * the linux /proc/sys/net/core/somaxconn config
@@ -485,6 +492,12 @@ public class Config extends ConfigBase {
     public static int hadoop_load_default_timeout_second = 86400 * 3; // 3 day
 
     /*
+     * Default spark load timeout
+     */
+    @ConfField(mutable = true, masterOnly = true)
+    public static int spark_load_default_timeout_second = 86400; // 1 day
+
+    /*
      * Default number of waiting jobs for routine load and version 2 of load
      * This is a desired number.
      * In some situation, such as switch the master, the current number is maybe more then desired_max_waiting_jobs
@@ -661,10 +674,6 @@ public class Config extends ConfigBase {
      * Maximal number of connections per FE.
      */
     @ConfField public static int qe_max_connection = 1024;
-    /*
-     * Maximal number of connections per user, per FE.
-     */
-    @ConfField public static int max_conn_per_user = 100;
 
     /*
      * Maximal number of thread in connection-scheduler-pool.
@@ -1053,7 +1062,7 @@ public class Config extends ConfigBase {
      * control materialized view
      */
     @ConfField(mutable = true, masterOnly = true)
-    public static boolean enable_materialized_view = false;
+    public static boolean enable_materialized_view = true;
 
     /**
      * it can't auto-resume routine load job as long as one of the backends is down

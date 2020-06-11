@@ -407,7 +407,8 @@ public class FunctionCallExpr extends Expr {
 
         if (fnName.getFunction().equalsIgnoreCase(FunctionSet.BITMAP_COUNT)
                 || fnName.getFunction().equalsIgnoreCase(FunctionSet.BITMAP_UNION)
-                || fnName.getFunction().equalsIgnoreCase(FunctionSet.BITMAP_UNION_COUNT)) {
+                || fnName.getFunction().equalsIgnoreCase(FunctionSet.BITMAP_UNION_COUNT)
+                || fnName.getFunction().equalsIgnoreCase(FunctionSet.BITMAP_INTERSECT)) {
             if (children.size() != 1) {
                 throw new AnalysisException(fnName + " function could only have one child");
             }
@@ -570,7 +571,7 @@ public class FunctionCallExpr extends Expr {
                             ConnectContext.get(), dbName, PrivPredicate.SELECT)) {
                         ErrorReport.reportAnalysisException(ErrorCode.ERR_SPECIFIC_ACCESS_DENIED_ERROR, "SELECT");
                     }
-                    Database db = Catalog.getInstance().getDb(dbName);
+                    Database db = Catalog.getCurrentCatalog().getDb(dbName);
                     if (db != null) {
                         Function searchDesc = new Function(
                                 fnName, collectChildReturnTypes(), Type.INVALID, false);

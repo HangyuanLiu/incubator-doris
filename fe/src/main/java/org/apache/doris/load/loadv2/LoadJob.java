@@ -549,7 +549,7 @@ public abstract class LoadJob extends AbstractTxnStateChangeCallback implements 
      * @throws DdlException
      */
     private void checkAuthWithoutAuthInfo(String command) throws DdlException {
-        Database db = Catalog.getInstance().getDb(dbId);
+        Database db = Catalog.getCurrentCatalog().getDb(dbId);
         if (db == null) {
             ErrorReport.reportDdlException(ErrorCode.ERR_BAD_DB_ERROR, dbId);
         }
@@ -622,7 +622,7 @@ public abstract class LoadJob extends AbstractTxnStateChangeCallback implements 
                                   .add("transaction_id", transactionId)
                                   .add("msg", "begin to abort txn")
                                   .build());
-                Catalog.getCurrentGlobalTransactionMgr().abortTransaction(transactionId, failMsg.getMsg());
+                Catalog.getCurrentGlobalTransactionMgr().abortTransaction(dbId, transactionId, failMsg.getMsg());
             } catch (UserException e) {
                 LOG.warn(new LogBuilder(LogKey.LOAD_JOB, id)
                         .add("transaction_id", transactionId)

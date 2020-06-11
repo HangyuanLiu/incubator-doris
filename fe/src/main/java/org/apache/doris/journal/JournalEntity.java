@@ -26,6 +26,7 @@ import org.apache.doris.backup.Repository;
 import org.apache.doris.backup.RestoreJob;
 import org.apache.doris.catalog.BrokerMgr;
 import org.apache.doris.catalog.Database;
+import org.apache.doris.catalog.Resource;
 import org.apache.doris.catalog.Function;
 import org.apache.doris.catalog.FunctionSearchDesc;
 import org.apache.doris.cluster.BaseParam;
@@ -67,6 +68,7 @@ import org.apache.doris.persist.RemoveAlterJobV2OperationLog;
 import org.apache.doris.persist.ReplacePartitionOperationLog;
 import org.apache.doris.persist.ReplicaPersistInfo;
 import org.apache.doris.persist.RoutineLoadOperation;
+import org.apache.doris.persist.SetReplicaStatusOperationLog;
 import org.apache.doris.persist.TableInfo;
 import org.apache.doris.persist.TablePropertyInfo;
 import org.apache.doris.persist.TruncateTableInfo;
@@ -497,6 +499,17 @@ public class JournalEntity implements Writable {
                 isRead = true;
                 break;
             }
+            case OperationType.OP_CREATE_RESOURCE: {
+                data = Resource.read(in);
+                isRead = true;
+                break;
+            }
+            case OperationType.OP_DROP_RESOURCE: {
+                data = new Text();
+                ((Text) data).readFields(in);
+                isRead = true;
+                break;
+            }
             case OperationType.OP_CREATE_SMALL_FILE:
             case OperationType.OP_DROP_SMALL_FILE: {
                 data = SmallFile.read(in);
@@ -515,6 +528,11 @@ public class JournalEntity implements Writable {
             }
             case OperationType.OP_MODIFY_DISTRIBUTION_TYPE: {
                 data = TableInfo.read(in);
+                isRead = true;
+                break;
+            }
+            case OperationType.OP_SET_REPLICA_STATUS: {
+                data = SetReplicaStatusOperationLog.read(in);
                 isRead = true;
                 break;
             }

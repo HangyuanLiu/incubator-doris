@@ -111,6 +111,17 @@ public class SelectStmtTest {
         } catch (Exception e) {
             Assert.fail("must be AnalysisException.");
         }
+        String sql4 = "select case when k1 < (select max(k1) from db1.tbl1) and " +
+                "k1 > (select min(k1) from db1.tbl1) then \"empty\" else \"p_test\" end a from db1.tbl1";
+        SelectStmt stmt4 = (SelectStmt) UtFrameUtils.parseAndAnalyzeStmt(sql4, ctx);
+        stmt4.rewriteExprs(new Analyzer(ctx.getCatalog(), ctx).getExprRewriter());
+        Assert.assertTrue(stmt4.toSql().contains(" (`k1` < `$a$1`.`$c$1`) AND (`k1` > `$a$2`.`$c$2`) "));
+
+        String sql5 = "select case when k1 < (select max(k1) from db1.tbl1) is null " +
+                "then \"empty\" else \"p_test\" end a from db1.tbl1";
+        SelectStmt stmt5 = (SelectStmt) UtFrameUtils.parseAndAnalyzeStmt(sql5, ctx);
+        stmt5.rewriteExprs(new Analyzer(ctx.getCatalog(), ctx).getExprRewriter());
+        Assert.assertTrue(stmt5.toSql().contains(" `k1` < `$a$1`.`$c$1` IS NULL "));
     }
 
     @Test
@@ -301,6 +312,12 @@ public class SelectStmtTest {
         stmt8.rewriteExprs(new Analyzer(ctx.getCatalog(), ctx).getExprRewriter());
         Assert.assertTrue(stmt8.toSql().contains("((`t2`.`k1` IS NOT NULL) AND (`t1`.`k1` IS NOT NULL))" +
                 " AND (`t1`.`k1` IS NOT NULL)"));
+
+        String sql9 = "select * from db1.tbl1 where (k1='shutdown' and k4<1) or (k1='switchOff' and k4>=1)";
+        SelectStmt stmt9 = (SelectStmt) UtFrameUtils.parseAndAnalyzeStmt(sql9, ctx);
+        stmt9.rewriteExprs(new Analyzer(ctx.getCatalog(), ctx).getExprRewriter());
+        Assert.assertTrue(stmt9.toSql().contains("((`k1` = 'shutdown') AND (`k4` < 1))" +
+                " OR ((`k1` = 'switchOff') AND (`k4` >= 1))"));
     }
 
     @Test

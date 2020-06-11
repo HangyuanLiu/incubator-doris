@@ -38,6 +38,7 @@ import org.apache.doris.common.io.Text;
 import org.apache.doris.common.util.PropertyAnalyzer;
 import org.apache.doris.common.util.RangeUtils;
 import org.apache.doris.common.util.Util;
+import org.apache.doris.qe.OriginStatement;
 import org.apache.doris.system.SystemInfoService;
 import org.apache.doris.thrift.TOlapTable;
 import org.apache.doris.thrift.TStorageFormat;
@@ -246,6 +247,12 @@ public class OlapTable extends Table {
 
     public void setIndexMeta(long indexId, String indexName, List<Column> schema, int schemaVersion, int schemaHash,
             short shortKeyColumnCount, TStorageType storageType, KeysType keysType) {
+        setIndexMeta(indexId, indexName, schema, schemaVersion, schemaHash, shortKeyColumnCount, storageType, keysType,
+                null);
+    }
+
+    public void setIndexMeta(long indexId, String indexName, List<Column> schema, int schemaVersion, int schemaHash,
+            short shortKeyColumnCount, TStorageType storageType, KeysType keysType, OriginStatement origStmt) {
         // Nullable when meta comes from schema change log replay.
         // The replay log only save the index id, so we need to get name by id.
         if (indexName == null) {
@@ -268,7 +275,7 @@ public class OlapTable extends Table {
         }
 
         MaterializedIndexMeta indexMeta = new MaterializedIndexMeta(indexId, schema, schemaVersion,
-                schemaHash, shortKeyColumnCount, storageType, keysType);
+                schemaHash, shortKeyColumnCount, storageType, keysType, origStmt);
         indexIdToMeta.put(indexId, indexMeta);
         indexNameToId.put(indexName, indexId);
     }
@@ -643,6 +650,7 @@ public class OlapTable extends Table {
      */
     
     // get partition by name, not including temp partitions
+    @Override
     public Partition getPartition(String partitionName) {
         return getPartition(partitionName, false);
     }
@@ -732,6 +740,7 @@ public class OlapTable extends Table {
         return false;
     }
 
+    @Override
     public TTableDescriptor toThrift() {
         TOlapTable tOlapTable = new TOlapTable(getName());
         TTableDescriptor tTableDescriptor = new TTableDescriptor(id, TTableType.OLAP_TABLE,
@@ -930,6 +939,7 @@ public class OlapTable extends Table {
         tempPartitions.write(out);
     }
 
+    @Override
     public void readFields(DataInput in) throws IOException {
         super.readFields(in);
 
@@ -947,7 +957,7 @@ public class OlapTable extends Table {
             if (Catalog.getCurrentCatalogJournalVersion() < FeMetaVersion.VERSION_75) {
                 // schema
                 int colCount = in.readInt();
-                List<Column> schema = new LinkedList<Column>();
+                List<Column> schema = new LinkedList<>();
                 for (int j = 0; j < colCount; j++) {
                     Column column = Column.read(in);
                     schema.add(column);
@@ -967,7 +977,7 @@ public class OlapTable extends Table {
 
                 // The keys type in here is incorrect
                 MaterializedIndexMeta indexMeta = new MaterializedIndexMeta(indexId, schema,
-                        schemaVersion, schemaHash, shortKeyColumnCount, storageType, KeysType.AGG_KEYS);
+                        schemaVersion, schemaHash, shortKeyColumnCount, storageType, KeysType.AGG_KEYS, null);
                 tmpIndexMetaList.add(indexMeta);
             } else {
                 MaterializedIndexMeta indexMeta = MaterializedIndexMeta.read(in);
@@ -1073,6 +1083,7 @@ public class OlapTable extends Table {
         rebuildFullSchema();
     }
 
+    @Override
     public boolean equals(Table table) {
         if (this == table) {
             return true;
