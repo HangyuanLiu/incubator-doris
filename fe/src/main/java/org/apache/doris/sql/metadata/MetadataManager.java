@@ -14,7 +14,7 @@ public class MetadataManager implements Metadata {
     private ConnectorMetadata metadata;
 
     public MetadataManager() {
-        this.metadata = new DorisMetadata(Catalog.getInstance());
+        this.metadata = new DorisMetadata(Catalog.getCurrentCatalog());
     }
 
     @Override

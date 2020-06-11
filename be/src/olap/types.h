@@ -840,9 +840,6 @@ struct FieldTypeTraits<OLAP_FIELD_TYPE_OBJECT> : public FieldTypeTraits<OLAP_FIE
         dst_slice->data = src_slice->data;
         dst_slice->size = 0;
     }
-    static OLAPStatus convert_from(void* dest, const void* src, const TypeInfo* src_type, MemPool* mem_pool) {
-
-    }
 };
 
 // Instantiate this template to get static access to the type traits.

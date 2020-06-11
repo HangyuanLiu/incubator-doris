@@ -275,7 +275,7 @@ public class Main {
         Node stmt = visitor.visit(parser.singleStatement());
 
         //Session
-        Catalog catalog = Catalog.getInstance();
+        Catalog catalog = Catalog.getCurrentCatalog();
         ConnectContext context = new ConnectContext();
         context.setCatalog(catalog);
         context.setDatabase("test_db");
