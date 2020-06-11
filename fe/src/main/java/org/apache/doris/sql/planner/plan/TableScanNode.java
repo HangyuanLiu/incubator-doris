@@ -24,6 +24,7 @@ import javax.annotation.concurrent.Immutable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableList;
@@ -45,9 +46,9 @@ public final class TableScanNode
             Map<VariableReferenceExpression, ColumnHandle> assignments)
     {
         super(id);
-        this.table = requireNonNull(table, "table is null");
-        this.outputVariables = unmodifiableList(requireNonNull(outputVariables, "outputVariables is null"));
-        this.assignments = unmodifiableMap(new HashMap<>(requireNonNull(assignments, "assignments is null")));
+        this.table = Objects.requireNonNull(table, "table is null");
+        this.outputVariables = unmodifiableList(Objects.requireNonNull(outputVariables, "outputVariables is null"));
+        this.assignments = unmodifiableMap(new HashMap<>(Objects.requireNonNull(assignments, "assignments is null")));
         checkArgument(assignments.keySet().containsAll(outputVariables), "assignments does not cover all of outputs");
     }
 

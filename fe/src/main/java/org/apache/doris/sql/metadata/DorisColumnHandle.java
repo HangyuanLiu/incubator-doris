@@ -17,8 +17,6 @@ import org.apache.doris.sql.type.Type;
 
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static java.util.Objects.requireNonNull;
 
 public final class DorisColumnHandle
         implements ColumnHandle {
@@ -31,8 +29,8 @@ public final class DorisColumnHandle
             Type columnType,
             int ordinalPosition)
     {
-        this.columnName = requireNonNull(columnName, "columnName is null");
-        this.columnType = requireNonNull(columnType, "columnType is null");
+        this.columnName = Objects.requireNonNull(columnName, "columnName is null");
+        this.columnType = Objects.requireNonNull(columnType, "columnType is null");
         this.ordinalPosition = ordinalPosition;
     }
 

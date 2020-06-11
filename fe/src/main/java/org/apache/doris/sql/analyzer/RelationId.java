@@ -12,7 +12,7 @@ public class RelationId
      */
     public static RelationId of(Node sourceNode)
     {
-        return new RelationId(requireNonNull(sourceNode, "source cannot be null"));
+        return new RelationId(Objects.requireNonNull(sourceNode, "source cannot be null"));
     }
 
     /**

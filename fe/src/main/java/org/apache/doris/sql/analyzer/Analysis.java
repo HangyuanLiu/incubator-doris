@@ -95,10 +95,10 @@ public class Analysis
 
     public Analysis(@Nullable Statement root, List<Expression> parameters, boolean isDescribe)
     {
-        requireNonNull(parameters);
+        Objects.requireNonNull(parameters);
 
         this.root = root;
-        this.parameters = ImmutableList.copyOf(requireNonNull(parameters, "parameters is null"));
+        this.parameters = ImmutableList.copyOf(Objects.requireNonNull(parameters, "parameters is null"));
         this.isDescribe = isDescribe;
     }
 
@@ -345,7 +345,7 @@ public class Analysis
 
     public boolean isColumnReference(Expression expression)
     {
-        requireNonNull(expression, "expression is null");
+        Objects.requireNonNull(expression, "expression is null");
         checkArgument(getType(expression) != null, "expression %s has not been analyzed", expression);
         return columnReferences.containsKey(NodeRef.of(expression));
     }
@@ -411,7 +411,7 @@ public class Analysis
 
     public void setCreateTableComment(Optional<String> createTableComment)
     {
-        this.createTableComment = requireNonNull(createTableComment);
+        this.createTableComment = Objects.requireNonNull(createTableComment);
     }
 
     public Optional<String> getCreateTableComment()
@@ -426,8 +426,8 @@ public class Analysis
 
     public void registerNamedQuery(Table tableReference, Query query)
     {
-        requireNonNull(tableReference, "tableReference is null");
-        requireNonNull(query, "query is null");
+        Objects.requireNonNull(tableReference, "tableReference is null");
+        Objects.requireNonNull(query, "query is null");
 
         namedQueries.put(NodeRef.of(tableReference), query);
     }

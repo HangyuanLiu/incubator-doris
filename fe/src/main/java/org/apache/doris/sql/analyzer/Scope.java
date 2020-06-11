@@ -24,6 +24,7 @@ import javax.annotation.concurrent.Immutable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -59,11 +60,11 @@ public class Scope
             RelationType relation,
             Map<String, WithQuery> namedQueries)
     {
-        this.parent = requireNonNull(parent, "parent is null");
-        this.relationId = requireNonNull(relationId, "relationId is null");
+        this.parent = Objects.requireNonNull(parent, "parent is null");
+        this.relationId = Objects.requireNonNull(relationId, "relationId is null");
         this.queryBoundary = queryBoundary;
-        this.relation = requireNonNull(relation, "relation is null");
-        this.namedQueries = ImmutableMap.copyOf(requireNonNull(namedQueries, "namedQueries is null"));
+        this.relation = Objects.requireNonNull(relation, "relation is null");
+        this.namedQueries = ImmutableMap.copyOf(Objects.requireNonNull(namedQueries, "namedQueries is null"));
     }
 
     public Optional<Scope> getOuterQueryParent()
@@ -211,8 +212,8 @@ public class Scope
 
         public Builder withRelationType(RelationId relationId, RelationType relationType)
         {
-            this.relationId = requireNonNull(relationId, "relationId is null");
-            this.relationType = requireNonNull(relationType, "relationType is null");
+            this.relationId = Objects.requireNonNull(relationId, "relationId is null");
+            this.relationType = Objects.requireNonNull(relationType, "relationType is null");
             return this;
         }
 

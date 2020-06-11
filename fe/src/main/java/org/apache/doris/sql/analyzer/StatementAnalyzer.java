@@ -75,12 +75,12 @@ public class StatementAnalyzer
             Session session,
             WarningCollector warningCollector)
     {
-        this.analysis = requireNonNull(analysis, "analysis is null");
-        this.metadata = requireNonNull(metadata, "metadata is null");
-        this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
-        this.accessControl = requireNonNull(accessControl, "accessControl is null");
-        this.session = requireNonNull(session, "session is null");
-        this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+        this.analysis = Objects.requireNonNull(analysis, "analysis is null");
+        this.metadata = Objects.requireNonNull(metadata, "metadata is null");
+        this.sqlParser = Objects.requireNonNull(sqlParser, "sqlParser is null");
+        this.accessControl = Objects.requireNonNull(accessControl, "accessControl is null");
+        this.session = Objects.requireNonNull(session, "session is null");
+        this.warningCollector = Objects.requireNonNull(warningCollector, "warningCollector is null");
     }
 
     public StatementAnalyzer (
@@ -119,7 +119,7 @@ public class StatementAnalyzer
 
         private Visitor(Optional<Scope> outerQueryScope, WarningCollector warningCollector)
         {
-            this.outerQueryScope = requireNonNull(outerQueryScope, "outerQueryScope is null");
+            this.outerQueryScope = Objects.requireNonNull(outerQueryScope, "outerQueryScope is null");
             this.warningCollector = null;
         }
 

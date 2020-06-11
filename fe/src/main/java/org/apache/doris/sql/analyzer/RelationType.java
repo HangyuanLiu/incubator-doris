@@ -1,5 +1,6 @@
 package org.apache.doris.sql.analyzer;
 
+import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -9,14 +10,11 @@ import org.apache.doris.sql.tree.QualifiedName;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkElementIndex;
-import static com.google.common.base.Predicates.not;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static java.util.Objects.requireNonNull;
+import com.google.common.base.Preconditions;
 
 public class RelationType
 {
@@ -32,9 +30,9 @@ public class RelationType
 
     public RelationType(List<Field> fields)
     {
-        requireNonNull(fields, "fields is null");
+        Objects.requireNonNull(fields, "fields is null");
         this.allFields = ImmutableList.copyOf(fields);
-        this.visibleFields = ImmutableList.copyOf(Iterables.filter(fields, not(Field::isHidden)));
+        this.visibleFields = ImmutableList.copyOf(Iterables.filter(fields, Predicates.not(Field::isHidden)));
 
         int index = 0;
         ImmutableMap.Builder<Field, Integer> builder = ImmutableMap.builder();
@@ -51,9 +49,9 @@ public class RelationType
      */
     public int indexOf(Field field)
     {
-        requireNonNull(field, "field cannot be null");
+        Objects.requireNonNull(field, "field cannot be null");
         Integer index = fieldIndexes.get(field);
-        //checkArgument(index != null, "Field %s not found", field);
+        Preconditions.checkArgument(index != null, "Field %s not found", field);
         return index;
     }
 
@@ -62,7 +60,7 @@ public class RelationType
      */
     public Field getFieldByIndex(int fieldIndex)
     {
-        checkElementIndex(fieldIndex, allFields.size(), "fieldIndex");
+        Preconditions.checkElementIndex(fieldIndex, allFields.size(), "fieldIndex");
         return allFields.get(fieldIndex);
     }
 
@@ -106,7 +104,7 @@ public class RelationType
     {
         return visibleFields.stream()
                 .filter(input -> input.matchesPrefix(prefix))
-                .collect(toImmutableList());
+                .collect(ImmutableList.toImmutableList());
     }
 
     /**
@@ -144,7 +142,7 @@ public class RelationType
     public RelationType withAlias(String relationAlias, List<String> columnAliases)
     {
         if (columnAliases != null) {
-            checkArgument(columnAliases.size() == visibleFields.size(),
+            Preconditions.checkArgument(columnAliases.size() == visibleFields.size(),
                     "Column alias list has %s entries but '%s' has %s columns available",
                     columnAliases.size(),
                     relationAlias,

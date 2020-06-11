@@ -13,29 +13,19 @@
  */
 package org.apache.doris.sql.analyzer;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.parser.SqlParser;
+import org.apache.doris.sql.type.BooleanType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.tree.*;
 
 import javax.annotation.Nullable;
 import java.util.*;
-
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Verify.verify;
-import static com.google.common.collect.Iterables.getOnlyElement;
-import static java.lang.String.format;
-import static java.util.Collections.unmodifiableMap;
-import static java.util.Collections.unmodifiableSet;
-import static java.util.Objects.requireNonNull;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.EXPRESSION_NOT_CONSTANT;
-import static org.apache.doris.sql.analyzer.SemanticErrorCode.TYPE_MISMATCH;
-import static org.apache.doris.sql.analyzer.SemanticExceptions.missingAttributeException;
-import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 
 public class ExpressionAnalyzer
 {
@@ -61,8 +51,8 @@ public class ExpressionAnalyzer
             WarningCollector warningCollector,
             boolean isDescribe)
     {
-        this.symbolTypes = requireNonNull(symbolTypes, "symbolTypes is null");
-        this.parameters = requireNonNull(parameters, "parameters is null");
+        this.symbolTypes = Objects.requireNonNull(symbolTypes, "symbolTypes is null");
+        this.parameters = Objects.requireNonNull(parameters, "parameters is null");
         this.isDescribe = isDescribe;
         //this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
         this.warningCollector = null;
@@ -70,13 +60,13 @@ public class ExpressionAnalyzer
 
     public Map<NodeRef<Expression>, Type> getExpressionTypes()
     {
-        return unmodifiableMap(expressionTypes);
+        return Collections.unmodifiableMap(expressionTypes);
     }
 
     public Type setExpressionType(Expression expression, Type type)
     {
-        requireNonNull(expression, "expression cannot be null");
-        requireNonNull(type, "type cannot be null");
+        Objects.requireNonNull(expression, "expression cannot be null");
+        Objects.requireNonNull(type, "type cannot be null");
 
         expressionTypes.put(NodeRef.of(expression), type);
 
@@ -85,26 +75,26 @@ public class ExpressionAnalyzer
 
     private Type getExpressionType(Expression expression)
     {
-        requireNonNull(expression, "expression cannot be null");
+        Objects.requireNonNull(expression, "expression cannot be null");
 
         Type type = expressionTypes.get(NodeRef.of(expression));
-        checkState(type != null, "Expression not yet analyzed: %s", expression);
+        Preconditions.checkState(type != null, "Expression not yet analyzed: %s", expression);
         return type;
     }
 
     public Map<NodeRef<Expression>, Type> getExpressionCoercions()
     {
-        return unmodifiableMap(expressionCoercions);
+        return Collections.unmodifiableMap(expressionCoercions);
     }
 
     public Set<NodeRef<Expression>> getTypeOnlyCoercions()
     {
-        return unmodifiableSet(typeOnlyCoercions);
+        return Collections.unmodifiableSet(typeOnlyCoercions);
     }
 
     public Map<NodeRef<Expression>, FieldId> getColumnReferences()
     {
-        return unmodifiableMap(columnReferences);
+        return Collections.unmodifiableMap(columnReferences);
     }
 
     public Type analyze(Expression expression, Scope scope)
@@ -121,7 +111,7 @@ public class ExpressionAnalyzer
 
     public Set<NodeRef<QuantifiedComparisonExpression>> getQuantifiedComparisons()
     {
-        return unmodifiableSet(quantifiedComparisons);
+        return Collections.unmodifiableSet(quantifiedComparisons);
     }
 
     public Multimap<QualifiedObjectName, String> getTableColumnReferences()
@@ -136,7 +126,7 @@ public class ExpressionAnalyzer
         private final WarningCollector warningCollector;
 
         public Visitor(Scope baseScope, WarningCollector warningCollector) {
-            this.baseScope = requireNonNull(baseScope, "baseScope is null");
+            this.baseScope = Objects.requireNonNull(baseScope, "baseScope is null");
             this.warningCollector = warningCollector;
         }
 
@@ -175,7 +165,7 @@ public class ExpressionAnalyzer
             }
 
             FieldId previous = columnReferences.put(NodeRef.of(node), fieldId);
-            checkState(previous == null, "%s already known to refer to %s", node, previous);
+            Preconditions.checkState(previous == null, "%s already known to refer to %s", node, previous);
             return setExpressionType(node, field.getType());
         }
 
@@ -191,7 +181,7 @@ public class ExpressionAnalyzer
                     return handleResolvedField(node, resolvedField.get(), context);
                 }
                 if (!scope.isColumnReference(qualifiedName)) {
-                    throw missingAttributeException(node, qualifiedName);
+                    throw SemanticExceptions.missingAttributeException(node, qualifiedName);
                 }
             }
             return null;
@@ -226,7 +216,7 @@ public class ExpressionAnalyzer
                     throw new IllegalStateException(format("Unexpected comparison type: %s", node.getOperator()));
             }
             */
-            return setExpressionType(node, BOOLEAN);
+            return setExpressionType(node, BooleanType.BOOLEAN);
         }
 
         @Override
@@ -243,7 +233,7 @@ public class ExpressionAnalyzer
         private Context(
                 Scope scope)
         {
-            this.scope = requireNonNull(scope, "scope is null");
+            this.scope = Objects.requireNonNull(scope, "scope is null");
         }
 
         Scope getScope()
