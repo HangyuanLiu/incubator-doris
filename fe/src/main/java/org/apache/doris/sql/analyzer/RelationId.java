@@ -2,6 +2,8 @@ package org.apache.doris.sql.analyzer;
 
 import org.apache.doris.sql.tree.Node;
 
+import java.util.Objects;
+
 import static java.lang.System.identityHashCode;
 import static java.util.Objects.requireNonNull;
 
