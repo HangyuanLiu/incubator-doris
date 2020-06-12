@@ -33,7 +33,8 @@ public enum AggregateType {
     REPLACE_IF_NOT_NULL("REPLACE_IF_NOT_NULL"),
     HLL_UNION("HLL_UNION"),
     NONE("NONE"),
-    BITMAP_UNION("BITMAP_UNION");
+    BITMAP_UNION("BITMAP_UNION"),
+    PERCENTILE_UNION("PERCENTILE_UNION");
 
     private static EnumMap<AggregateType, EnumSet<PrimitiveType>> compatibilityMap;
 
@@ -154,6 +155,8 @@ public enum AggregateType {
                 return TAggregationType.HLL_UNION;
             case BITMAP_UNION:
                 return TAggregationType.BITMAP_UNION;
+            case PERCENTILE_UNION:
+                return TAggregationType.PERCENTILE_UNION;
             default:
                 return null;
         }

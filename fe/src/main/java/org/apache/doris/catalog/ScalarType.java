@@ -129,6 +129,8 @@ public class ScalarType extends Type {
                 return createHllType();
             case BITMAP:
                 return BITMAP;
+            case PERCENTILE:
+                return PERCENTILE;
             case DATE:
                 return DATE;
             case DATETIME:

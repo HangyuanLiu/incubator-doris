@@ -55,8 +55,12 @@ public enum PrimitiveType {
     TIME("TIME", 8, TPrimitiveType.TIME),
     // we use OBJECT type represent BITMAP type in Backend
     BITMAP("BITMAP", 16, TPrimitiveType.OBJECT),
+
+    PERCENTILE("PERCENTILE", 16, TPrimitiveType.OBJECT),
     // Unsupported scalar types.
     BINARY("BINARY", -1, TPrimitiveType.BINARY);
+
+
 
 
     private static final int DATE_INDEX_LEN = 3;
@@ -83,6 +87,7 @@ public enum PrimitiveType {
         builder.put(NULL_TYPE, CHAR);
         builder.put(NULL_TYPE, VARCHAR);
         builder.put(NULL_TYPE, BITMAP);
+        builder.put(NULL_TYPE, PERCENTILE);
         builder.put(NULL_TYPE, TIME);
         // Boolean
         builder.put(BOOLEAN, BOOLEAN);
@@ -243,6 +248,7 @@ public enum PrimitiveType {
         builder.put(VARCHAR, VARCHAR);
         builder.put(VARCHAR, HLL);
         builder.put(VARCHAR, BITMAP);
+        builder.put(VARCHAR, PERCENTILE);
         // Decimal
         builder.put(DECIMAL, BOOLEAN);
         builder.put(DECIMAL, TINYINT);
@@ -279,6 +285,10 @@ public enum PrimitiveType {
         //TIME
         builder.put(TIME, TIME);
         builder.put(TIME, DOUBLE);
+
+        //PERCENTILE
+        builder.put(PERCENTILE, PERCENTILE);
+        builder.put(PERCENTILE, VARCHAR);
 
         implicitCastMap = builder.build();
     }
@@ -325,6 +335,7 @@ public enum PrimitiveType {
         supportedTypes.add(DECIMAL);
         supportedTypes.add(DECIMALV2);
         supportedTypes.add(BITMAP);
+        supportedTypes.add(PERCENTILE);
     }
 
     public static ArrayList<PrimitiveType> getIntegerTypes() {
@@ -378,6 +389,7 @@ public enum PrimitiveType {
         compatibilityMatrix[NULL_TYPE.ordinal()][DECIMALV2.ordinal()] = DECIMALV2;
         compatibilityMatrix[NULL_TYPE.ordinal()][TIME.ordinal()] = TIME;
         compatibilityMatrix[NULL_TYPE.ordinal()][BITMAP.ordinal()] = BITMAP;
+        compatibilityMatrix[NULL_TYPE.ordinal()][PERCENTILE.ordinal()] = PERCENTILE;
 
         compatibilityMatrix[BOOLEAN.ordinal()][BOOLEAN.ordinal()] = BOOLEAN;
         compatibilityMatrix[BOOLEAN.ordinal()][TINYINT.ordinal()] = TINYINT;
@@ -514,6 +526,8 @@ public enum PrimitiveType {
         compatibilityMatrix[HLL.ordinal()][TIME.ordinal()] = INVALID_TYPE;
 
         compatibilityMatrix[BITMAP.ordinal()][BITMAP.ordinal()] = BITMAP;
+
+        compatibilityMatrix[PERCENTILE.ordinal()][PERCENTILE.ordinal()] = PERCENTILE;
 
         compatibilityMatrix[TIME.ordinal()][TIME.ordinal()] = TIME;
     }

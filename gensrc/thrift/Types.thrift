@@ -132,7 +132,8 @@ enum TAggregationType {
     HLL_UNION,
     NONE,
     BITMAP_UNION,
-    REPLACE_IF_NOT_NULL
+    REPLACE_IF_NOT_NULL,
+    PERCENTILE_UNION
 }
 
 enum TPushType {

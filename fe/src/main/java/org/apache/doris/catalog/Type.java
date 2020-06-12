@@ -77,6 +77,7 @@ public abstract class Type {
     public static final ScalarType HLL = ScalarType.createHllType();
     public static final ScalarType CHAR = (ScalarType) ScalarType.createCharType(-1);
     public static final ScalarType BITMAP = new ScalarType(PrimitiveType.BITMAP);
+    public static final ScalarType PERCENTILE = new ScalarType(PrimitiveType.PERCENTILE);
 
     private static ArrayList<ScalarType> integerTypes;
     private static ArrayList<ScalarType> numericTypes;
@@ -114,6 +115,7 @@ public abstract class Type {
         supportedTypes.add(VARCHAR);
         supportedTypes.add(HLL);
         supportedTypes.add(BITMAP);
+        supportedTypes.add(PERCENTILE);
         supportedTypes.add(CHAR);
         supportedTypes.add(DATE);
         supportedTypes.add(DATETIME);
@@ -195,7 +197,7 @@ public abstract class Type {
     // 3. don't support group by
     // 4. don't support index
     public boolean isOnlyMetricType() {
-        return isScalarType(PrimitiveType.HLL) || isScalarType(PrimitiveType.BITMAP);
+        return isScalarType(PrimitiveType.HLL) || isScalarType(PrimitiveType.BITMAP) || isScalarType(PrimitiveType.PERCENTILE);
     }
 
     public static final String OnlyMetricTypeErrorMsg =
@@ -469,6 +471,8 @@ public abstract class Type {
                 return Type.HLL;
             case BITMAP:
                 return Type.BITMAP;
+            case PERCENTILE:
+                return Type.PERCENTILE;
             default:
                 return null;
         }
@@ -905,6 +909,9 @@ public abstract class Type {
         // BITMAP
         compatibilityMatrix[BITMAP.ordinal()][TIME.ordinal()] = PrimitiveType.INVALID_TYPE;
 
+        //PERCENTILE
+        //compatibilityMatrix[PERCENTILE.ordinal()]
+
         // Check all of the necessary entries that should be filled.
         // ignore binary
         for (int i = 0; i < PrimitiveType.values().length - 1; ++i) {
@@ -918,6 +925,7 @@ public abstract class Type {
                 if (t1 == PrimitiveType.DECIMAL || t2 == PrimitiveType.DECIMAL) continue;
                 if (t1 == PrimitiveType.DECIMALV2 || t2 == PrimitiveType.DECIMALV2) continue;
                 if (t1 == PrimitiveType.TIME || t2 == PrimitiveType.TIME) continue;
+                if (t1 == PrimitiveType.PERCENTILE || t2 == PrimitiveType.PERCENTILE) continue;
                 Preconditions.checkNotNull(compatibilityMatrix[i][j]);
             }
         }
@@ -944,6 +952,7 @@ public abstract class Type {
             case VARCHAR:
             case HLL:
             case BITMAP:
+            case PERCENTILE:
                 return VARCHAR;
             case DECIMAL:
                 return DECIMAL;
