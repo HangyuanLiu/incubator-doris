@@ -2,6 +2,7 @@ package org.apache.doris.sql.relation;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.doris.catalog.PrimitiveType;
 import org.apache.doris.sql.type.Type;
 
 import java.util.Objects;

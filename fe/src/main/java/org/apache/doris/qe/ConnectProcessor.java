@@ -68,6 +68,7 @@ import org.apache.doris.sql.planner.LogicalPlanner;
 import org.apache.doris.sql.planner.PhysicalPlanner;
 import org.apache.doris.sql.planner.Plan;
 import org.apache.doris.sql.planner.plan.OutputNode;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.Statement;
@@ -225,7 +226,7 @@ public class ConnectProcessor {
             LogicalPlanner logicalPlanner = new LogicalPlanner(PlanNodeId.createGenerator());
             Plan plan = logicalPlanner.plan(analysis);
             OutputNode outputNode = (OutputNode) plan.getRoot();
-            outputNode.getOutputVariables();
+            List<VariableReferenceExpression> outputExprs = outputNode.getOutputVariables();
 
             //physical plan
             PhysicalPlanner physicalPlanner = new PhysicalPlanner();
@@ -243,7 +244,7 @@ public class ConnectProcessor {
             //execute this query
             ctx.getState().reset();
             executor = new StmtExecutor(ctx);
-            executor.executeV2(ctx, fragments, new ArrayList<>(), descTbl.toThrift());
+            executor.executeV2(ctx, fragments, new ArrayList<>(), descTbl.toThrift(), outputExprs);
         } catch (Exception ex) {
             ex.printStackTrace();
             LOG.debug("Query Fail");

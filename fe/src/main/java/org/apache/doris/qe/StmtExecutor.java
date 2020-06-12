@@ -39,6 +39,7 @@ import org.apache.doris.analysis.UseStmt;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.Database;
+import org.apache.doris.catalog.PrimitiveType;
 import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.catalog.Table.TableType;
 import org.apache.doris.catalog.Type;
@@ -69,6 +70,7 @@ import org.apache.doris.proto.PQueryStatistics;
 import org.apache.doris.qe.QueryState.MysqlStateType;
 import org.apache.doris.rewrite.ExprRewriter;
 import org.apache.doris.rpc.RpcException;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.task.LoadEtlTask;
 import org.apache.doris.thrift.TDescriptorTable;
 import org.apache.doris.thrift.TExplainLevel;
@@ -224,7 +226,8 @@ public class StmtExecutor {
         return parsedStmt;
     }
 
-    public void executeV2(ConnectContext context, ArrayList<PlanFragment> fragments, List<ScanNode> scanNodes, TDescriptorTable descTable) throws Exception {
+    public void executeV2(ConnectContext context, ArrayList<PlanFragment> fragments, List<ScanNode> scanNodes,
+                          TDescriptorTable descTable, List<VariableReferenceExpression> outputExprs) throws Exception {
         context.getState().setIsQuery(true);
         int retryTime = Config.max_query_retry_time;
         for (int i = 0; i < retryTime; i ++) {
@@ -257,7 +260,7 @@ public class StmtExecutor {
                 // send result
                 RowBatch batch;
                 MysqlChannel channel = context.getMysqlChannel();
-                sendFields(queryStmt.getColLabels(), queryStmt.getResultExprs());
+                sendFields(outputExprs);
                 while (true) {
                     batch = coord.getNext();
                     if (batch.getBatch() != null) {
@@ -899,6 +902,25 @@ public class StmtExecutor {
         for (int i = 0; i < colNames.size(); ++i) {
             serializer.reset();
             serializer.writeField(colNames.get(i), exprs.get(i).getType().getPrimitiveType());
+            context.getMysqlChannel().sendOnePacket(serializer.toByteBuffer());
+        }
+        // send EOF
+        serializer.reset();
+        MysqlEofPacket eofPacket = new MysqlEofPacket(context.getState());
+        eofPacket.writeTo(serializer);
+        context.getMysqlChannel().sendOnePacket(serializer.toByteBuffer());
+    }
+
+    private void sendFields(List<VariableReferenceExpression> colNames) throws IOException {
+        // sends how many columns
+        serializer.reset();
+        serializer.writeVInt(colNames.size());
+        context.getMysqlChannel().sendOnePacket(serializer.toByteBuffer());
+        // send field one by one
+        for (int i = 0; i < colNames.size(); ++i) {
+            serializer.reset();
+            //TODO(lhy) support more type
+            serializer.writeField(colNames.get(i).getName(), PrimitiveType.BIGINT);
             context.getMysqlChannel().sendOnePacket(serializer.toByteBuffer());
         }
         // send EOF
