@@ -101,6 +101,10 @@ public enum AggregateType {
         primitiveTypeList.clear();
         primitiveTypeList.add(PrimitiveType.BITMAP);
         compatibilityMap.put(BITMAP_UNION, EnumSet.copyOf(primitiveTypeList));
+        
+        primitiveTypeList.clear();
+        primitiveTypeList.add(PrimitiveType.PERCENTILE);
+        compatibilityMap.put(PERCENTILE_UNION, EnumSet.copyOf(primitiveTypeList));
 
         primitiveTypeList.clear();
         primitiveTypeList.add(PrimitiveType.PERCENTILE);
