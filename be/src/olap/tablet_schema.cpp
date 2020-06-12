@@ -101,6 +101,8 @@ FieldAggregationMethod TabletColumn::get_aggregation_type_by_string(const std::s
         aggregation_type = OLAP_FIELD_AGGREGATION_HLL_UNION;
     } else if (0 == upper_str.compare("BITMAP_UNION")) {
         aggregation_type = OLAP_FIELD_AGGREGATION_BITMAP_UNION;
+    } else if (0 == upper_str.compare("PERCENTILE_UNION")) {
+        aggregation_type = OLAP_FIELD_AGGREGATION_PERCENTILE_UNION;
     } else {
         LOG(WARNING) << "invalid aggregation type string. [aggregation='" << str << "']";
         aggregation_type = OLAP_FIELD_AGGREGATION_UNKNOWN;
@@ -210,6 +212,9 @@ std::string TabletColumn::get_string_by_aggregation_type(FieldAggregationMethod 
 
         case OLAP_FIELD_AGGREGATION_BITMAP_UNION:
             return "BITMAP_UNION";
+
+        case OLAP_FIELD_AGGREGATION_PERCENTILE_UNION:
+            return "PERCENTILE_UNION";
 
         default:
             return "UNKNOWN";

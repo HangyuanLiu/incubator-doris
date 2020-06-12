@@ -67,4 +67,4 @@ add_library(Exprs
   new_agg_fn_evaluator.cc
   bitmap_function.cpp
   hll_function.cpp
-  grouping_sets_functions.cpp)
+  grouping_sets_functions.cpp percentile_function.cpp percentile_function.h)

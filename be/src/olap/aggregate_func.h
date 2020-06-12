@@ -27,6 +27,7 @@
 #include "runtime/mem_pool.h"
 #include "runtime/mem_tracker.h"
 #include "util/bitmap_value.h"
+#include "util/tdigest.h"
 
 namespace doris {
 
@@ -541,11 +542,51 @@ struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_BITMAP_UNION, OLAP_FIELD_TYPE_
     }
 };
 
-
 // for backward compatibility
 template <>
 struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_BITMAP_UNION, OLAP_FIELD_TYPE_VARCHAR> :
     public AggregateFuncTraits<OLAP_FIELD_AGGREGATION_BITMAP_UNION, OLAP_FIELD_TYPE_OBJECT> {};
+
+template <>
+struct AggregateFuncTraits<OLAP_FIELD_AGGREGATION_PERCENTILE_UNION, OLAP_FIELD_TYPE_OBJECT> {
+    static void init(RowCursorCell *dst, const char *src, bool src_null, MemPool *mem_pool, ObjectPool *agg_pool) {
+        DCHECK_EQ(src_null, false);
+        dst->set_not_null();
+        auto *src_slice = reinterpret_cast<const Slice *>(src);
+        auto *dst_slice = reinterpret_cast<Slice *>(dst->mutable_cell_ptr());
+
+        dst_slice->size = 0;
+        auto percentile = new TDigest(src_slice->data);
+
+        dst_slice->data = (char*) percentile;
+
+        mem_pool->mem_tracker()->consume(sizeof(TDigest));
+
+        agg_pool->add(percentile);
+    }
+
+    static void update(RowCursorCell *dst, const RowCursorCell &src, MemPool *mem_pool) {
+        DCHECK_EQ(src.is_null(), false);
+
+        auto dst_slice = reinterpret_cast<Slice *>(dst->mutable_cell_ptr());
+        DCHECK_EQ(dst_slice->size, 0);
+        auto dst_percentile = reinterpret_cast<TDigest *>(dst_slice->data);
+        auto src_slice = reinterpret_cast<const Slice *>(src.cell_ptr());
+
+        dst_percentile->merge(reinterpret_cast<TDigest *>(src_slice->data));
+    }
+
+    // The BitmapValue object memory will be released by ObjectPool
+    static void finalize(RowCursorCell *src, MemPool *mem_pool) {
+        auto slice = reinterpret_cast<Slice *>(src->mutable_cell_ptr());
+        DCHECK_EQ(slice->size, 0);
+        auto percentile = reinterpret_cast<TDigest *>(slice->data);
+
+        slice->size = percentile->serialized_size();
+        slice->data = (char *) mem_pool->allocate(slice->size);
+        percentile->serialize((uint8 *)slice->data);
+    }
+};
 
 
 template<FieldAggregationMethod aggMethod, FieldType fieldType>

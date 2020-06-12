@@ -151,6 +151,10 @@ public:
 
     explicit TDigest(Value compression) : TDigest(compression, 0) {}
 
+    explicit TDigest(const char* src) {
+        unserialize((uint8_t*) src);
+    }
+
     TDigest(Value compression, Index bufferSize) : TDigest(compression, bufferSize, 0) {}
 
     TDigest(Value compression, Index unmergedSize, Index mergedSize)

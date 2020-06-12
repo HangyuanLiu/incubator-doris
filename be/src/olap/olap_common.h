@@ -156,6 +156,7 @@ enum FieldAggregationMethod {
     OLAP_FIELD_AGGREGATION_BITMAP_UNION = 7,
     // Replace if and only if added value is not null
     OLAP_FIELD_AGGREGATION_REPLACE_IF_NOT_NULL = 8,
+    OLAP_FIELD_AGGREGATION_PERCENTILE_UNION = 9
 };
 
 // 压缩算法类型

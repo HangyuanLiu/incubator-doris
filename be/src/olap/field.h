@@ -481,6 +481,27 @@ public:
     }
 };
 
+class PercentileAggField: public Field {
+public:
+    explicit PercentileAggField(const TabletColumn& column) : Field(column) {
+    }
+
+    // Hll storage data always not null
+    void agg_init(RowCursorCell* dst, const RowCursorCell& src, MemPool* mem_pool, ObjectPool* agg_pool) const override {
+        _agg_info->init(dst, (const char*)src.cell_ptr(), false, mem_pool, agg_pool);
+    }
+
+    char* allocate_memory(char* cell_ptr, char* variable_ptr) const override {
+        auto slice = (Slice*)cell_ptr;
+        slice->data = nullptr;
+        return variable_ptr;
+    }
+
+    PercentileAggField* clone() const override {
+        return new PercentileAggField(*this);
+    }
+};
+
 class FieldFactory {
 public:
     static Field* create(const TabletColumn& column) {
@@ -516,6 +537,8 @@ public:
                 return new HllAggField(column);
             case OLAP_FIELD_AGGREGATION_BITMAP_UNION:
                 return new BitmapAggField(column);
+            case OLAP_FIELD_AGGREGATION_PERCENTILE_UNION:
+                return new PercentileAggField(column);
             case OLAP_FIELD_AGGREGATION_UNKNOWN:
                 LOG(WARNING) << "WOW! value column agg type is unknown";
                 return nullptr;

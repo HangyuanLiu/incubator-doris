@@ -102,6 +102,10 @@ public enum AggregateType {
         primitiveTypeList.add(PrimitiveType.BITMAP);
         compatibilityMap.put(BITMAP_UNION, EnumSet.copyOf(primitiveTypeList));
 
+        primitiveTypeList.clear();
+        primitiveTypeList.add(PrimitiveType.PERCENTILE);
+        compatibilityMap.put(PERCENTILE_UNION, EnumSet.copyOf(primitiveTypeList));
+
         compatibilityMap.put(NONE, EnumSet.copyOf(exc_bitmap_hll));
     }
     private final String sqlName;

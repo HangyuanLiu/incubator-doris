@@ -658,6 +658,10 @@ visible_functions = [
     [['bitmap_has_any'], 'BOOLEAN', ['BITMAP','BITMAP'],
         '_ZN5doris15BitmapFunctions14bitmap_has_anyEPN9doris_udf15FunctionContextERKNS1_9StringValES6_'],
 
+   #percentile function
+   [['percentile_init'], 'PERCENTILE', ['VARCHAR'],
+        '_ZN5doris15BitmapFunctions9to_bitmapEPN9doris_udf15FunctionContextERKNS1_9StringValE'],
+
     # hash functions
     [['murmur_hash3_32'], 'INT', ['VARCHAR', '...'],
         '_ZN5doris13HashFunctions15murmur_hash3_32EPN9doris_udf15FunctionContextEiPKNS1_9StringValE'],
