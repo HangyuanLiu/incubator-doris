@@ -231,7 +231,7 @@ public class StmtExecutor {
             try {
                 // Every time set no send flag and clean all data in buffer
                 context.getMysqlChannel().reset();
-                QueryStmt queryStmt = (QueryStmt) parsedStmt;
+                //QueryStmt queryStmt = (QueryStmt) parsedStmt;
 
                 // assign query id before explain query return
                 UUID uuid = UUID.randomUUID();

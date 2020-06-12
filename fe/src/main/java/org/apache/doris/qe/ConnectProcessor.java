@@ -67,6 +67,7 @@ import org.apache.doris.sql.parser.SqlBaseParser;
 import org.apache.doris.sql.planner.LogicalPlanner;
 import org.apache.doris.sql.planner.PhysicalPlanner;
 import org.apache.doris.sql.planner.Plan;
+import org.apache.doris.sql.planner.plan.OutputNode;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.Statement;
@@ -223,6 +224,8 @@ public class ConnectProcessor {
             //logical planner
             LogicalPlanner logicalPlanner = new LogicalPlanner(PlanNodeId.createGenerator());
             Plan plan = logicalPlanner.plan(analysis);
+            OutputNode outputNode = (OutputNode) plan.getRoot();
+            outputNode.getOutputVariables();
 
             //physical plan
             PhysicalPlanner physicalPlanner = new PhysicalPlanner();
