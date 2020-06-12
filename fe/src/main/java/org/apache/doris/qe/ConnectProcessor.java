@@ -88,6 +88,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -240,6 +241,10 @@ public class ConnectProcessor {
             DistributedPlanner distributedPlanner = new DistributedPlanner(plannerContext);
             ArrayList<PlanFragment> fragments = distributedPlanner.createPlanFragments(root);
             System.out.println("fragments : " + fragments);
+            for (PlanFragment fragment : fragments) {
+                fragment.finalize(null, false);
+            }
+            Collections.reverse(fragments);
 
             //execute this query
             ctx.getState().reset();
