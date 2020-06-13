@@ -17,6 +17,7 @@
 
 package org.apache.doris.qe;
 
+import com.google.common.collect.Lists;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.apache.doris.analysis.DescriptorTable;
@@ -50,6 +51,7 @@ import org.apache.doris.planner.PlanFragment;
 import org.apache.doris.planner.PlanNode;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.planner.PlannerContext;
+import org.apache.doris.planner.ScanNode;
 import org.apache.doris.plugin.AuditEvent.EventType;
 import org.apache.doris.proto.PQueryStatistics;
 import org.apache.doris.rpc.RpcException;
@@ -229,27 +231,33 @@ public class ConnectProcessor {
             OutputNode outputNode = (OutputNode) plan.getRoot();
             List<VariableReferenceExpression> outputExprs = outputNode.getOutputVariables();
 
+
+            TQueryOptions tQueryOptions = new TQueryOptions();
+            tQueryOptions.num_nodes = 3;
+            //PlannerConext
+            PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
             //physical plan
             PhysicalPlanner physicalPlanner = new PhysicalPlanner();
             DescriptorTable descTbl = new DescriptorTable();
-            PlanNode root = physicalPlanner.createPhysicalPlan(plan, descTbl);
+            PlanNode root = physicalPlanner.createPhysicalPlan(plan, descTbl, plannerContext);
             System.out.println("DescriptorTable : " + descTbl.getTupleDescs());
+
             //execute plan
-            TQueryOptions tQueryOptions = new TQueryOptions();
-            tQueryOptions.num_nodes = 3;
-            PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
             DistributedPlanner distributedPlanner = new DistributedPlanner(plannerContext);
             ArrayList<PlanFragment> fragments = distributedPlanner.createPlanFragments(root);
-            System.out.println("fragments : " + fragments);
+            Collections.reverse(fragments);
             for (PlanFragment fragment : fragments) {
+                System.out.println("fragments : " + fragment.toThrift());
                 fragment.finalize(null, false);
             }
-            Collections.reverse(fragments);
 
             //execute this query
             ctx.getState().reset();
             executor = new StmtExecutor(ctx);
-            executor.executeV2(ctx, fragments, new ArrayList<>(), descTbl.toThrift(), outputExprs);
+            //FIXME (lhy)
+            ScanNode scanNode = (ScanNode) fragments.get(1).getPlanRoot();
+
+            executor.executeV2(ctx, fragments, Lists.newArrayList(scanNode), descTbl.toThrift(), outputExprs);
             LOG.debug("Query success");
             return;
         } catch (Exception ex) {

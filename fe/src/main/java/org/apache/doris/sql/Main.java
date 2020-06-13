@@ -298,7 +298,7 @@ public class Main {
         //physical plan
         PhysicalPlanner physicalPlanner = new PhysicalPlanner();
         DescriptorTable descTbl = new DescriptorTable();
-        PlanNode root = physicalPlanner.createPhysicalPlan(plan, descTbl);
+        PlanNode root = physicalPlanner.createPhysicalPlan(plan, descTbl, null);
         System.out.println(descTbl.getTupleDescs());
 
 
