@@ -120,8 +120,10 @@ public class StmtExecutor {
     private ShowResultSet proxyResultSet = null;
     private PQueryStatistics statisticsForAuditLog;
 
-    public StmtExecutor(ConnectContext context) {
-        this.context = context;
+    public StmtExecutor(ConnectContext ctx) {
+        this.context = ctx;
+        this.serializer = context.getSerializer();
+        this.isProxy = false;
     }
 
     // this constructor is mainly for proxy

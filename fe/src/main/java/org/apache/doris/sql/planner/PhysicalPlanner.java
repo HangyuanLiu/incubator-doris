@@ -8,6 +8,7 @@ import org.apache.doris.analysis.TupleId;
 import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.PrimitiveType;
 import org.apache.doris.catalog.Table;
+import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.planner.OlapScanNode;
 import org.apache.doris.planner.PlanNode;
 import org.apache.doris.planner.PlanNodeId;
@@ -67,8 +68,15 @@ public class PhysicalPlanner {
 
             TupleDescriptor tupleDescriptor = context.descTbl.createTupleDescriptor();
             tupleDescriptor.setTable(referenceTable);
-
-            return new OlapScanNode(new PlanNodeId(0), tupleDescriptor, "OlapScanNode");
+            
+            OlapScanNode scanNode = new OlapScanNode(new PlanNodeId(0), tupleDescriptor, "OlapScanNode");
+            try {
+                scanNode.updateScanRangeInfoByNewMVSelector(((OlapTable) referenceTable).getBaseIndexId(), false, null);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                return null;
+            }
+            return scanNode;
         }
     }
     private static class FragmentProperties {

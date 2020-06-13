@@ -250,9 +250,11 @@ public class ConnectProcessor {
             ctx.getState().reset();
             executor = new StmtExecutor(ctx);
             executor.executeV2(ctx, fragments, new ArrayList<>(), descTbl.toThrift(), outputExprs);
+            LOG.debug("Query success");
+            return;
         } catch (Exception ex) {
             ex.printStackTrace();
-            LOG.debug("Query Fail");
+            LOG.debug("Query fail");
         }
 
         // execute this query.

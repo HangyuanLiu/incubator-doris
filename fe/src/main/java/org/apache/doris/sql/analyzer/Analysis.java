@@ -165,14 +165,13 @@ public class Analysis
     public Type getType(Expression expression)
     {
         Type type = types.get(NodeRef.of(expression));
-        checkArgument(type != null, "Expression not analyzed: %s", expression);
+        checkArgument(type != null);
         return type;
     }
 
     public Type getTypeWithCoercions(Expression expression)
     {
         NodeRef<Expression> key = NodeRef.of(expression);
-        checkArgument(types.containsKey(key), "Expression not analyzed: %s", expression);
         if (coercions.containsKey(key)) {
             return coercions.get(key);
         }
@@ -346,7 +345,6 @@ public class Analysis
     public boolean isColumnReference(Expression expression)
     {
         Objects.requireNonNull(expression, "expression is null");
-        checkArgument(getType(expression) != null, "expression %s has not been analyzed", expression);
         return columnReferences.containsKey(NodeRef.of(expression));
     }
 

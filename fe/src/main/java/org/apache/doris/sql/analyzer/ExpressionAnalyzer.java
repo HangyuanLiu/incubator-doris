@@ -165,7 +165,7 @@ public class ExpressionAnalyzer
             }
 
             FieldId previous = columnReferences.put(NodeRef.of(node), fieldId);
-            Preconditions.checkState(previous == null, "%s already known to refer to %s", node, previous);
+            Preconditions.checkState(previous == null);
             return setExpressionType(node, field.getType());
         }
 

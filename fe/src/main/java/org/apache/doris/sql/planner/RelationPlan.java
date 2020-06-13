@@ -36,11 +36,7 @@ public class RelationPlan {
         requireNonNull(scope, "scope is null");
 
         int allFieldCount = getAllFieldCount(scope);
-        checkArgument(allFieldCount == fieldMappings.size(),
-                "Number of outputs (%s) doesn't match number of fields in scopes tree (%s)",
-                fieldMappings.size(),
-                allFieldCount);
-
+        checkArgument(allFieldCount == fieldMappings.size());
         this.root = root;
         this.scope = scope;
         this.fieldMappings = ImmutableList.copyOf(fieldMappings);
@@ -48,7 +44,6 @@ public class RelationPlan {
 
     public VariableReferenceExpression getVariable(int fieldIndex)
     {
-        checkArgument(fieldIndex >= 0 && fieldIndex < fieldMappings.size(), "No field->symbol mapping for field %s", fieldIndex);
         return fieldMappings.get(fieldIndex);
     }
 

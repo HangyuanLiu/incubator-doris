@@ -51,7 +51,7 @@ public class RelationType
     {
         Objects.requireNonNull(field, "field cannot be null");
         Integer index = fieldIndexes.get(field);
-        Preconditions.checkArgument(index != null, "Field %s not found", field);
+        Preconditions.checkArgument(index != null);
         return index;
     }
 

@@ -22,8 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -62,8 +60,6 @@ class TranslationMap
 
     public void setFieldMappings(List<VariableReferenceExpression> variables)
     {
-        checkArgument(variables.size() == fieldVariables.length, "size of variables list (%s) doesn't match number of expected fields (%s)", variables.size(), fieldVariables.length);
-
         for (int i = 0; i < variables.size(); i++) {
             this.fieldVariables[i] = variables.get(i);
         }
@@ -71,11 +67,6 @@ class TranslationMap
 
     public void copyMappingsFrom(TranslationMap other)
     {
-        checkArgument(other.fieldVariables.length == fieldVariables.length,
-                "number of fields in other (%s) doesn't match number of expected fields (%s)",
-                other.fieldVariables.length,
-                fieldVariables.length);
-
         expressionToVariables.putAll(other.expressionToVariables);
         expressionToExpressions.putAll(other.expressionToExpressions);
         System.arraycopy(other.fieldVariables, 0, fieldVariables, 0, other.fieldVariables.length);
@@ -141,13 +132,11 @@ class TranslationMap
     {
         if (expression instanceof FieldReference) {
             int field = ((FieldReference) expression).getFieldIndex();
-            checkArgument(fieldVariables[field] != null, "No mapping for field: %s", field);
             return fieldVariables[field];
         }
 
         Expression translated = translateNamesToSymbols(expression);
         if (!expressionToVariables.containsKey(translated)) {
-            checkArgument(expressionToExpressions.containsKey(translated), "No mapping for expression: %s", expression);
             return get(expressionToExpressions.get(translated));
         }
 
@@ -174,7 +163,6 @@ class TranslationMap
             public Expression rewriteFieldReference(FieldReference node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
             {
                 VariableReferenceExpression variable = rewriteBase.getVariable(node.getFieldIndex());
-                checkState(variable != null, "No variable mapping for node '%s' (%s)", node, node.getFieldIndex());
                 return new SymbolReference(variable.getName());
             }
 
