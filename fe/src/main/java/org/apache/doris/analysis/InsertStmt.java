@@ -512,8 +512,10 @@ public class InsertStmt extends DdlStmt {
                 analyzeRow(analyzer, targetColumns, rows, 0, origColIdxsForShadowCols);
                 // rows may be changed in analyzeRow(), so rebuild the result exprs
                 selectStmt.getResultExprs().clear();
+                selectStmt.getBaseTblResultExprs().clear();
                 for (Expr expr : rows.get(0)) {
                     selectStmt.getResultExprs().add(expr);
+                    selectStmt.getBaseTblResultExprs().add(expr);
                 }
             }
             isStreaming = true;
