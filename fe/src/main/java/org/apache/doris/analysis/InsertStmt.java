@@ -33,6 +33,7 @@ import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.DdlException;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
+import org.apache.doris.common.Pair;
 import org.apache.doris.common.UserException;
 import org.apache.doris.metric.MetricRepo;
 import org.apache.doris.mysql.privilege.PrivPredicate;
@@ -437,15 +438,36 @@ public class InsertStmt extends DdlStmt {
          * Rule A: If the column which the shadow column related to is not mentioned,
          * then do not add the shadow column to targetColumns. They will be filled by
          * null or default value when loading.
+         *
+         * When table have materialized view, there may be some materialized view columns.
+         * we should add them to the end of targetColumns.
+         * eg: origin targetColumns: (A,B,C), shadow column: __doris_materialized_view_bitmap_union_C
+         * after processing, targetColumns: (A, B, C, __doris_materialized_view_bitmap_union_C), and
+         * origColIdx2MVColumn has 1 element: "2, __doris_materialized_view_bitmap_union_C"
+         * will be used in as a mapping from queryStmt.getResultExprs() to targetColumns define expr
          */
-        List<Integer> origColIdxsForShadowCols = Lists.newArrayList();
+        List<Pair<Integer, Column>> origColIdxsForShadowCols = Lists.newArrayList();
         for (Column column : targetTable.getFullSchema()) {
             if (column.isNameWithPrefix(SchemaChangeHandler.SHADOW_NAME_PRFIX)) {
                 String origName = Column.removeNamePrefix(column.getName());
                 for (int i = 0; i < targetColumns.size(); i++) {
                     if (targetColumns.get(i).nameEquals(origName, false)) {
                         // Rule A
-                        origColIdxsForShadowCols.add(i);
+                        origColIdxsForShadowCols.add(new Pair<>(i, null));
+                        targetColumns.add(column);
+                        break;
+                    }
+                }
+            }
+            if (column.isNameWithPrefix(CreateMaterializedViewStmt.MATERIALIZED_VIEW_NAME_PRFIX)) {
+                SlotRef refColumn = column.getRefColumn();
+                if (refColumn == null) {
+                    ErrorReport.reportAnalysisException(ErrorCode.ERR_BAD_FIELD_ERROR, column.getName(), targetTable.getName());
+                }
+                String origName = refColumn.getColumnName();
+                for (int originColumnIdx = 0; originColumnIdx < targetColumns.size(); originColumnIdx++) {
+                    if (targetColumns.get(originColumnIdx).nameEquals(origName, false)) {
+                        origColIdxsForShadowCols.add(new Pair<>(originColumnIdx, column));
                         targetColumns.add(column);
                         break;
                     }
@@ -499,10 +521,20 @@ public class InsertStmt extends DdlStmt {
             // INSERT INTO SELECT ... FROM tbl
             if (!origColIdxsForShadowCols.isEmpty()) {
                 // extend the result expr by duplicating the related exprs
-                for (Integer idx : origColIdxsForShadowCols) {
-                    queryStmt.getResultExprs().add(queryStmt.getResultExprs().get(idx));
+                for (Pair<Integer, Column> entry : origColIdxsForShadowCols) {
+                    if (entry.second == null) {
+                        queryStmt.getResultExprs().add(queryStmt.getResultExprs().get(entry.first));
+                    } else {
+                        //substitute define expr slot with select statement result expr
+                        ExprSubstitutionMap smap = new ExprSubstitutionMap();
+                        smap.getLhs().add(entry.second.getRefColumn());
+                        smap.getRhs().add(queryStmt.getResultExprs().get(entry.first));
+                        Expr e = Expr.substituteList(Lists.newArrayList(entry.second.getDefineExpr()), smap, analyzer, false).get(0);
+                        queryStmt.getResultExprs().add(e);
+                    }
                 }
             }
+
             // check compatibility
             for (int i = 0; i < targetColumns.size(); ++i) {
                 Column column = targetColumns.get(i);
@@ -518,17 +550,26 @@ public class InsertStmt extends DdlStmt {
             }
         }
 
-        // expand baseTblResultExprs and colLabels in QueryStmt
+        // expand colLabels in QueryStmt
         if (!origColIdxsForShadowCols.isEmpty()) {
             if (queryStmt.getResultExprs().size() != queryStmt.getBaseTblResultExprs().size()) {
-                for (Integer idx : origColIdxsForShadowCols) {
-                    queryStmt.getBaseTblResultExprs().add(queryStmt.getBaseTblResultExprs().get(idx));
+                for (Pair<Integer, Column> entry  : origColIdxsForShadowCols) {
+                    if (entry.second == null) {
+                        queryStmt.getBaseTblResultExprs().add(queryStmt.getBaseTblResultExprs().get(entry.first));
+                    } else {
+                        //substitute define expr slot with select statement result expr
+                        ExprSubstitutionMap smap = new ExprSubstitutionMap();
+                        smap.getLhs().add(entry.second.getRefColumn());
+                        smap.getRhs().add(queryStmt.getResultExprs().get(entry.first));
+                        Expr e = Expr.substituteList(Lists.newArrayList(entry.second.getDefineExpr()), smap, analyzer, false).get(0);
+                        queryStmt.getBaseTblResultExprs().add(e);
+                    }
                 }
             }
 
             if (queryStmt.getResultExprs().size() != queryStmt.getColLabels().size()) {
-                for (Integer idx : origColIdxsForShadowCols) {
-                    queryStmt.getColLabels().add(queryStmt.getColLabels().get(idx));
+                for (Pair<Integer, Column> entry : origColIdxsForShadowCols) {
+                    queryStmt.getColLabels().add(queryStmt.getColLabels().get(entry.first));
                 }
             }
         }
@@ -547,7 +588,7 @@ public class InsertStmt extends DdlStmt {
     }
 
     private void analyzeRow(Analyzer analyzer, List<Column> targetColumns, List<ArrayList<Expr>> rows,
-            int rowIdx, List<Integer> origColIdxsForShadowCols) throws AnalysisException {
+            int rowIdx, List<Pair<Integer, Column>> origColIdxsForShadowCols) throws AnalysisException {
         // 1. check number of fields if equal with first row
         // targetColumns contains some shadow columns, which is added by system,
         // so we should minus this
@@ -566,14 +607,20 @@ public class InsertStmt extends DdlStmt {
             ArrayList<Expr> extentedRow = Lists.newArrayList();
             extentedRow.addAll(row);
             
-            for (Integer idx : origColIdxsForShadowCols) {
-                extentedRow.add(extentedRow.get(idx));
+            for (Pair<Integer, Column> entry : origColIdxsForShadowCols) {
+                if (entry == null) {
+                    extentedRow.add(extentedRow.get(entry.first));
+                } else {
+                    ExprSubstitutionMap smap = new ExprSubstitutionMap();
+                    smap.getLhs().add(entry.second.getRefColumn());
+                    smap.getRhs().add(extentedRow.get(entry.first));
+                    extentedRow.add(Expr.substituteList(Lists.newArrayList(entry.second.getDefineExpr()), smap, analyzer, false).get(0));
+                }
             }
 
             row = extentedRow;
             rows.set(rowIdx, row);
         }
-
         // check the compatibility of expr in row and column in targetColumns
         for (int i = 0; i < row.size(); ++i) {
             Expr expr = row.get(i);
