@@ -98,6 +98,7 @@ module.exports = [
         children: [
           "fe_config",
           "be_config",
+          "user_property",
         ],
         sidebarDepth: 1,
       },
@@ -108,6 +109,7 @@ module.exports = [
       "export_manual",
       "outfile",
       "privilege",
+      "running-profile",
       "small-file-mgr",
       "sql-mode",
       "time-zone",
@@ -124,6 +126,7 @@ module.exports = [
       "plugin-development-manual",
       "user-defined-function",
       "spark-doris-connector",
+      "logstash",
     ],
   },
   {
