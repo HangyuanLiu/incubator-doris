@@ -127,7 +127,7 @@ import org.apache.doris.deploy.DeployManager;
 import org.apache.doris.deploy.impl.AmbariDeployManager;
 import org.apache.doris.deploy.impl.K8sDeployManager;
 import org.apache.doris.deploy.impl.LocalFileDeployManager;
-import org.apache.doris.external.EsStateStore;
+import org.apache.doris.external.elasticsearch.EsStateStore;
 import org.apache.doris.ha.BDBHA;
 import org.apache.doris.ha.FrontendNodeType;
 import org.apache.doris.ha.HAProtocol;
@@ -202,9 +202,8 @@ import org.apache.doris.task.PullLoadJobMgr;
 import org.apache.doris.thrift.TStorageFormat;
 import org.apache.doris.thrift.TStorageMedium;
 import org.apache.doris.thrift.TStorageType;
-import org.apache.doris.thrift.TTaskType;
 import org.apache.doris.thrift.TTabletType;
-
+import org.apache.doris.thrift.TTaskType;
 import org.apache.doris.transaction.GlobalTransactionMgr;
 import org.apache.doris.transaction.PublishVersionDaemon;
 
@@ -542,21 +541,13 @@ public class Catalog {
         }
     }
 
-    // use this to get real Catalog instance
-    public static Catalog getInstance() {
-        return SingletonHolder.INSTANCE;
-    }
-
-    // use this to get CheckPoint Catalog instance
-    public static Catalog getCheckpoint() {
-        if (CHECKPOINT == null) {
-            CHECKPOINT = new Catalog();
-        }
-        return CHECKPOINT;
-    }
-
     public static Catalog getCurrentCatalog() {
         if (isCheckpointThread()) {
+            // only checkpoint thread it self will goes here.
+            // so no need to care about the thread safe.
+            if (CHECKPOINT == null) {
+                CHECKPOINT = new Catalog();
+            }
             return CHECKPOINT;
         } else {
             return SingletonHolder.INSTANCE;
@@ -1210,8 +1201,11 @@ public class Catalog {
         // start checkpoint thread
         checkpointer = new Checkpoint(editLog);
         checkpointer.setMetaContext(metaContext);
-        checkpointer.start();
+        // set "checkpointThreadId" before the checkpoint thread start, because the thread
+        // need to check the "checkpointThreadId" when running.
         checkpointThreadId = checkpointer.getId();
+
+        checkpointer.start();
         LOG.info("checkpointer thread started. thread id is {}", checkpointThreadId);
 
         // heartbeat mgr
@@ -2970,6 +2964,9 @@ public class Catalog {
         } else if (engineName.equalsIgnoreCase("elasticsearch") || engineName.equalsIgnoreCase("es")) {
             createEsTable(db, stmt);
             return;
+        } else if (engineName.equalsIgnoreCase("hive")) {
+            createHiveTable(db, stmt);
+            return;
         } else {
             ErrorReport.reportDdlException(ErrorCode.ERR_UNKNOWN_STORAGE_ENGINE, engineName);
         }
@@ -3601,7 +3598,7 @@ public class Catalog {
         TableIndexes indexes = new TableIndexes(stmt.getIndexes());
 
         // create table
-        long tableId = Catalog.getInstance().getNextId();
+        long tableId = Catalog.getCurrentCatalog().getNextId();
         OlapTable olapTable = new OlapTable(tableId, tableName, baseSchema, keysType, partitionInfo,
                 distributionInfo, indexes);
         olapTable.setComment(stmt.getComment());
@@ -3855,7 +3852,7 @@ public class Catalog {
 
         List<Column> columns = stmt.getColumns();
 
-        long tableId = Catalog.getInstance().getNextId();
+        long tableId = Catalog.getCurrentCatalog().getNextId();
         MysqlTable mysqlTable = new MysqlTable(tableId, tableName, columns, stmt.getProperties());
         mysqlTable.setComment(stmt.getComment());
         if (!db.createTableWithLock(mysqlTable, false, stmt.isSetIfNotExists())) {
@@ -3885,7 +3882,7 @@ public class Catalog {
             partitionInfo = new SinglePartitionInfo();
         }
 
-        long tableId = Catalog.getInstance().getNextId();
+        long tableId = Catalog.getCurrentCatalog().getNextId();
         EsTable esTable = new EsTable(tableId, tableName, baseSchema, stmt.getProperties(), partitionInfo);
         esTable.setComment(stmt.getComment());
 
@@ -3901,7 +3898,7 @@ public class Catalog {
 
         List<Column> columns = stmt.getColumns();
 
-        long tableId = Catalog.getInstance().getNextId();
+        long tableId = Catalog.getCurrentCatalog().getNextId();
         BrokerTable brokerTable = new BrokerTable(tableId, tableName, columns, stmt.getProperties());
         brokerTable.setComment(stmt.getComment());
         brokerTable.setBrokerProperties(stmt.getExtProperties());
@@ -3912,6 +3909,18 @@ public class Catalog {
         LOG.info("successfully create table[{}-{}]", tableName, tableId);
 
         return;
+    }
+
+    private void createHiveTable(Database db, CreateTableStmt stmt) throws DdlException {
+        String tableName = stmt.getTableName();
+        List<Column> columns = stmt.getColumns();
+        long tableId = getNextId();
+        HiveTable hiveTable = new HiveTable(tableId, tableName, columns, stmt.getProperties());
+        hiveTable.setComment(stmt.getComment());
+        if (!db.createTableWithLock(hiveTable, false, stmt.isSetIfNotExists())) {
+            ErrorReport.reportDdlException(ErrorCode.ERR_CANT_CREATE_TABLE, tableName, "table already exist");
+        }
+        LOG.info("successfully create table[{}-{}]", tableName, tableId);
     }
 
     public static void getDdlStmt(Table table, List<String> createTableStmt, List<String> addPartitionStmt,
@@ -3931,7 +3940,7 @@ public class Catalog {
         // 1.2 other table type
         sb.append("CREATE ");
         if (table.getType() == TableType.MYSQL || table.getType() == TableType.ELASTICSEARCH
-                || table.getType() == TableType.BROKER) {
+                || table.getType() == TableType.BROKER || table.getType() == TableType.HIVE) {
             sb.append("EXTERNAL ");
         }
         sb.append("TABLE ");
@@ -4103,6 +4112,17 @@ public class Catalog {
             sb.append("\"enable_docvalue_scan\" = \"").append(esTable.isDocValueScanEnable()).append("\",\n");
             sb.append("\"enable_keyword_sniff\" = \"").append(esTable.isKeywordSniffEnable()).append("\"\n");
             sb.append(")");
+        } else if (table.getType() == TableType.HIVE) {
+            HiveTable hiveTable = (HiveTable) table;
+            if (!Strings.isNullOrEmpty(table.getComment())) {
+                sb.append("\nCOMMENT \"").append(table.getComment()).append("\"");
+            }
+            // properties
+            sb.append("\nPROPERTIES (\n");
+            sb.append("\"database\" = \"").append(hiveTable.getHiveDb()).append("\",\n");
+            sb.append("\"table\" = \"").append(hiveTable.getHiveTable()).append("\",\n");
+            sb.append(new PrintableMap<>(hiveTable.getHiveProperties(), " = ", true, true, false).toString());
+            sb.append("\n)");
         }
         sb.append(";");
 
@@ -4206,7 +4226,7 @@ public class Catalog {
             GroupId groupId = null;
             if (colocateIndex.isColocateTable(tabletMeta.getTableId())) {
                 // if this is a colocate table, try to get backend seqs from colocation index.
-                Database db = Catalog.getInstance().getDb(tabletMeta.getDbId());
+                Database db = Catalog.getCurrentCatalog().getDb(tabletMeta.getDbId());
                 groupId = colocateIndex.getGroup(tabletMeta.getTableId());
                 // Use db write lock here to make sure the backendsPerBucketSeq is consistent when the backendsPerBucketSeq is updating.
                 // This lock will release very fast.
@@ -5057,6 +5077,11 @@ public class Catalog {
                 // this table is not a colocate table, do nothing
                 return;
             }
+
+            // when replayModifyTableColocate, we need the groupId info
+            String fullGroupName = db.getId() + "_" + oldGroup;
+            groupId = colocateTableIndex.getGroupSchema(fullGroupName).getGroupId();
+
             colocateTableIndex.removeTable(table.getId());
             table.setColocateGroup(null);
         }
@@ -5428,7 +5453,7 @@ public class Catalog {
 
         List<Column> columns = stmt.getColumns();
 
-        long tableId = Catalog.getInstance().getNextId();
+        long tableId = Catalog.getCurrentCatalog().getNextId();
         View newView = new View(tableId, tableName, columns);
         newView.setComment(stmt.getComment());
         newView.setInlineViewDefWithSqlMode(stmt.getInlineViewDef(),
@@ -6017,8 +6042,8 @@ public class Catalog {
                 InfoSchemaDb db;
                 // Use real Catalog instance to avoid InfoSchemaDb id continuously increment
                 // when checkpoint thread load image.
-                if (Catalog.getInstance().getFullNameToDb().containsKey(dbName)) {
-                    db = (InfoSchemaDb)Catalog.getInstance().getFullNameToDb().get(dbName);
+                if (Catalog.getCurrentCatalog().getFullNameToDb().containsKey(dbName)) {
+                    db = (InfoSchemaDb)Catalog.getCurrentCatalog().getFullNameToDb().get(dbName);
                 } else {
                     db = new InfoSchemaDb(cluster.getName());
                     db.setClusterName(cluster.getName());

@@ -52,6 +52,7 @@ public final class MetricRepo {
     private static final DorisMetricRegistry PALO_METRIC_REGISTER = new DorisMetricRegistry();
     
     public static AtomicBoolean isInit = new AtomicBoolean(false);
+    public static final SystemMetrics SYSTEM_METRICS = new SystemMetrics();
 
     public static final String TABLET_NUM = "tablet_num";
     public static final String TABLET_MAX_COMPACTION_SCORE = "tablet_max_compaction_score";
@@ -100,7 +101,7 @@ public final class MetricRepo {
                         MetricUnit.NUMBER, "job statistics") {
                     @Override
                     public Long getValue() {
-                        if (!Catalog.getInstance().isMaster()) {
+                        if (!Catalog.getCurrentCatalog().isMaster()) {
                             return 0L;
                         }
                         return loadManger.getLoadJobNum(state, jobType);
@@ -114,7 +115,7 @@ public final class MetricRepo {
         }
 
         // running alter job
-        Alter alter = Catalog.getInstance().getAlterInstance();
+        Alter alter = Catalog.getCurrentCatalog().getAlterInstance();
         for (JobType jobType : JobType.values()) {
             if (jobType != JobType.SCHEMA_CHANGE && jobType != JobType.ROLLUP) {
                 continue;
@@ -124,7 +125,7 @@ public final class MetricRepo {
                     MetricUnit.NUMBER, "job statistics") {
                 @Override
                 public Long getValue() {
-                    if (!Catalog.getInstance().isMaster()) {
+                    if (!Catalog.getCurrentCatalog().isMaster()) {
                         return 0L;
                     }
                     if (jobType == JobType.SCHEMA_CHANGE) {
@@ -158,7 +159,7 @@ public final class MetricRepo {
                 "max_journal_id", MetricUnit.NUMBER, "max journal id of this frontends") {
             @Override
             public Long getValue() {
-                EditLog editLog = Catalog.getInstance().getEditLog();
+                EditLog editLog = Catalog.getCurrentCatalog().getEditLog();
                 if (editLog == null) {
                     return -1L;
                 }
@@ -172,7 +173,7 @@ public final class MetricRepo {
                 "scheduled_tablet_num", MetricUnit.NUMBER, "number of tablets being scheduled") {
             @Override
             public Long getValue() {
-                if (!Catalog.getInstance().isMaster()) {
+                if (!Catalog.getCurrentCatalog().isMaster()) {
                     return 0L;
                 }
                 return (long) Catalog.getCurrentCatalog().getTabletScheduler().getTotalNum();
@@ -241,11 +242,39 @@ public final class MetricRepo {
         HISTO_QUERY_LATENCY = METRIC_REGISTER.histogram(MetricRegistry.name("query", "latency", "ms"));
         HISTO_EDIT_LOG_WRITE_LATENCY = METRIC_REGISTER.histogram(MetricRegistry.name("editlog", "write", "latency", "ms"));
 
+        // init system metrics
+        initSystemMetrics();
+
+        updateMetrics();
         isInit.set(true);
 
         if (Config.enable_metric_calculator) {
             metricTimer.scheduleAtFixedRate(metricCalculator, 0, 15 * 1000 /* 15s */);
         }
+    }
+
+    private static void initSystemMetrics() {
+        // TCP retransSegs
+        GaugeMetric<Long> tcpRetransSegs = (GaugeMetric<Long>) new GaugeMetric<Long>(
+                "snmp", MetricUnit.NUMBER, "All TCP packets retransmitted") {
+            @Override
+            public Long getValue() {
+                return SYSTEM_METRICS.tcpRetransSegs;
+            }
+        };
+        tcpRetransSegs.addLabel(new MetricLabel("name", "tcp_retrans_segs"));
+        PALO_METRIC_REGISTER.addPaloMetrics(tcpRetransSegs);
+
+        // TCP inErrs
+        GaugeMetric<Long> tpcInErrs = (GaugeMetric<Long>) new GaugeMetric<Long>(
+                "snmp", MetricUnit.NUMBER, "The number of all problematic TCP packets received") {
+            @Override
+            public Long getValue() {
+                return SYSTEM_METRICS.tcpInErrs;
+            }
+        };
+        tpcInErrs.addLabel(new MetricLabel("name", "tcp_in_errs"));
+        PALO_METRIC_REGISTER.addPaloMetrics(tpcInErrs);
     }
 
     // to generate the metrics related to tablets of each backends
@@ -270,7 +299,7 @@ public final class MetricRepo {
                     MetricUnit.NUMBER, "tablet number") {
                 @Override
                 public Long getValue() {
-                    if (!Catalog.getInstance().isMaster()) {
+                    if (!Catalog.getCurrentCatalog().isMaster()) {
                         return 0L;
                     }
                     return (long) invertedIndex.getTabletNumByBackendId(beId);
@@ -285,7 +314,7 @@ public final class MetricRepo {
                     "tablet max compaction score") {
                 @Override
                 public Long getValue() {
-                    if (!Catalog.getInstance().isMaster()) {
+                    if (!Catalog.getCurrentCatalog().isMaster()) {
                         return 0L;
                     }
                     return be.getTabletMaxCompactionScore();
@@ -301,6 +330,10 @@ public final class MetricRepo {
         if (!isInit.get()) {
             return "";
         }
+
+        // update the metrics first
+        updateMetrics();
+
         StringBuilder sb = new StringBuilder();
         // jvm
         JvmService jvmService = new JvmService();
@@ -323,6 +356,11 @@ public final class MetricRepo {
         visitor.getNodeInfo(sb);
 
         return sb.toString();
+    }
+
+    // update some metrics to make a ready to be visited
+    private static void updateMetrics() {
+        SYSTEM_METRICS.update();
     }
 
     public static synchronized List<Metric> getMetricsByName(String name) {

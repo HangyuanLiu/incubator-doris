@@ -49,8 +49,8 @@ import com.google.common.collect.Sets;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -131,12 +131,10 @@ public class DynamicPartitionScheduler extends MasterDaemon {
         ArrayList<AddPartitionClause> addPartitionClauses = new ArrayList<>();
         DynamicPartitionProperty dynamicPartitionProperty = olapTable.getTableProperty().getDynamicPartitionProperty();
         RangePartitionInfo rangePartitionInfo = (RangePartitionInfo) olapTable.getPartitionInfo();
-        Calendar currentDate = Calendar.getInstance(dynamicPartitionProperty.getTimeZone());
+        ZonedDateTime now = ZonedDateTime.now(dynamicPartitionProperty.getTimeZone().toZoneId());
         for (int i = 0; i <= dynamicPartitionProperty.getEnd(); i++) {
-            String prevBorder = DynamicPartitionUtil.getPartitionRangeString(dynamicPartitionProperty,
-                    (Calendar) currentDate.clone(), i, partitionFormat);
-            String nextBorder = DynamicPartitionUtil.getPartitionRangeString(dynamicPartitionProperty,
-                    (Calendar) currentDate.clone(), i + 1, partitionFormat);
+            String prevBorder = DynamicPartitionUtil.getPartitionRangeString(dynamicPartitionProperty, now, i, partitionFormat);
+            String nextBorder = DynamicPartitionUtil.getPartitionRangeString(dynamicPartitionProperty, now, i + 1, partitionFormat);
             PartitionValue lowerValue = new PartitionValue(prevBorder);
             PartitionValue upperValue = new PartitionValue(nextBorder);
 
@@ -193,7 +191,7 @@ public class DynamicPartitionScheduler extends MasterDaemon {
         return addPartitionClauses;
     }
 
-    /*
+    /**
      * 1. get the range of [start, 0) as a reserved range.
      * 2. get DropPartitionClause of partitions which range are before this reserved range.
      */
@@ -205,11 +203,11 @@ public class DynamicPartitionScheduler extends MasterDaemon {
             return dropPartitionClauses;
         }
 
-        Calendar currentDate = Calendar.getInstance(dynamicPartitionProperty.getTimeZone());
+        ZonedDateTime now = ZonedDateTime.now(dynamicPartitionProperty.getTimeZone().toZoneId());
         String lowerBorder = DynamicPartitionUtil.getPartitionRangeString(dynamicPartitionProperty,
-                (Calendar) currentDate.clone(), dynamicPartitionProperty.getStart(), partitionFormat);
+                now, dynamicPartitionProperty.getStart(), partitionFormat);
         String upperBorder = DynamicPartitionUtil.getPartitionRangeString(dynamicPartitionProperty,
-                (Calendar) currentDate.clone(), 0, partitionFormat);
+                now, 0, partitionFormat);
         PartitionValue lowerPartitionValue = new PartitionValue(lowerBorder);
         PartitionValue upperPartitionValue = new PartitionValue(upperBorder);
         Range<PartitionKey> reservePartitionKeyRange;
@@ -249,7 +247,7 @@ public class DynamicPartitionScheduler extends MasterDaemon {
             Pair<Long, Long> tableInfo = iterator.next();
             Long dbId = tableInfo.first;
             Long tableId = tableInfo.second;
-            Database db = Catalog.getInstance().getDb(dbId);
+            Database db = Catalog.getCurrentCatalog().getDb(dbId);
             if (db == null) {
                 iterator.remove();
                 continue;
@@ -356,14 +354,14 @@ public class DynamicPartitionScheduler extends MasterDaemon {
     }
 
     private void initDynamicPartitionTable() {
-        for (Long dbId : Catalog.getInstance().getDbIds()) {
-            Database db = Catalog.getInstance().getDb(dbId);
+        for (Long dbId : Catalog.getCurrentCatalog().getDbIds()) {
+            Database db = Catalog.getCurrentCatalog().getDb(dbId);
             if (db == null) {
                 continue;
             }
             db.readLock();
             try {
-                for (Table table : Catalog.getInstance().getDb(dbId).getTables()) {
+                for (Table table : Catalog.getCurrentCatalog().getDb(dbId).getTables()) {
                     if (DynamicPartitionUtil.isDynamicPartitionTable(table)) {
                         registerDynamicPartitionTable(db.getId(), table.getId());
                     }
