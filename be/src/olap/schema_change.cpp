@@ -279,13 +279,8 @@ bool hll_hash(RowCursor* read_helper, RowCursor* write_helper, const TabletColum
     return true;
 }
 
-<<<<<<< .merge_file_xdGuse
-bool count(RowCursor* read_helper, RowCursor* write_helper, const TabletColumn& ref_column,
-           int field_idx, int ref_field_idx, MemPool* mem_pool) {
-=======
 bool count_field(RowCursor* read_helper, RowCursor* write_helper, const TabletColumn& ref_column,
                  int field_idx, int ref_field_idx, MemPool* mem_pool) {
->>>>>>> .merge_file_i6EbT0
     write_helper->set_not_null(field_idx);
     int64_t count = read_helper->is_null(field_idx) ? 0 : 1;
     write_helper->set_field_content(field_idx, (char*)&count, mem_pool);
@@ -370,13 +365,8 @@ bool RowBlockChanger::change_row_block(
                     _do_materialized_transform = to_bitmap;
                 } else if (_schema_mapping[i].materialized_function == "hll_hash") {
                     _do_materialized_transform = hll_hash;
-<<<<<<< .merge_file_xdGuse
-                } else if (_schema_mapping[i].materialized_function == "count") {
-                    _do_materialized_transform = count;
-=======
                 } else if (_schema_mapping[i].materialized_function == "count_field") {
                     _do_materialized_transform = count_field;
->>>>>>> .merge_file_i6EbT0
                 } else {
                     LOG(WARNING) << "error materialized view function : " << _schema_mapping[i].materialized_function;
                     return false;
@@ -1520,11 +1510,7 @@ OLAPStatus SchemaChangeHandler::_do_process_alter_tablet_v2(const TAlterTabletRe
                 /*
                  * origin_column_name is always be set now,
                  * but origin_column_name may be not set in some materialized view function. eg:count(1)
-<<<<<<< .merge_file_xdGuse
-                 */
-=======
                 */
->>>>>>> .merge_file_i6EbT0
                 if (item.__isset.origin_column_name) {
                     mv_param.origin_column_name = item.origin_column_name;
                 }
@@ -1541,11 +1527,7 @@ OLAPStatus SchemaChangeHandler::_do_process_alter_tablet_v2(const TAlterTabletRe
                     if (item.mv_expr.nodes[0].node_type == TExprNodeType::FUNCTION_CALL) {
                         mv_param.mv_expr = item.mv_expr.nodes[0].fn.name.function_name;
                     } else if (item.mv_expr.nodes[0].node_type == TExprNodeType::CASE_EXPR) {
-<<<<<<< .merge_file_xdGuse
-                        mv_param.mv_expr = "count";
-=======
                         mv_param.mv_expr = "count_field";
->>>>>>> .merge_file_i6EbT0
                     }
                 }
                 sc_params.materialized_params_map.insert(std::make_pair(item.column_name, mv_param));
