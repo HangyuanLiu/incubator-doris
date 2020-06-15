@@ -16,11 +16,18 @@
 // under the License.
 
 package org.apache.doris.task;
+<<<<<<< .merge_file_lJIpZd
 import com.google.common.collect.Lists;
 import org.apache.doris.alter.AlterJobV2;
 import org.apache.doris.analysis.CaseExpr;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.FunctionCallExpr;
+=======
+
+import com.google.common.collect.Lists;
+import org.apache.doris.alter.AlterJobV2;
+import org.apache.doris.analysis.Expr;
+>>>>>>> .merge_file_ezx2f0
 import org.apache.doris.analysis.SlotRef;
 import org.apache.doris.thrift.TAlterMaterializedViewParam;
 import org.apache.doris.thrift.TAlterTabletReqV2;
@@ -61,7 +68,11 @@ public class AlterReplicaTask extends AgentTask {
     public AlterReplicaTask(long backendId, long dbId, long tableId,
             long partitionId, long rollupIndexId, long baseIndexId, long rollupTabletId,
             long baseTabletId, long newReplicaId, int newSchemaHash, int baseSchemaHash,
+<<<<<<< .merge_file_lJIpZd
             long version, long versionHash, long jobId, AlterJobV2.JobType jobType, Map<String, Expr> defineExprs) {
+=======
+            long version, long versionHash, long jobId, AlterJobV2.JobType jobType,  Map<String, Expr> defineExprs) {
+>>>>>>> .merge_file_ezx2f0
         super(null, backendId, TTaskType.ALTER, dbId, tableId, partitionId, rollupIndexId, rollupTabletId);
 
         this.baseTabletId = baseTabletId;
@@ -75,7 +86,10 @@ public class AlterReplicaTask extends AgentTask {
         this.jobId = jobId;
 
         this.jobType = jobType;
+<<<<<<< .merge_file_lJIpZd
 
+=======
+>>>>>>> .merge_file_ezx2f0
         this.defineExprs = defineExprs;
     }
 

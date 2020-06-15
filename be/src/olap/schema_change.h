@@ -40,6 +40,7 @@ class RowBlock;
 // defined in 'row_cursor.h'
 class RowCursor;
 
+<<<<<<< .merge_file_lmdSIq
 
 bool to_bitmap(RowCursor* read_helper, RowCursor* write_helper, const TabletColumn& ref_column,
         int field_idx, int ref_field_idx, MemPool* mem_pool);
@@ -47,6 +48,14 @@ bool hll_hash(RowCursor* read_helper, RowCursor* write_helper, const TabletColum
         int field_idx, int ref_field_idx, MemPool* mem_pool);
 bool count(RowCursor* read_helper, RowCursor* write_helper, const TabletColumn& ref_column,
         int field_idx, int ref_field_idx, MemPool* mem_pool);
+=======
+bool to_bitmap(RowCursor* read_helper, RowCursor* write_helper, const TabletColumn& ref_column,
+               int field_idx, int ref_field_idx, MemPool* mem_pool);
+bool hll_hash(RowCursor* read_helper, RowCursor* write_helper, const TabletColumn& ref_column,
+              int field_idx, int ref_field_idx, MemPool* mem_pool);
+bool count_field(RowCursor* read_helper, RowCursor* write_helper, const TabletColumn& ref_column,
+                 int field_idx, int ref_field_idx, MemPool* mem_pool);
+>>>>>>> .merge_file_xBBPXb
 
 class RowBlockChanger {
 public:
