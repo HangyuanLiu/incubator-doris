@@ -36,8 +36,18 @@ public class IsNullPredicate extends Predicate {
 
     public static void initBuiltins(FunctionSet functionSet) {
         for (Type t: Type.getSupportedTypes()) {
-            if (t.isNull()) continue;
+            //if (t.isNull()) continue;
+
             String isNullSymbol;
+            if (t.isNull()) {
+                String udfType = Function.getUdfType(t.getPrimitiveType());
+                isNullSymbol = "_ZN5doris15IsNullPredicate7is_nullIN9doris_udf" +
+                        udfType.length() + udfType +
+                        "EEENS2_10BooleanValEPNS2_15FunctionContextERKT_";
+                functionSet.addBuiltin(ScalarFunction.createBuiltinOperator(
+                        "is_null_pred_null", isNullSymbol, Lists.newArrayList(t), Type.BOOLEAN));
+                continue;
+            } else
             if (t == Type.BOOLEAN) {
                 isNullSymbol = "_ZN5doris15IsNullPredicate7is_nullIN9doris_udf10BooleanValE" +
                         "EES3_PNS2_15FunctionContextERKT_";
@@ -47,6 +57,7 @@ public class IsNullPredicate extends Predicate {
                         udfType.length() + udfType +
                         "EEENS2_10BooleanValEPNS2_15FunctionContextERKT_";
             }
+            System.out.println(isNullSymbol);
 
             functionSet.addBuiltin(ScalarFunction.createBuiltinOperator(
                     IS_NULL, isNullSymbol, Lists.newArrayList(t), Type.BOOLEAN));
@@ -101,6 +112,14 @@ public class IsNullPredicate extends Predicate {
     @Override
     public void analyzeImpl(Analyzer analyzer) throws AnalysisException {
         super.analyzeImpl(analyzer);
+        System.out.println("collect : " + collectChildReturnTypes()[0]);
+
+        if (collectChildReturnTypes()[0].isNull()) {
+            fn = getBuiltinFunction(
+                    analyzer, "is_null_pred_null", collectChildReturnTypes(), Function.CompareMode.IS_IDENTICAL);
+            return;
+        }
+
         if (isNotNull) {
             fn = getBuiltinFunction(
                     analyzer, IS_NOT_NULL, collectChildReturnTypes(), Function.CompareMode.IS_IDENTICAL);

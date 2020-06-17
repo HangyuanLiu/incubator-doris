@@ -23,6 +23,9 @@
 #define private public
 #include "util/bitmap_value.h"
 
+#define private public
+#include "util/bitmap_value.h"
+
 namespace doris {
 
 TEST(BitmapValueTest, bitmap_union) {
@@ -313,7 +316,6 @@ TEST(BitmapValueTest, bitmap_single_convert) {
     bitmap.add(1);
     ASSERT_STREQ("1", bitmap.to_string().c_str());
     ASSERT_EQ(BitmapValue::SINGLE, bitmap._type);
-    
     BitmapValue bitmap_u;
     bitmap_u.add(1);
     bitmap |= bitmap_u;
