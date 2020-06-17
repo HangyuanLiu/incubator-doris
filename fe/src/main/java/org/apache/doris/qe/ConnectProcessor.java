@@ -248,7 +248,7 @@ public class ConnectProcessor {
             //execute plan
             DistributedPlanner distributedPlanner = new DistributedPlanner(plannerContext);
             ArrayList<PlanFragment> fragments = distributedPlanner.createPlanFragments(root);
-            Collections.reverse(fragments);
+
             for (PlanFragment fragment : fragments) {
                 System.out.println("fragments : " + fragment.toThrift());
                 fragment.finalize(null, false);
@@ -259,6 +259,8 @@ public class ConnectProcessor {
             SlotRef slotRef = new SlotRef(descTbl.getSlotDesc(new SlotId(0)));
             outputExpr.add(slotRef);
             rootFragment.setOutputExprs(outputExpr);
+
+            Collections.reverse(fragments);
 
             //execute this query
             ctx.getState().reset();
