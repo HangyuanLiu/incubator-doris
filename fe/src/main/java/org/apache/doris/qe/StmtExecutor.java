@@ -228,7 +228,7 @@ public class StmtExecutor {
         return parsedStmt;
     }
 
-    public void executeV2(ConnectContext context, ArrayList<PlanFragment> fragments, List<ScanNode> scanNodes,
+    public void executeV2(ArrayList<PlanFragment> fragments, List<ScanNode> scanNodes,
                           TDescriptorTable descTable, List<VariableReferenceExpression> outputExprs) throws Exception {
         context.getState().setIsQuery(true);
         int retryTime = Config.max_query_retry_time;
@@ -278,7 +278,6 @@ public class StmtExecutor {
 
                 statisticsForAuditLog = batch.getQueryStatistics();
                 context.getState().setEof();
-                break;
             } catch (RpcException e) {
                 if (i == retryTime - 1) {
                     throw e;
@@ -291,6 +290,7 @@ public class StmtExecutor {
             } finally {
                 QeProcessorImpl.INSTANCE.unregisterQuery(context.queryId());
             }
+            break;
         }
     }
 

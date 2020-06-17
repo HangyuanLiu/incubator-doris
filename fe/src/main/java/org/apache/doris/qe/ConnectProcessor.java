@@ -21,7 +21,10 @@ import com.google.common.collect.Lists;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.apache.doris.analysis.DescriptorTable;
+import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.KillStmt;
+import org.apache.doris.analysis.SlotId;
+import org.apache.doris.analysis.SlotRef;
 import org.apache.doris.analysis.SqlParser;
 import org.apache.doris.analysis.SqlScanner;
 import org.apache.doris.analysis.StatementBase;
@@ -251,13 +254,19 @@ public class ConnectProcessor {
                 fragment.finalize(null, false);
             }
 
+            PlanFragment rootFragment = fragments.get(fragments.size() - 1);
+            ArrayList<Expr> outputExpr = new ArrayList<>();
+            SlotRef slotRef = new SlotRef(descTbl.getSlotDesc(new SlotId(0)));
+            outputExpr.add(slotRef);
+            rootFragment.setOutputExprs(outputExpr);
+
             //execute this query
             ctx.getState().reset();
             executor = new StmtExecutor(ctx);
             //FIXME (lhy)
             ScanNode scanNode = (ScanNode) fragments.get(1).getPlanRoot();
 
-            executor.executeV2(ctx, fragments, Lists.newArrayList(scanNode), descTbl.toThrift(), outputExprs);
+            executor.executeV2(fragments, Lists.newArrayList(scanNode), descTbl.toThrift(), outputExprs);
             LOG.debug("Query success");
             return;
         } catch (Exception ex) {
