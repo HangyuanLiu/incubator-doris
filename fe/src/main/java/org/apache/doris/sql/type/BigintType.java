@@ -7,13 +7,22 @@ public final class BigintType
 {
     public static final BigintType BIGINT = new BigintType();
 
-    @Override
-    public int getFixedSize() {
-        return 0;
+    private BigintType()
+    {
+        super(new TypeSignature("bigint"));
+        //super(parseTypeSignature(StandardTypes.BIGINT));
     }
 
     @Override
-    public boolean isComparable() {
-        return false;
+    @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
+    public boolean equals(Object other)
+    {
+        return other == BIGINT;
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return getClass().hashCode();
     }
 }

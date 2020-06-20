@@ -11,26 +11,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.doris.sql.type;
+package org.apache.doris.sql.planner.plan;
 
-public abstract class AbstractLongType
-        extends AbstractType
-        implements FixedWidthType
+import java.util.List;
+
+public class ChildReplacer
 {
-
-    public AbstractLongType(TypeSignature signature) {
-        super(signature);
+    private ChildReplacer()
+    {
     }
 
-    @Override
-    public final int getFixedSize()
+    /**
+     * Return an identical copy of the given node with its children replaced
+     */
+    public static LogicalPlanNode replaceChildren(LogicalPlanNode node, List<LogicalPlanNode> children)
     {
-        return Long.BYTES;
-    }
-
-    @Override
-    public boolean isComparable()
-    {
-        return true;
+        for (int i = 0; i < node.getSources().size(); i++) {
+            if (children.get(i) != node.getSources().get(i)) {
+                return node.replaceChildren(children);
+            }
+        }
+        return node;
     }
 }

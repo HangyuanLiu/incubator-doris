@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.TypeProvider;
+import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.Field;
@@ -12,6 +13,8 @@ import org.apache.doris.sql.planner.plan.OutputNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.tree.Query;
 import org.apache.doris.sql.tree.Statement;
+
+import java.util.List;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -23,8 +26,10 @@ public class LogicalPlanner {
 
     IdGenerator<PlanNodeId> idAllocator;
     private final VariableAllocator variableAllocator = new VariableAllocator();
+    private final List<PlanOptimizer> planOptimizers;
 
-    public LogicalPlanner(IdGenerator<PlanNodeId> idAllocator) {
+    public LogicalPlanner(List<PlanOptimizer> planOptimizers, IdGenerator<PlanNodeId> idAllocator) {
+        this.planOptimizers = planOptimizers;
         this.idAllocator = idAllocator;
     }
 
@@ -36,16 +41,16 @@ public class LogicalPlanner {
     public Plan plan(Analysis analysis, Stage stage)
     {
         LogicalPlanNode root = planStatement(analysis, analysis.getStatement());
-        /*
-        planSanityChecker.validateIntermediatePlan(root, session, metadata, sqlParser, variableAllocator.getTypes(), warningCollector);
+
+        //planSanityChecker.validateIntermediatePlan(root, session, metadata, sqlParser, variableAllocator.getTypes(), warningCollector);
 
         if (stage.ordinal() >= Stage.OPTIMIZED.ordinal()) {
             for (PlanOptimizer optimizer : planOptimizers) {
-                root = optimizer.optimize(root, session, variableAllocator.getTypes(), variableAllocator, idAllocator, warningCollector);
+                root = optimizer.optimize(root, null, variableAllocator.getTypes(), idAllocator, null);
                 requireNonNull(root, format("%s returned a null plan", optimizer.getClass().getName()));
             }
         }
-
+        /*
         if (stage.ordinal() >= Stage.OPTIMIZED_AND_VALIDATED.ordinal()) {
             // make sure we produce a valid plan after optimizations run. This is mainly to catch programming errors
             planSanityChecker.validateFinalPlan(root, session, metadata, sqlParser, variableAllocator.getTypes(), warningCollector);

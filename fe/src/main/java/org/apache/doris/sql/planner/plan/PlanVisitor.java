@@ -17,8 +17,17 @@ public abstract class PlanVisitor<R, C>
         return visitPlan(node, context);
     }
 
+    public R visitFilter(FilterNode node, C context)
+    {
+        return visitPlan(node, context);
+    }
+
     public R visitTableScan(TableScanNode node, C context)
     {
+        return visitPlan(node, context);
+    }
+
+    public R visitLimit(LimitNode node, C context) {
         return visitPlan(node, context);
     }
 }

@@ -15,6 +15,7 @@ import org.apache.doris.planner.PlanNode;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.planner.PlannerContext;
 import org.apache.doris.sql.metadata.DorisTableHandle;
+import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.OutputNode;
 import org.apache.doris.sql.planner.plan.PlanVisitor;
@@ -40,8 +41,11 @@ public class PhysicalPlanner {
             return node.accept(this, context);
         }
 
-        public PlanNode visitOutput(OutputNode node, FragmentProperties context)
-        {
+        public PlanNode visitFilter(FilterNode node, FragmentProperties context) {
+            return null;
+        }
+
+        public PlanNode visitOutput(OutputNode node, FragmentProperties context) {
             return visitPlan(node.getSource(), context);
         }
 

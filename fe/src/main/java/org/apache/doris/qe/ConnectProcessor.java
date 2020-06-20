@@ -72,6 +72,9 @@ import org.apache.doris.sql.parser.SqlBaseParser;
 import org.apache.doris.sql.planner.LogicalPlanner;
 import org.apache.doris.sql.planner.PhysicalPlanner;
 import org.apache.doris.sql.planner.Plan;
+import org.apache.doris.sql.planner.optimizations.LimitPushDown;
+import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
+import org.apache.doris.sql.planner.optimizations.PredicatePushDown;
 import org.apache.doris.sql.planner.plan.OutputNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
@@ -229,7 +232,11 @@ public class ConnectProcessor {
             analyzer.analyze(stmt, Optional.empty());
 
             //logical planner
-            LogicalPlanner logicalPlanner = new LogicalPlanner(PlanNodeId.createGenerator());
+            List<PlanOptimizer> optimizers = new ArrayList<>();
+            optimizers.add(new PredicatePushDown());
+            optimizers.add(new LimitPushDown());
+
+            LogicalPlanner logicalPlanner = new LogicalPlanner(optimizers, PlanNodeId.createGenerator());
             Plan plan = logicalPlanner.plan(analysis);
             OutputNode outputNode = (OutputNode) plan.getRoot();
             List<VariableReferenceExpression> outputExprs = outputNode.getOutputVariables();

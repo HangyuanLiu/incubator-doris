@@ -11,26 +11,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.doris.sql.type;
+package org.apache.doris.sql.metadata;
 
-public abstract class AbstractLongType
-        extends AbstractType
-        implements FixedWidthType
+/**
+ * FunctionHandle is a unique handle to identify the function implementation from namespaces.
+ * However, currently it is still under changes, so please don't assume it is backward compatible.
+ */
+public interface FunctionHandle
 {
-
-    public AbstractLongType(TypeSignature signature) {
-        super(signature);
-    }
-
-    @Override
-    public final int getFixedSize()
-    {
-        return Long.BYTES;
-    }
-
-    @Override
-    public boolean isComparable()
-    {
-        return true;
-    }
+    CatalogSchemaName getFunctionNamespace();
 }

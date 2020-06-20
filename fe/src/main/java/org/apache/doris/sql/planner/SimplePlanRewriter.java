@@ -13,7 +13,6 @@
  */
 package org.apache.doris.sql.planner;
 
-import org.apache.doris.planner.PlanNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.PlanVisitor;
 
@@ -21,22 +20,23 @@ import java.util.List;
 
 import static com.google.common.base.Verify.verify;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.doris.sql.planner.plan.ChildReplacer.replaceChildren;
 
 public abstract class SimplePlanRewriter<C>
-        extends PlanVisitor<PlanNode, SimplePlanRewriter.RewriteContext<C>>
+        extends PlanVisitor<LogicalPlanNode, SimplePlanRewriter.RewriteContext<C>>
 {
-    public static <C> PlanNode rewriteWith(SimplePlanRewriter<C> rewriter, LogicalPlanNode node)
+    public static <C> LogicalPlanNode rewriteWith(SimplePlanRewriter<C> rewriter, LogicalPlanNode node)
     {
         return node.accept(rewriter, new RewriteContext<>(rewriter, null));
     }
 
-    public static <C> PlanNode rewriteWith(SimplePlanRewriter<C> rewriter, LogicalPlanNode node, C context)
+    public static <C> LogicalPlanNode rewriteWith(SimplePlanRewriter<C> rewriter, LogicalPlanNode node, C context)
     {
         return node.accept(rewriter, new RewriteContext<>(rewriter, context));
     }
 
     @Override
-    public PlanNode visitPlan(LogicalPlanNode node, RewriteContext<C> context)
+    public LogicalPlanNode visitPlan(LogicalPlanNode node, RewriteContext<C> context)
     {
         return context.defaultRewrite(node, context.get());
     }
@@ -61,7 +61,7 @@ public abstract class SimplePlanRewriter<C>
          * Invoke the rewrite logic recursively on children of the given node and swap it
          * out with an identical copy with the rewritten children
          */
-        public PlanNode defaultRewrite(LogicalPlanNode node)
+        public LogicalPlanNode defaultRewrite(LogicalPlanNode node)
         {
             return defaultRewrite(node, null);
         }
@@ -70,23 +70,21 @@ public abstract class SimplePlanRewriter<C>
          * Invoke the rewrite logic recursively on children of the given node and swap it
          * out with an identical copy with the rewritten children
          */
-        public PlanNode defaultRewrite(LogicalPlanNode node, C context)
+        public LogicalPlanNode defaultRewrite(LogicalPlanNode node, C context)
         {
-            List<PlanNode> children = node.getSources().stream()
+            List<LogicalPlanNode> children = node.getSources().stream()
                     .map(child -> rewrite(child, context))
                     .collect(toImmutableList());
 
-            System.exit(-1);
-            return  null;
-            //return replaceChildren(node, children);
+            return replaceChildren(node, children);
         }
 
         /**
          * This method is meant for invoking the rewrite logic on children while processing a node
          */
-        public PlanNode rewrite(LogicalPlanNode node, C userContext)
+        public LogicalPlanNode rewrite(LogicalPlanNode node, C userContext)
         {
-            PlanNode result = node.accept(nodeRewriter, new RewriteContext<>(nodeRewriter, userContext));
+            LogicalPlanNode result = node.accept(nodeRewriter, new RewriteContext<>(nodeRewriter, userContext));
             verify(result != null, "nodeRewriter returned null for %s", node.getClass().getName());
 
             return result;
@@ -95,7 +93,7 @@ public abstract class SimplePlanRewriter<C>
         /**
          * This method is meant for invoking the rewrite logic on children while processing a node
          */
-        public PlanNode rewrite(LogicalPlanNode node)
+        public LogicalPlanNode rewrite(LogicalPlanNode node)
         {
             return rewrite(node, null);
         }

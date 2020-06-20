@@ -21,16 +21,20 @@ import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.parser.SqlParser;
 import org.apache.doris.sql.type.BooleanType;
+import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.tree.*;
+import org.apache.doris.sql.type.TypeManager;
 
 import javax.annotation.Nullable;
 import java.util.*;
 
+import static java.lang.String.format;
+
 public class ExpressionAnalyzer
 {
-    private static final int MAX_NUMBER_GROUPING_ARGUMENTS_BIGINT = 63;
-    private static final int MAX_NUMBER_GROUPING_ARGUMENTS_INTEGER = 31;
+    private final FunctionManager functionManager;
+    private final TypeManager typeManager;
 
     private final TypeProvider symbolTypes;
     private final boolean isDescribe;
@@ -46,11 +50,16 @@ public class ExpressionAnalyzer
     private final WarningCollector warningCollector;
 
     private ExpressionAnalyzer(
+            FunctionManager functionManager,
+            TypeManager typeManager,
             TypeProvider symbolTypes,
             List<Expression> parameters,
             WarningCollector warningCollector,
             boolean isDescribe)
     {
+        this.functionManager = functionManager;
+        this.typeManager = typeManager;
+
         this.symbolTypes = Objects.requireNonNull(symbolTypes, "symbolTypes is null");
         this.parameters = Objects.requireNonNull(parameters, "parameters is null");
         this.isDescribe = isDescribe;
@@ -144,9 +153,8 @@ public class ExpressionAnalyzer
 
         @Override
         protected Type visitSymbolReference(SymbolReference node, StackableAstVisitorContext<Context> context) {
-            //Type type = symbolTypes.get(node);
-            //return setExpressionType(node, type);
-            return null;
+            Type type = symbolTypes.get(node);
+            return setExpressionType(node, type);
         }
 
         @Override
@@ -188,6 +196,13 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitComparisonExpression(ComparisonExpression node, StackableAstVisitorContext<Context> context)
+        {
+            OperatorType operatorType = OperatorType.valueOf(node.getOperator().name());
+            return getOperator(context, node, operatorType, node.getLeft(), node.getRight());
+        }
+
+        @Override
         protected Type visitQuantifiedComparisonExpression(QuantifiedComparisonExpression node, StackableAstVisitorContext<Context> context) {
             Expression value = node.getValue();
             process(value, context);
@@ -223,6 +238,30 @@ public class ExpressionAnalyzer
         public Type visitFieldReference(FieldReference node, StackableAstVisitorContext<Context> context) {
             Field field = baseScope.getRelationType().getFieldByIndex(node.getFieldIndex());
             return handleResolvedField(node, new FieldId(baseScope.getRelationId(), node.getFieldIndex()), field, context);
+        }
+
+        private Type getOperator(StackableAstVisitorContext<Context> context, Expression node, OperatorType operatorType, Expression... arguments)
+        {
+            ImmutableList.Builder<Type> argumentTypes = ImmutableList.builder();
+            for (Expression expression : arguments) {
+                argumentTypes.add(process(expression, context));
+            }
+
+            FunctionMetadata operatorMetadata;
+            try {
+                operatorMetadata = functionManager.getFunctionMetadata(functionManager.resolveOperator(operatorType, fromTypes(argumentTypes.build())));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            for (int i = 0; i < arguments.length; i++) {
+                Expression expression = arguments[i];
+                Type type = typeManager.getType(operatorMetadata.getArgumentTypes().get(i));
+                coerceType(context, expression, type, format("Operator %s argument %d", operatorMetadata, i));
+            }
+
+            Type type = typeManager.getType(operatorMetadata.getReturnType());
+            return setExpressionType(node, type);
         }
     }
 

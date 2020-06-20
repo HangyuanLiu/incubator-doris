@@ -291,7 +291,7 @@ public class Main {
         analyzer.analyze(stmt, Optional.empty());
 
         //planner
-        LogicalPlanner logicalPlanner = new LogicalPlanner(PlanNodeId.createGenerator());
+        LogicalPlanner logicalPlanner = new LogicalPlanner(null, PlanNodeId.createGenerator());
         Plan plan = logicalPlanner.plan(analysis);
 
         System.out.println("Hello world");

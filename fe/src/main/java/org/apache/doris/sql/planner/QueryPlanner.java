@@ -6,10 +6,12 @@ import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.analyzer.Scope;
 import org.apache.doris.sql.planner.plan.Assignments;
+import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.tree.Expression;
+import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.Query;
 import org.apache.doris.sql.tree.QuerySpecification;
 import org.apache.doris.sql.tree.SymbolReference;
@@ -50,6 +52,14 @@ public class QueryPlanner {
     public RelationPlan plan(QuerySpecification node)
     {
         PlanBuilder builder = planFrom(node);
+        //RelationPlan fromRelationPlan = builder.getRelationPlan();
+
+        builder = filter(builder, analysis.getWhere(node), node);
+        //builder = aggregate(builder, node);
+        //builder = filter(builder, analysis.getHaving(node), node);
+
+        //builder = window(builder, node);
+
         List<Expression> outputs = analysis.getOutputExpressions(node);
         builder = project(builder, outputs);
 
@@ -102,6 +112,22 @@ public class QueryPlanner {
         translations.setFieldMappings(relationPlan.getFieldMappings());
 
         return new PlanBuilder(translations, relationPlan.getRoot(), analysis.getParameters());
+    }
+
+    private PlanBuilder filter(PlanBuilder subPlan, Expression predicate, Node node)
+    {
+        if (predicate == null) {
+            return subPlan;
+        }
+
+        // rewrite expressions which contain already handled subqueries
+        /*
+        Expression rewrittenBeforeSubqueries = subPlan.rewrite(predicate);
+        subPlan = subqueryPlanner.handleSubqueries(subPlan, rewrittenBeforeSubqueries, node);
+        Expression rewrittenAfterSubqueries = subPlan.rewrite(predicate);
+         */
+
+        return subPlan.withNewRoot(new FilterNode(idAllocator.getNextId(), subPlan.getRoot(), castToRowExpression(predicate)));
     }
 
     private PlanBuilder project(PlanBuilder subPlan, Iterable<Expression> expressions, RelationPlan parentRelationPlan)
