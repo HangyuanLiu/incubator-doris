@@ -70,6 +70,7 @@ import org.apache.doris.common.Config;
 import org.apache.doris.common.DdlException;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
+import org.apache.doris.common.FeConstants;
 import org.apache.doris.common.FeMetaVersion;
 import org.apache.doris.common.FeNameFormat;
 import org.apache.doris.common.LabelAlreadyUsedException;
@@ -863,6 +864,78 @@ public class Load {
         }
     }
 
+    /**
+     * When doing schema change, there may have some 'shadow' columns, with prefix '__doris_shadow_' in
+     * their names. These columns are invisible to user, but we need to generate data for these columns.
+     * So we add column mappings for these column.
+     * eg1:
+     * base schema is (A, B, C), and B is under schema change, so there will be a shadow column: '__doris_shadow_B'
+     * So the final column mapping should looks like: (A, B, C, __doris_shadow_B = substitute(B));
+     */
+    public static List<ImportColumnDesc> getSchemaChangeShadowColumnDesc(Table tbl, Map<String, Expr> columnExprMap) {
+        List<ImportColumnDesc> shadowColumnDescs = Lists.newArrayList();
+        for (Column column : tbl.getFullSchema()) {
+            if (!column.isNameWithPrefix(SchemaChangeHandler.SHADOW_NAME_PRFIX)) {
+                continue;
+            }
+
+            String originCol = column.getNameWithoutPrefix(SchemaChangeHandler.SHADOW_NAME_PRFIX);
+            if (columnExprMap.containsKey(originCol)) {
+                Expr mappingExpr = columnExprMap.get(originCol);
+                if (mappingExpr != null) {
+                    /*
+                     * eg:
+                     * (A, C) SET (B = func(xx))
+                     * ->
+                     * (A, C) SET (B = func(xx), __doris_shadow_B = func(xx))
+                     */
+                    ImportColumnDesc importColumnDesc = new ImportColumnDesc(column.getName(), mappingExpr);
+                    shadowColumnDescs.add(importColumnDesc);
+                } else {
+                    /*
+                     * eg:
+                     * (A, B, C)
+                     * ->
+                     * (A, B, C) SET (__doris_shadow_B = B)
+                     */
+                    ImportColumnDesc importColumnDesc = new ImportColumnDesc(column.getName(),
+                                                                             new SlotRef(null, originCol));
+                    shadowColumnDescs.add(importColumnDesc);
+                }
+            } else {
+                /*
+                 * There is a case that if user does not specify the related origin column, eg:
+                 * COLUMNS (A, C), and B is not specified, but B is being modified so there is a shadow column '__doris_shadow_B'.
+                 * We can not just add a mapping function "__doris_shadow_B = substitute(B)", because Doris can not find column B.
+                 * In this case, __doris_shadow_B can use its default value, so no need to add it to column mapping
+                 */
+                // do nothing
+            }
+        }
+        return shadowColumnDescs;
+    }
+
+    /*
+     * used for spark load job
+     * not init slot desc and analyze exprs
+     */
+    public static void initColumns(Table tbl, List<ImportColumnDesc> columnExprs,
+                                   Map<String, Pair<String, List<String>>> columnToHadoopFunction) throws UserException {
+        initColumns(tbl, columnExprs, columnToHadoopFunction, null, null, null, null, null, false);
+    }
+
+    /*
+     * This function should be used for broker load v2 and stream load.
+     * And it must be called in same db lock when planing.
+     */
+    public static void initColumns(Table tbl, List<ImportColumnDesc> columnExprs,
+                                   Map<String, Pair<String, List<String>>> columnToHadoopFunction,
+                                   Map<String, Expr> exprsByName, Analyzer analyzer, TupleDescriptor srcTupleDesc,
+                                   Map<String, SlotDescriptor> slotDescByName, TBrokerScanRangeParams params) throws UserException {
+        initColumns(tbl, columnExprs, columnToHadoopFunction, exprsByName, analyzer,
+                    srcTupleDesc, slotDescByName, params, true);
+    }
+
     /*
      * This function will do followings:
      * 1. fill the column exprs if user does not specify any column or column mapping.
@@ -870,14 +943,12 @@ public class Load {
      * 3. Add any shadow columns if have.
      * 4. validate hadoop functions
      * 5. init slot descs and expr map for load plan
-     * 
-     * This function should be used for broker load v2 and stream load.
-     * And it must be called in same db lock when planing.
      */
     public static void initColumns(Table tbl, List<ImportColumnDesc> columnExprs,
             Map<String, Pair<String, List<String>>> columnToHadoopFunction,
             Map<String, Expr> exprsByName, Analyzer analyzer, TupleDescriptor srcTupleDesc,
-            Map<String, SlotDescriptor> slotDescByName, TBrokerScanRangeParams params) throws UserException {
+            Map<String, SlotDescriptor> slotDescByName, TBrokerScanRangeParams params,
+            boolean needInitSlotAndAnalyzeExprs) throws UserException {
         // check mapping column exist in schema
         // !! all column mappings are in columnExprs !!
         for (ImportColumnDesc importColumnDesc : columnExprs) {
@@ -924,50 +995,8 @@ public class Load {
             throw new DdlException("Column has no default value. column: " + columnName);
         }
 
-        // When doing schema change, there may have some 'shadow' columns, with prefix '__doris_shadow_' in
-        // their names. These columns are invisible to user, but we need to generate data for these columns.
-        // So we add column mappings for these column.
-        // eg1:
-        // base schema is (A, B, C), and B is under schema change, so there will be a shadow column: '__doris_shadow_B'
-        // So the final column mapping should looks like: (A, B, C, __doris_shadow_B = substitute(B));
-        for (Column column : tbl.getFullSchema()) {
-            if (!column.isNameWithPrefix(SchemaChangeHandler.SHADOW_NAME_PRFIX)) {
-                continue;
-            }
-
-            String originCol = column.getNameWithoutPrefix(SchemaChangeHandler.SHADOW_NAME_PRFIX);
-            if (columnExprMap.containsKey(originCol)) {
-                Expr mappingExpr = columnExprMap.get(originCol);
-                if (mappingExpr != null) {
-                    /*
-                     * eg:
-                     * (A, C) SET (B = func(xx)) 
-                     * ->
-                     * (A, C) SET (B = func(xx), __doris_shadow_B = func(xx))
-                     */
-                    ImportColumnDesc importColumnDesc = new ImportColumnDesc(column.getName(), mappingExpr);
-                    copiedColumnExprs.add(importColumnDesc);
-                } else {
-                    /*
-                     * eg:
-                     * (A, B, C)
-                     * ->
-                     * (A, B, C) SET (__doris_shadow_B = B)
-                     */
-                    ImportColumnDesc importColumnDesc = new ImportColumnDesc(column.getName(),
-                            new SlotRef(null, originCol));
-                    copiedColumnExprs.add(importColumnDesc);
-                }
-            } else {
-                /*
-                 * There is a case that if user does not specify the related origin column, eg:
-                 * COLUMNS (A, C), and B is not specified, but B is being modified so there is a shadow column '__doris_shadow_B'.
-                 * We can not just add a mapping function "__doris_shadow_B = substitute(B)", because Doris can not find column B.
-                 * In this case, __doris_shadow_B can use its default value, so no need to add it to column mapping
-                 */
-                // do nothing
-            }
-        }
+        // get shadow column desc when table schema change
+        copiedColumnExprs.addAll(getSchemaChangeShadowColumnDesc(tbl, columnExprMap));
 
         // validate hadoop functions
         if (columnToHadoopFunction != null) {
@@ -988,6 +1017,10 @@ public class Load {
                     throw new DdlException(e.getMessage());
                 }
             }
+        }
+
+        if (!needInitSlotAndAnalyzeExprs) {
+            return;
         }
 
         // init slot desc add expr map, also transform hadoop functions
@@ -1887,7 +1920,7 @@ public class Load {
                 // etl info
                 EtlStatus status = loadJob.getEtlJobStatus();
                 if (status == null || status.getState() == TEtlState.CANCELLED) {
-                    jobInfo.add("N/A");
+                    jobInfo.add(FeConstants.null_string);
                 } else {
                     Map<String, String> counters = status.getCounters();
                     List<String> info = Lists.newArrayList();
@@ -1901,7 +1934,7 @@ public class Load {
                         }
                     } // end for counters
                     if (info.isEmpty()) {
-                        jobInfo.add("N/A");
+                        jobInfo.add(FeConstants.null_string);
                     } else {
                         jobInfo.add(StringUtils.join(info, "; "));
                     }
@@ -1917,7 +1950,7 @@ public class Load {
                     FailMsg failMsg = loadJob.getFailMsg();
                     jobInfo.add("type:" + failMsg.getCancelType() + "; msg:" + failMsg.getMsg());
                 } else {
-                    jobInfo.add("N/A");
+                    jobInfo.add(FeConstants.null_string);
                 }
 
                 // create time
