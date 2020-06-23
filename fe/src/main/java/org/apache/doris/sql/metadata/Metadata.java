@@ -13,6 +13,8 @@
  */
 package org.apache.doris.sql.metadata;
 
+import org.apache.doris.sql.type.TypeManager;
+
 import java.util.Map;
 import java.util.Optional;
 
@@ -38,4 +40,8 @@ public interface Metadata
      * @throws RuntimeException if table handle is no longer valid
      */
     Map<String, ColumnHandle> getColumnHandles(Session session, TableHandle tableHandle);
+
+    FunctionManager getFunctionManager();
+
+    TypeManager getTypeManager();
 }

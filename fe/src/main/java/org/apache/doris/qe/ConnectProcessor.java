@@ -223,7 +223,7 @@ public class ConnectProcessor {
             Session session = new Session(ctx.getCatalog(), ctx);
 
             //DorisMetadata
-            Metadata metadata = new MetadataManager(ctx.getCatalog());
+            Metadata metadata = new MetadataManager(null, null, ctx.getCatalog());
 
             //analyzer
             ArrayList<Expression> parameters = new ArrayList<>();

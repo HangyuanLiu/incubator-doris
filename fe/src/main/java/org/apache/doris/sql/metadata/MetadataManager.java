@@ -2,7 +2,9 @@ package org.apache.doris.sql.metadata;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.doris.catalog.Catalog;
+import org.apache.doris.sql.type.TypeManager;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -10,10 +12,17 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
 public class MetadataManager implements Metadata {
+    private final FunctionManager functions;
+    private final TypeManager typeManager;
     //目前只有DorisMetadata，未来可以拓展
     private ConnectorMetadata metadata;
 
-    public MetadataManager(Catalog catalog) {
+    public MetadataManager(
+            TypeManager typeManager,
+            FunctionManager functionManager,
+            Catalog catalog) {
+        this.typeManager = typeManager;
+        this.functions = functionManager;
         this.metadata = new DorisMetadata(catalog);
     }
 
@@ -52,5 +61,19 @@ public class MetadataManager implements Metadata {
             map.put(mapEntry.getKey().toLowerCase(ENGLISH), mapEntry.getValue());
         }
         return map.build();
+    }
+
+    @Override
+    public FunctionManager getFunctionManager()
+    {
+        // TODO: transactional when FunctionManager is made transactional
+        return functions;
+    }
+
+    @Override
+    public TypeManager getTypeManager()
+    {
+        // TODO: make this transactional when we allow user defined types
+        return typeManager;
     }
 }

@@ -1,6 +1,8 @@
 package org.apache.doris.sql.planner;
 
+import com.google.common.collect.Lists;
 import org.apache.doris.analysis.DescriptorTable;
+import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.SlotDescriptor;
 import org.apache.doris.analysis.SlotId;
 import org.apache.doris.analysis.TupleDescriptor;
@@ -14,6 +16,7 @@ import org.apache.doris.planner.PartitionColumnFilter;
 import org.apache.doris.planner.PlanNode;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.planner.PlannerContext;
+import org.apache.doris.planner.ScanNode;
 import org.apache.doris.sql.metadata.DorisTableHandle;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
@@ -21,9 +24,9 @@ import org.apache.doris.sql.planner.plan.OutputNode;
 import org.apache.doris.sql.planner.plan.PlanVisitor;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.planner.plan.TableScanNode;
-import org.apache.doris.sql.relation.VariableReferenceExpression;
-
-import java.util.List;
+import org.apache.doris.sql.relation.CallExpression;
+import org.apache.doris.sql.relation.RowExpression;
+import org.apache.doris.sql.relational.RowExpressionToExpr;
 
 public class PhysicalPlanner {
     public PlanNode createPhysicalPlan(Plan plan, DescriptorTable descTbl, PlannerContext plannerContext) {
@@ -39,10 +42,6 @@ public class PhysicalPlanner {
 
         public PlanNode visitPlan(LogicalPlanNode node, FragmentProperties context) {
             return node.accept(this, context);
-        }
-
-        public PlanNode visitFilter(FilterNode node, FragmentProperties context) {
-            return null;
         }
 
         public PlanNode visitOutput(OutputNode node, FragmentProperties context) {
@@ -62,7 +61,6 @@ public class PhysicalPlanner {
                 SlotDescriptor slotDescriptor =  context.descTbl.addSlotDescriptor(tupleDes);
                 slotDescriptor.setColumn(new Column(expression.getName(), PrimitiveType.INT));
             }
-
              */
             SlotDescriptor slotDescriptor =  context.descTbl.addSlotDescriptor(tupleDes);
             slotDescriptor.setColumn(new Column("user_id", PrimitiveType.INT));
@@ -70,6 +68,18 @@ public class PhysicalPlanner {
             slotDescriptor.setIsMaterialized(true);
             tupleDes.computeMemLayout();
             return olapScanNode;
+        }
+
+        public PlanNode visitFilter(FilterNode node, FragmentProperties context) {
+            if (node.getSource() instanceof TableScanNode) {
+                ScanNode scanNode = (ScanNode) visitPlan(node.getSource(), context);
+
+                RowExpression rowExpression = node.getPredicate();
+
+                scanNode.addConjuncts(Lists.newArrayList(RowExpressionToExpr.formatRowExpression(rowExpression, context.descTbl)));
+                return scanNode;
+            }
+            return null;
         }
 
         public PlanNode visitTableScan(TableScanNode node, FragmentProperties context)

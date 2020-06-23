@@ -4,6 +4,7 @@ import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.Database;
 import org.apache.doris.catalog.Table;
+import org.apache.doris.sql.type.BigintType;
 import org.apache.doris.sql.type.UnknownType;
 
 import java.util.*;
@@ -41,7 +42,8 @@ public class DorisMetadata implements ConnectorMetadata{
 
         HashMap<String, ColumnHandle> columnHandles = new HashMap<>();
         for(Column column : columnList) {
-            columnHandles.put(column.getName(), new DorisColumnHandle(column.getName(), UnknownType.UNKNOWN, 0));
+            //FIXME
+            columnHandles.put(column.getName(), new DorisColumnHandle(column.getName(), BigintType.BIGINT, 0));
         }
 
         System.out.println("getColumnHandles : " + columnHandles);

@@ -16,6 +16,7 @@ package org.apache.doris.sql.planner;
 import com.google.common.primitives.Ints;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.analyzer.Field;
+import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
@@ -128,6 +129,9 @@ public class VariableAllocator
         else if (expression instanceof SymbolReference) {
             nameHint = ((SymbolReference) expression).getName();
         }
+        //else if (expression instanceof GroupingOperation) {
+        //    nameHint = "grouping";
+        //}
         return newVariable(nameHint, type, suffix);
     }
 
@@ -165,11 +169,9 @@ public class VariableAllocator
         if (expression instanceof VariableReferenceExpression) {
             nameHint = ((VariableReferenceExpression) expression).getName();
         }
-        /*
         else if (expression instanceof CallExpression) {
             nameHint = ((CallExpression) expression).getDisplayName();
         }
-         */
         return newVariable(nameHint, expression.getType(), suffix);
     }
 }

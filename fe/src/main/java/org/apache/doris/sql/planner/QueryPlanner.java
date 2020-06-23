@@ -1,24 +1,32 @@
 package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNodeId;
+import org.apache.doris.sql.analyzer.ExpressionAnalyzer;
 import org.apache.doris.sql.analyzer.Scope;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.ProjectNode;
+import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
+import org.apache.doris.sql.relational.SqlToRowExpressionTranslator;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
+import org.apache.doris.sql.tree.NodeRef;
 import org.apache.doris.sql.tree.Query;
 import org.apache.doris.sql.tree.QuerySpecification;
 import org.apache.doris.sql.tree.SymbolReference;
+import org.apache.doris.sql.type.Type;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static java.util.Collections.emptyList;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 
 public class QueryPlanner {

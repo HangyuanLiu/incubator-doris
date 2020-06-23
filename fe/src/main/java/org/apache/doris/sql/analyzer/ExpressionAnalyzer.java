@@ -20,6 +20,7 @@ import com.google.common.collect.Multimap;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.parser.SqlParser;
+import org.apache.doris.sql.type.BigintType;
 import org.apache.doris.sql.type.BooleanType;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
@@ -30,6 +31,7 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 import static java.lang.String.format;
+import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
 
 public class ExpressionAnalyzer
 {
@@ -240,6 +242,16 @@ public class ExpressionAnalyzer
             return handleResolvedField(node, new FieldId(baseScope.getRelationId(), node.getFieldIndex()), field, context);
         }
 
+        @Override
+        protected Type visitLongLiteral(LongLiteral node, StackableAstVisitorContext<Context> context)
+        {
+            //if (node.getValue() >= Integer.MIN_VALUE && node.getValue() <= Integer.MAX_VALUE) {
+            //    return setExpressionType(node, INTEGER);
+           // }
+
+            return setExpressionType(node, BigintType.BIGINT);
+        }
+
         private Type getOperator(StackableAstVisitorContext<Context> context, Expression node, OperatorType operatorType, Expression... arguments)
         {
             ImmutableList.Builder<Type> argumentTypes = ImmutableList.builder();
@@ -249,18 +261,21 @@ public class ExpressionAnalyzer
 
             FunctionMetadata operatorMetadata;
             try {
-                operatorMetadata = functionManager.getFunctionMetadata(functionManager.resolveOperator(operatorType, fromTypes(argumentTypes.build())));
+                FunctionHandle functionHandle = functionManager.resolveOperator(operatorType, fromTypes(argumentTypes.build()));
+                operatorMetadata = functionManager.getFunctionMetadata(functionHandle);
             } catch (Exception e) {
                 e.printStackTrace();
             }
-
+            /*
             for (int i = 0; i < arguments.length; i++) {
                 Expression expression = arguments[i];
                 Type type = typeManager.getType(operatorMetadata.getArgumentTypes().get(i));
                 coerceType(context, expression, type, format("Operator %s argument %d", operatorMetadata, i));
             }
-
-            Type type = typeManager.getType(operatorMetadata.getReturnType());
+             */
+            //FIXME
+            //Type type = typeManager.getType(operatorMetadata.getReturnType());
+            Type type = BooleanType.BOOLEAN;
             return setExpressionType(node, type);
         }
     }
@@ -363,6 +378,8 @@ public class ExpressionAnalyzer
             WarningCollector warningCollector)
     {
         return new ExpressionAnalyzer(
+                metadata.getFunctionManager(),
+                metadata.getTypeManager(),
                 types,
                 analysis.getParameters(),
                 warningCollector,

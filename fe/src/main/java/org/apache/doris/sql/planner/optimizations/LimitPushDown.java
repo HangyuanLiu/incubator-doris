@@ -31,10 +31,10 @@ public class LimitPushDown
 
     @Override
     public LogicalPlanNode optimize(LogicalPlanNode plan, Session session, TypeProvider types, IdGenerator<PlanNodeId> idAllocator, WarningCollector warningCollector) {
-        requireNonNull(plan, "plan is null");
-        requireNonNull(session, "session is null");
-        requireNonNull(types, "types is null");
-        requireNonNull(idAllocator, "idAllocator is null");
+        //requireNonNull(plan, "plan is null");
+        //requireNonNull(session, "session is null");
+        //requireNonNull(types, "types is null");
+        //requireNonNull(idAllocator, "idAllocator is null");
 
         return SimplePlanRewriter.rewriteWith(new Rewriter(idAllocator), plan, null);
     }

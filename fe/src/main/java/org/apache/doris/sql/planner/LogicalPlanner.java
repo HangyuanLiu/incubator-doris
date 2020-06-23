@@ -25,8 +25,9 @@ public class LogicalPlanner {
     }
 
     IdGenerator<PlanNodeId> idAllocator;
-    private final VariableAllocator variableAllocator = new VariableAllocator();
     private final List<PlanOptimizer> planOptimizers;
+    private final VariableAllocator variableAllocator = new VariableAllocator();
+
 
     public LogicalPlanner(List<PlanOptimizer> planOptimizers, IdGenerator<PlanNodeId> idAllocator) {
         this.planOptimizers = planOptimizers;
@@ -46,7 +47,7 @@ public class LogicalPlanner {
 
         if (stage.ordinal() >= Stage.OPTIMIZED.ordinal()) {
             for (PlanOptimizer optimizer : planOptimizers) {
-                root = optimizer.optimize(root, null, variableAllocator.getTypes(), idAllocator, null);
+                //root = optimizer.optimize(root, null, variableAllocator.getTypes(), idAllocator, null);
                 requireNonNull(root, format("%s returned a null plan", optimizer.getClass().getName()));
             }
         }
@@ -56,8 +57,8 @@ public class LogicalPlanner {
             planSanityChecker.validateFinalPlan(root, session, metadata, sqlParser, variableAllocator.getTypes(), warningCollector);
         }
         */
-        //TypeProvider types = variableAllocator.getTypes();
-        return new Plan(root, new TypeProvider());
+        TypeProvider types = variableAllocator.getTypes();
+        return new Plan(root, types);
     }
 
     public LogicalPlanNode planStatement(Analysis analysis, Statement statement)
