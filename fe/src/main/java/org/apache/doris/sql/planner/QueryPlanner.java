@@ -129,13 +129,11 @@ public class QueryPlanner {
         }
 
         // rewrite expressions which contain already handled subqueries
-        /*
         Expression rewrittenBeforeSubqueries = subPlan.rewrite(predicate);
-        subPlan = subqueryPlanner.handleSubqueries(subPlan, rewrittenBeforeSubqueries, node);
-        Expression rewrittenAfterSubqueries = subPlan.rewrite(predicate);
-         */
+        //subPlan = subqueryPlanner.handleSubqueries(subPlan, rewrittenBeforeSubqueries, node);
+        //Expression rewrittenAfterSubqueries = subPlan.rewrite(predicate);
 
-        return subPlan.withNewRoot(new FilterNode(idAllocator.getNextId(), subPlan.getRoot(), castToRowExpression(predicate)));
+        return subPlan.withNewRoot(new FilterNode(idAllocator.getNextId(), subPlan.getRoot(), castToRowExpression(rewrittenBeforeSubqueries)));
     }
 
     private PlanBuilder project(PlanBuilder subPlan, Iterable<Expression> expressions, RelationPlan parentRelationPlan)

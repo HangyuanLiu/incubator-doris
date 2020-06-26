@@ -48,7 +48,7 @@ public final class TypeRegistry
 {
     private final ConcurrentMap<TypeSignature, Type> types = new ConcurrentHashMap<>();
 
-    public TypeRegistry(Set<Type> types)
+    public TypeRegistry()
     {
 
         // Manually register UNKNOWN type without a verifyTypeClass call since it is a special type that can not be used by functions
@@ -57,10 +57,6 @@ public final class TypeRegistry
         // always add the built-in types; Presto will not function without these
         addType(BOOLEAN);
         addType(BIGINT);
-
-        for (Type type : types) {
-            addType(type);
-        }
     }
 
     @Override

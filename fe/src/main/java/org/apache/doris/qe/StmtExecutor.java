@@ -30,6 +30,7 @@ import org.apache.doris.analysis.RedirectStatus;
 import org.apache.doris.analysis.SelectStmt;
 import org.apache.doris.analysis.SetStmt;
 import org.apache.doris.analysis.ShowStmt;
+import org.apache.doris.analysis.SlotRef;
 import org.apache.doris.analysis.SqlParser;
 import org.apache.doris.analysis.SqlScanner;
 import org.apache.doris.analysis.StatementBase;
@@ -229,7 +230,7 @@ public class StmtExecutor {
     }
 
     public void executeV2(ArrayList<PlanFragment> fragments, List<ScanNode> scanNodes,
-                          TDescriptorTable descTable, List<VariableReferenceExpression> outputExprs) throws Exception {
+                          TDescriptorTable descTable, List<Expr> outputExprs) throws Exception {
         context.getState().setIsQuery(true);
         int retryTime = Config.max_query_retry_time;
         for (int i = 0; i < retryTime; i ++) {
@@ -262,7 +263,12 @@ public class StmtExecutor {
                 // send result
                 RowBatch batch;
                 MysqlChannel channel = context.getMysqlChannel();
-                sendFields(outputExprs);
+
+                List<String> colNames = new ArrayList<>();
+                for (Expr slot : outputExprs) {
+                    colNames.add(((SlotRef) slot).getColumnName());
+                }
+                sendFields(colNames, outputExprs);
                 while (true) {
                     batch = coord.getNext();
                     if (batch.getBatch() != null) {
@@ -913,7 +919,7 @@ public class StmtExecutor {
         context.getMysqlChannel().sendOnePacket(serializer.toByteBuffer());
     }
 
-    private void sendFields(List<VariableReferenceExpression> colNames) throws IOException {
+    private void sendFields(List<String> colNames) throws IOException {
         // sends how many columns
         serializer.reset();
         serializer.writeVInt(colNames.size());
@@ -922,7 +928,7 @@ public class StmtExecutor {
         for (int i = 0; i < colNames.size(); ++i) {
             serializer.reset();
             //TODO(lhy) support more type
-            serializer.writeField(colNames.get(i).getName(), PrimitiveType.BIGINT);
+            serializer.writeField(colNames.get(i), PrimitiveType.INT);
             context.getMysqlChannel().sendOnePacket(serializer.toByteBuffer());
         }
         // send EOF

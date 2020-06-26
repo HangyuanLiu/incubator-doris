@@ -197,6 +197,11 @@ public abstract class AstVisitor<R, C>
         return visitRelation(node, context);
     }
 
+    protected R visitCast(Cast node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitFieldReference(FieldReference node, C context)
     {
         return visitExpression(node, context);

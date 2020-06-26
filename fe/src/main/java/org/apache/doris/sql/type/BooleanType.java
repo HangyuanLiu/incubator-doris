@@ -10,7 +10,7 @@ public final class BooleanType
 
     private BooleanType()
     {
-        super(new TypeSignature("boolean"));
+        super(new TypeSignature("BOOLEAN"));
         //super(parseTypeSignature(StandardDefinitions.StandardTypes.BOOLEAN), boolean.class);
     }
 

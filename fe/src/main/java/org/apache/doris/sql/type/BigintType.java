@@ -9,7 +9,7 @@ public final class BigintType
 
     private BigintType()
     {
-        super(new TypeSignature("bigint"));
+        super(new TypeSignature("BIGINT"));
         //super(parseTypeSignature(StandardTypes.BIGINT));
     }
 

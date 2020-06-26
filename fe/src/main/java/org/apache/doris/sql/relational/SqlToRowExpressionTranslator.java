@@ -15,6 +15,7 @@ package org.apache.doris.sql.relational;
 
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import org.apache.doris.sql.metadata.FunctionManager;
 import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.relation.RowExpression;
@@ -193,7 +194,7 @@ public final class SqlToRowExpressionTranslator
                 case MINUS:
                     return call(
                             NEGATION.name(),
-                            functionManager.resolveOperator(NEGATION, fromTypes(expression.getType())),
+                            functionManager.resolveOperator(NEGATION, Lists.newArrayList(expression.getType())),
                             getType(node),
                             expression);
             }

@@ -16,12 +16,14 @@ import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.ResolvedField;
 import org.apache.doris.sql.tree.*;
+import org.apache.doris.sql.type.Type;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -199,7 +201,6 @@ class TranslationMap
 
             private Expression coerceIfNecessary(Expression original, Expression rewritten)
             {
-                /*
                 Type coercion = analysis.getCoercion(original);
                 if (coercion != null) {
                     rewritten = new Cast(
@@ -208,8 +209,6 @@ class TranslationMap
                             false,
                             analysis.isTypeOnlyCoercion(original));
                 }
-
-                 */
                 return rewritten;
             }
         }, expression, null);

@@ -65,6 +65,58 @@ public class ExpressionTreeRewriter<C> {
         }
 
         @Override
+        protected Expression visitArithmeticUnary(ArithmeticUnaryExpression node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteArithmeticUnary(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression child = rewrite(node.getValue(), context.get());
+            if (child != node.getValue()) {
+                return new ArithmeticUnaryExpression(node.getSign(), child);
+            }
+
+            return node;
+        }
+
+        @Override
+        public Expression visitArithmeticBinary(ArithmeticBinaryExpression node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteArithmeticBinary(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression left = rewrite(node.getLeft(), context.get());
+            Expression right = rewrite(node.getRight(), context.get());
+
+            if (left != node.getLeft() || right != node.getRight()) {
+                return new ArithmeticBinaryExpression(node.getOperator(), left, right);
+            }
+
+            return node;
+        }
+
+
+        @Override
+        public Expression visitLiteral(Literal node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteLiteral(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            return node;
+        }
+
+        @Override
         public Expression visitIdentifier(Identifier node, Context<C> context)
         {
             if (!context.isDefaultRewrite()) {
@@ -72,6 +124,44 @@ public class ExpressionTreeRewriter<C> {
                 if (result != null) {
                     return result;
                 }
+            }
+
+            return node;
+        }
+
+        @Override
+        public Expression visitDereferenceExpression(DereferenceExpression node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteDereferenceExpression(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression base = rewrite(node.getBase(), context.get());
+            if (base != node.getBase()) {
+                return new DereferenceExpression(base, node.getField());
+            }
+
+            return node;
+        }
+
+        @Override
+        public Expression visitComparisonExpression(ComparisonExpression node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteComparisonExpression(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression left = rewrite(node.getLeft(), context.get());
+            Expression right = rewrite(node.getRight(), context.get());
+
+            if (left != node.getLeft() || right != node.getRight()) {
+                return new ComparisonExpression(node.getOperator(), left, right);
             }
 
             return node;

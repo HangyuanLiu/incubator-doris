@@ -17,6 +17,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
+import org.apache.doris.catalog.Function;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.parser.SqlParser;
@@ -259,13 +260,8 @@ public class ExpressionAnalyzer
                 argumentTypes.add(process(expression, context));
             }
 
-            FunctionMetadata operatorMetadata;
-            try {
-                FunctionHandle functionHandle = functionManager.resolveOperator(operatorType, fromTypes(argumentTypes.build()));
-                operatorMetadata = functionManager.getFunctionMetadata(functionHandle);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            FunctionHandle functionHandle = functionManager.resolveOperator(operatorType, argumentTypes.build());
+            FunctionMetadata operatorMetadata = functionManager.getFunctionMetadata(functionHandle);
             /*
             for (int i = 0; i < arguments.length; i++) {
                 Expression expression = arguments[i];
@@ -274,8 +270,7 @@ public class ExpressionAnalyzer
             }
              */
             //FIXME
-            //Type type = typeManager.getType(operatorMetadata.getReturnType());
-            Type type = BooleanType.BOOLEAN;
+            Type type = typeManager.getType(operatorMetadata.getReturnType());
             return setExpressionType(node, type);
         }
     }
@@ -331,8 +326,32 @@ public class ExpressionAnalyzer
             WarningCollector warningCollector,
             boolean isDescribe)
     {
-        //return analyzeExpressions(session, metadata, sqlParser, types, expressions, parameters, warningCollector, isDescribe).getExpressionTypes();
-        return null;
+        return analyzeExpressions(session, metadata, sqlParser, types, expressions, parameters, warningCollector, isDescribe).getExpressionTypes();
+    }
+
+    public static ExpressionAnalysis analyzeExpressions(
+            Session session,
+            Metadata metadata,
+            SqlParser sqlParser,
+            TypeProvider types,
+            Iterable<Expression> expressions,
+            List<Expression> parameters,
+            WarningCollector warningCollector,
+            boolean isDescribe)
+    {
+        // expressions at this point can not have sub queries so deny all access checks
+        // in the future, we will need a full access controller here to verify access to functions
+        Analysis analysis = new Analysis(null, parameters, isDescribe);
+        ExpressionAnalyzer analyzer = create(analysis, session, metadata, sqlParser,null, types, warningCollector);
+        for (Expression expression : expressions) {
+            analyzer.analyze(expression, Scope.builder().withRelationType(RelationId.anonymous(), new RelationType()).build());
+        }
+
+        return new ExpressionAnalysis(
+                analyzer.getExpressionTypes(),
+                analyzer.getExpressionCoercions(),
+                analyzer.getColumnReferences(),
+                analyzer.getTypeOnlyCoercions());
     }
 
     public static ExpressionAnalysis analyzeExpression(

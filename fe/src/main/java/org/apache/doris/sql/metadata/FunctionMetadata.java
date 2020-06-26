@@ -7,12 +7,19 @@ import java.util.Optional;
 
 public class FunctionMetadata {
     private final List<TypeSignature> argumentTypes;
-    private final Optional<List<String>> argumentNames;
     private final TypeSignature returnType;
 
-    public FunctionMetadata(List<TypeSignature> argumentTypes, Optional<List<String>> argumentNames, TypeSignature returnType) {
+    public FunctionMetadata(List<TypeSignature> argumentTypes, TypeSignature returnType) {
         this.argumentTypes = argumentTypes;
-        this.argumentNames = argumentNames;
         this.returnType = returnType;
+    }
+
+    public TypeSignature getReturnType()
+    {
+        return returnType;
+    }
+
+    public List<TypeSignature> getArgumentTypes() {
+        return argumentTypes;
     }
 }

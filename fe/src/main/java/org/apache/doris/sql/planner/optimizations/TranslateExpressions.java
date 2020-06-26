@@ -27,7 +27,7 @@ import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpr
 public class TranslateExpressions implements PlanOptimizer {
     Metadata metadata;
     SqlParser sqlParser;
-    public TranslateExpressions(LogicalPlanNode plan, Metadata metadata, SqlParser sqlParser)
+    public TranslateExpressions(Metadata metadata, SqlParser sqlParser)
     {
         this.metadata = metadata;
         this.sqlParser = sqlParser;

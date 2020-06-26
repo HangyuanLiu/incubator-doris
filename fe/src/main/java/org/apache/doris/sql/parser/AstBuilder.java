@@ -54,7 +54,6 @@ public class AstBuilder
     @Override
     public Node visitQuery(SqlBaseParser.QueryContext context)
     {
-        System.out.println("Query");
         Query body = (Query) visit(context.queryNoWith());
 
         return new Query(

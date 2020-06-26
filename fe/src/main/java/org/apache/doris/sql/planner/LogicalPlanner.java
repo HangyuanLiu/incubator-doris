@@ -47,7 +47,7 @@ public class LogicalPlanner {
 
         if (stage.ordinal() >= Stage.OPTIMIZED.ordinal()) {
             for (PlanOptimizer optimizer : planOptimizers) {
-                //root = optimizer.optimize(root, null, variableAllocator.getTypes(), idAllocator, null);
+                root = optimizer.optimize(root, null, variableAllocator.getTypes(), idAllocator, null);
                 requireNonNull(root, format("%s returned a null plan", optimizer.getClass().getName()));
             }
         }

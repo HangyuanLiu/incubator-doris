@@ -1,5 +1,6 @@
 package org.apache.doris.sql.relational;
 
+import com.google.common.collect.Lists;
 import org.apache.doris.sql.analyzer.TypeSignatureProvider;
 import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.FunctionManager;
@@ -23,7 +24,7 @@ public final class FunctionResolution {
     public FunctionHandle comparisonFunction(OperatorType operator, Type leftType, Type rightType)
     {
         checkArgument(operator.isComparisonOperator(), format("unexpected comparison type %s", operator));
-        return functionManager.resolveOperator(operator, TypeSignatureProvider.fromTypes(leftType, rightType));
+        return functionManager.resolveOperator(operator, Lists.newArrayList(leftType, rightType));
     }
 
     public FunctionHandle comparisonFunction(ComparisonExpression.Operator operator, Type leftType, Type rightType)

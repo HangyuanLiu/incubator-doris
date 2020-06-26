@@ -20,9 +20,11 @@ package org.apache.doris.qe;
 import com.google.common.collect.Lists;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.apache.commons.validator.Var;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.KillStmt;
+import org.apache.doris.analysis.SlotDescriptor;
 import org.apache.doris.analysis.SlotId;
 import org.apache.doris.analysis.SlotRef;
 import org.apache.doris.analysis.SqlParser;
@@ -61,6 +63,7 @@ import org.apache.doris.rpc.RpcException;
 import org.apache.doris.service.FrontendOptions;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.StatementAnalyzer;
+import org.apache.doris.sql.metadata.FunctionManager;
 import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.metadata.MetadataManager;
 import org.apache.doris.sql.metadata.Session;
@@ -75,11 +78,13 @@ import org.apache.doris.sql.planner.Plan;
 import org.apache.doris.sql.planner.optimizations.LimitPushDown;
 import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
 import org.apache.doris.sql.planner.optimizations.PredicatePushDown;
+import org.apache.doris.sql.planner.optimizations.TranslateExpressions;
 import org.apache.doris.sql.planner.plan.OutputNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.Statement;
+import org.apache.doris.sql.type.TypeRegistry;
 import org.apache.doris.thrift.TMasterOpRequest;
 import org.apache.doris.thrift.TMasterOpResult;
 import org.apache.doris.thrift.TQueryOptions;
@@ -97,6 +102,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
@@ -210,7 +216,7 @@ public class ConnectProcessor {
             .setDb(ctx.getDatabase());
 
         try {
-            LOG.debug("Query :" + originStmt);
+            System.out.println("Query :" + originStmt);
             //parser
             CaseInsensitiveStream stream = new CaseInsensitiveStream(CharStreams.fromString(originStmt));
             SqlBaseLexer lexer = new SqlBaseLexer(stream);
@@ -223,7 +229,7 @@ public class ConnectProcessor {
             Session session = new Session(ctx.getCatalog(), ctx);
 
             //DorisMetadata
-            Metadata metadata = new MetadataManager(null, null, ctx.getCatalog());
+            Metadata metadata = new MetadataManager(new TypeRegistry(), new FunctionManager(ctx.getCatalog()), ctx.getCatalog());
 
             //analyzer
             ArrayList<Expression> parameters = new ArrayList<>();
@@ -233,23 +239,23 @@ public class ConnectProcessor {
 
             //logical planner
             List<PlanOptimizer> optimizers = new ArrayList<>();
-            optimizers.add(new PredicatePushDown());
-            optimizers.add(new LimitPushDown());
+            optimizers.add(new TranslateExpressions(metadata, null));
+            //optimizers.add(new PredicatePushDown());
+            //optimizers.add(new LimitPushDown());
 
             LogicalPlanner logicalPlanner = new LogicalPlanner(optimizers, PlanNodeId.createGenerator());
             Plan plan = logicalPlanner.plan(analysis);
-            OutputNode outputNode = (OutputNode) plan.getRoot();
-            List<VariableReferenceExpression> outputExprs = outputNode.getOutputVariables();
 
 
             TQueryOptions tQueryOptions = new TQueryOptions();
             tQueryOptions.num_nodes = 3;
-            //PlannerConext
-            PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
-            //physical plan
-            PhysicalPlanner physicalPlanner = new PhysicalPlanner();
+
             DescriptorTable descTbl = new DescriptorTable();
-            PlanNode root = physicalPlanner.createPhysicalPlan(plan, descTbl, plannerContext);
+            PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
+            HashMap<String, SlotId> variableToSlotRef = new HashMap<>();
+
+            PhysicalPlanner physicalPlanner = new PhysicalPlanner();
+            PlanNode root = physicalPlanner.createPhysicalPlan(plan, descTbl, plannerContext, variableToSlotRef);
             System.out.println("DescriptorTable : " + descTbl.getTupleDescs());
 
             //execute plan
@@ -262,10 +268,17 @@ public class ConnectProcessor {
             }
 
             PlanFragment rootFragment = fragments.get(fragments.size() - 1);
-            ArrayList<Expr> outputExpr = new ArrayList<>();
-            SlotRef slotRef = new SlotRef(descTbl.getSlotDesc(new SlotId(0)));
-            outputExpr.add(slotRef);
-            rootFragment.setOutputExprs(outputExpr);
+
+
+            OutputNode outputNode = (OutputNode) plan.getRoot();
+            List<Expr> outputExprs = new ArrayList<>();
+            for (String variable : outputNode.getColumnNames()) {
+                SlotDescriptor slotDesc = descTbl.getSlotDesc(variableToSlotRef.get(variable));
+                SlotRef slot = new SlotRef(slotDesc);
+                slot.setCol(variable);
+                outputExprs.add(slot);
+            }
+            rootFragment.setOutputExprs(outputExprs);
 
             Collections.reverse(fragments);
 
@@ -276,11 +289,11 @@ public class ConnectProcessor {
             ScanNode scanNode = (ScanNode) fragments.get(1).getPlanRoot();
 
             executor.executeV2(fragments, Lists.newArrayList(scanNode), descTbl.toThrift(), outputExprs);
-            LOG.debug("Query success");
+            System.out.println("Query success");
             return;
         } catch (Exception ex) {
             ex.printStackTrace();
-            LOG.debug("Query fail");
+            System.out.println("Query fail");
         }
 
         // execute this query.

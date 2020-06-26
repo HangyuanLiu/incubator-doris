@@ -9,6 +9,7 @@ import org.apache.doris.analysis.TupleDescriptor;
 import org.apache.doris.analysis.TupleId;
 import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.PrimitiveType;
+import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.catalog.Table;
 import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.planner.OlapScanNode;
@@ -26,13 +27,17 @@ import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.planner.plan.TableScanNode;
 import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.RowExpression;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.relational.RowExpressionToExpr;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class PhysicalPlanner {
-    public PlanNode createPhysicalPlan(Plan plan, DescriptorTable descTbl, PlannerContext plannerContext) {
+    public PlanNode createPhysicalPlan(Plan plan, DescriptorTable descTbl, PlannerContext plannerContext, Map<String, SlotId> variableToSlotRef) {
         PhysicalPlanTranslator physicalPlanTranslator = new PhysicalPlanTranslator();
         //PlanNode root = SimplePlanRewriter.rewriteWith(physicalPlanTranslator, plan.getRoot());
-        FragmentProperties fraPro = new FragmentProperties(descTbl, plannerContext);
+        FragmentProperties fraPro = new FragmentProperties(descTbl, plannerContext, variableToSlotRef);
         PlanNode root = physicalPlanTranslator.visitPlan(plan.getRoot(), fraPro);
         return root;
     }
@@ -48,35 +53,15 @@ public class PhysicalPlanner {
             return visitPlan(node.getSource(), context);
         }
 
-        public PlanNode visitProject(ProjectNode node, FragmentProperties context)
-        {
-            OlapScanNode olapScanNode = (OlapScanNode) visitPlan(node.getSource(), context);
-            TupleId tupleId = olapScanNode.getTupleIds().get(0);
-            TupleDescriptor tupleDes = context.descTbl.getTupleDesc(tupleId);
-
-            //List<VariableReferenceExpression> variables = node.getOutputVariables();
-            /*
-            for (VariableReferenceExpression expression : node.getOutputVariables()) {
-                System.out.println("output var : " + expression.getName());
-                SlotDescriptor slotDescriptor =  context.descTbl.addSlotDescriptor(tupleDes);
-                slotDescriptor.setColumn(new Column(expression.getName(), PrimitiveType.INT));
-            }
-             */
-            SlotDescriptor slotDescriptor =  context.descTbl.addSlotDescriptor(tupleDes);
-            slotDescriptor.setColumn(new Column("user_id", PrimitiveType.INT));
-            slotDescriptor.setIsNullable(true);
-            slotDescriptor.setIsMaterialized(true);
-            tupleDes.computeMemLayout();
-            return olapScanNode;
+        public PlanNode visitProject(ProjectNode node, FragmentProperties context) {
+            return visitPlan(node.getSource(), context);
         }
 
         public PlanNode visitFilter(FilterNode node, FragmentProperties context) {
             if (node.getSource() instanceof TableScanNode) {
                 ScanNode scanNode = (ScanNode) visitPlan(node.getSource(), context);
-
                 RowExpression rowExpression = node.getPredicate();
-
-                scanNode.addConjuncts(Lists.newArrayList(RowExpressionToExpr.formatRowExpression(rowExpression, context.descTbl)));
+                scanNode.addConjuncts(Lists.newArrayList(RowExpressionToExpr.formatRowExpression(rowExpression, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef))));
                 return scanNode;
             }
             return null;
@@ -100,15 +85,28 @@ public class PhysicalPlanner {
                 ex.printStackTrace();
                 return null;
             }
+
+            for (VariableReferenceExpression variable : node.getOutputVariables()) {
+                SlotDescriptor slotDescriptor =  context.descTbl.addSlotDescriptor(tupleDescriptor);
+                slotDescriptor.setColumn(new Column(variable.getName(), ScalarType.INT));
+                slotDescriptor.setIsNullable(true);
+                slotDescriptor.setIsMaterialized(true);
+
+                context.variableToSlotRef.put(variable.getName(), slotDescriptor.getId());
+            }
+
+            tupleDescriptor.computeMemLayout();
             return scanNode;
         }
     }
     private static class FragmentProperties {
         private final DescriptorTable descTbl;
         private final PlannerContext plannerContext;
-        FragmentProperties (DescriptorTable descTbl, PlannerContext plannerContext) {
+        private final Map<String, SlotId> variableToSlotRef;
+        FragmentProperties (DescriptorTable descTbl, PlannerContext plannerContext, Map<String, SlotId> variableToSlotRef) {
             this.descTbl = descTbl;
             this.plannerContext = plannerContext;
+            this.variableToSlotRef = variableToSlotRef;
         }
     }
 }
