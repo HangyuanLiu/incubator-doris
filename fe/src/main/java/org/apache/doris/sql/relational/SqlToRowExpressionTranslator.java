@@ -168,7 +168,7 @@ public final class SqlToRowExpressionTranslator
         @Override
         protected RowExpression visitArithmeticBinary(ArithmeticBinaryExpression node, Void context)
         {
-            /*
+
             RowExpression left = process(node.getLeft(), context);
             RowExpression right = process(node.getRight(), context);
 
@@ -178,9 +178,6 @@ public final class SqlToRowExpressionTranslator
                     getType(node),
                     left,
                     right);
-
-             */
-            return null;
         }
 
         @Override

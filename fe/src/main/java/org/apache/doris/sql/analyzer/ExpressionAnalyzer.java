@@ -199,6 +199,33 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitArithmeticUnary(ArithmeticUnaryExpression node, StackableAstVisitorContext<Context> context)
+        {
+            switch (node.getSign()) {
+                case PLUS:
+                    Type type = process(node.getValue(), context);
+                    /*
+                    if (!type.equals(DOUBLE) && !type.equals(REAL) && !type.equals(BIGINT) && !type.equals(INTEGER) && !type.equals(SMALLINT) && !type.equals(TINYINT)) {
+                        // TODO: figure out a type-agnostic way of dealing with this. Maybe add a special unary operator
+                        // that types can chose to implement, or piggyback on the existence of the negation operator
+                        throw new SemanticException(TYPE_MISMATCH, node, "Unary '+' operator cannot by applied to %s type", type);
+                    }
+                     */
+                    return setExpressionType(node, type);
+                case MINUS:
+                    return getOperator(context, node, OperatorType.NEGATION, node.getValue());
+            }
+
+            throw new UnsupportedOperationException("Unsupported unary operator: " + node.getSign());
+        }
+
+        @Override
+        protected Type visitArithmeticBinary(ArithmeticBinaryExpression node, StackableAstVisitorContext<Context> context)
+        {
+            return getOperator(context, node, OperatorType.valueOf(node.getOperator().name()), node.getLeft(), node.getRight());
+        }
+
+        @Override
         protected Type visitComparisonExpression(ComparisonExpression node, StackableAstVisitorContext<Context> context)
         {
             OperatorType operatorType = OperatorType.valueOf(node.getOperator().name());

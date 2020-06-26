@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import org.apache.doris.sql.analyzer.TypeSignatureProvider;
 import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.FunctionManager;
+import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.ComparisonExpression;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
@@ -20,6 +21,40 @@ public final class FunctionResolution {
     public FunctionResolution(FunctionManager functionManager) {
         this.functionManager = requireNonNull(functionManager, "functionManager is null");
     }
+
+
+    public FunctionHandle arithmeticFunction(OperatorType operator, Type leftType, Type rightType)
+    {
+        checkArgument(operator.isArithmeticOperator(), format("unexpected arithmetic type %s", operator));
+        return functionManager.resolveOperator(operator, Lists.newArrayList(leftType, rightType));
+    }
+
+    public FunctionHandle arithmeticFunction(ArithmeticBinaryExpression.Operator operator, Type leftType, Type rightType)
+    {
+        OperatorType operatorType;
+        switch (operator) {
+            case ADD:
+                operatorType = ADD;
+                break;
+            case SUBTRACT:
+                operatorType = SUBTRACT;
+                break;
+            case MULTIPLY:
+                operatorType = MULTIPLY;
+                break;
+            case DIVIDE:
+                operatorType = DIVIDE;
+                break;
+            case MODULUS:
+                operatorType = MODULUS;
+                break;
+            default:
+                throw new IllegalStateException("Unknown arithmetic operator: " + operator);
+        }
+        return arithmeticFunction(operatorType, leftType, rightType);
+    }
+
+
 
     public FunctionHandle comparisonFunction(OperatorType operator, Type leftType, Type rightType)
     {

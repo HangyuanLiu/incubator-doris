@@ -1,5 +1,6 @@
 package org.apache.doris.sql.relational;
 
+import org.apache.doris.analysis.ArithmeticExpr;
 import org.apache.doris.analysis.BinaryPredicate;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
@@ -8,6 +9,7 @@ import org.apache.doris.analysis.SlotId;
 import org.apache.doris.analysis.SlotRef;
 import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.catalog.Type;
+import org.apache.doris.sql.metadata.BuiltInFunctionHandle;
 import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.ConstantExpression;
 import org.apache.doris.sql.relation.InputReferenceExpression;
@@ -40,13 +42,19 @@ public class RowExpressionToExpr {
     {
         @Override
         public Expr visitCall(CallExpression node, FormatterContext context) {
-            RowExpression left = node.getArguments().get(0);
-            RowExpression right = node.getArguments().get(1);
-            Expr binaryPred = new BinaryPredicate(BinaryPredicate.Operator.EQ,
-                    formatRowExpression(left, context), formatRowExpression(right, context));
-            binaryPred.setType(ScalarType.BOOLEAN);
+            Expr left = formatRowExpression(node.getArguments().get(0), context);
+            Expr right = formatRowExpression(node.getArguments().get(1), context);
 
-            return binaryPred;
+            Expr callExpr;
+            if (((BuiltInFunctionHandle)node.getFunctionHandle()).getFunctionName().equalsIgnoreCase("add")) {
+                callExpr = new ArithmeticExpr(ArithmeticExpr.Operator.ADD, left, right);
+                callExpr.setType(ScalarType.INT);
+            } else {
+                callExpr = new BinaryPredicate(BinaryPredicate.Operator.EQ, left,right);
+                callExpr.setType(ScalarType.BOOLEAN);
+            }
+
+            return callExpr;
         }
 
         @Override

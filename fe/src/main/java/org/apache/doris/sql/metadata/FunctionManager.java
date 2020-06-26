@@ -40,6 +40,13 @@ public class FunctionManager
         for (Type type : argumentTypes) {
             arguments.add(type.getTypeSignature());
         }
-        return new BuiltInFunctionHandle(null, "eq", arguments);
+        if (operatorType.equals(OperatorType.EQUAL)) {
+            return new BuiltInFunctionHandle(null, "eq", arguments);
+        } else if (operatorType.equals(OperatorType.ADD)) {
+            return new BuiltInFunctionHandle(null, "add", arguments);
+        }
+        else {
+            throw new UnsupportedOperationException("not yet implemented");
+        }
     }
 }

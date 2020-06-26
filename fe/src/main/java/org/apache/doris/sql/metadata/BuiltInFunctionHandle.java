@@ -1,6 +1,5 @@
 package org.apache.doris.sql.metadata;
 
-import org.apache.doris.catalog.PrimitiveType;
 import org.apache.doris.catalog.Type;
 import org.apache.doris.sql.type.TypeSignature;
 
@@ -20,6 +19,8 @@ public class BuiltInFunctionHandle implements FunctionHandle {
         for (TypeSignature type : arg) {
             if ("BIGINT".equals(type.getBase())) {
                 this.argumentTypes.add(Type.BIGINT);
+            } else {
+                throw new UnsupportedOperationException("not yet implemented");
             }
         }
     }

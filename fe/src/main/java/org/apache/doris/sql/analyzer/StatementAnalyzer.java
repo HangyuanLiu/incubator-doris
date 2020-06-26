@@ -312,8 +312,6 @@ public class StatementAnalyzer
 
             Scope outputScope = computeAndAssignOutputScope(node, scope, sourceScope);
 
-            List<Expression> sourceExpressions = new ArrayList<>(outputExpressions);
-
             return outputScope;
         }
 
