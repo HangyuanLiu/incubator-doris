@@ -10,9 +10,13 @@ import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.parser.SqlParser;
 import org.apache.doris.sql.planner.SimplePlanRewriter;
+import org.apache.doris.sql.planner.iterative.Rule;
+import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.relation.RowExpression;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.relational.SqlToRowExpressionTranslator;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.NodeRef;
@@ -23,6 +27,7 @@ import java.util.Map;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
+import static org.apache.doris.sql.tree.BooleanLiteral.TRUE_LITERAL;
 
 public class TranslateExpressions implements PlanOptimizer {
     Metadata metadata;
@@ -52,7 +57,51 @@ public class TranslateExpressions implements PlanOptimizer {
         }
 
         @Override
+        public LogicalPlanNode visitPlan(LogicalPlanNode node, RewriteContext<Void> context) {
+            return context.defaultRewrite(node, null);
+        }
+
+        @Override
+        public LogicalPlanNode visitProject(ProjectNode node, RewriteContext<Void> context) {
+            node = (ProjectNode) context.defaultRewrite(node);
+
+            Assignments.Builder builder = Assignments.builder();
+            boolean anyRewritten = false;
+            for (Map.Entry<VariableReferenceExpression, RowExpression> entry : node.getAssignments().getMap().entrySet()) {
+
+                Map<NodeRef<Expression>, Type> types = ExpressionAnalyzer.getExpressionTypes(
+                        null,
+                        metadata,
+                        sqlParser,
+                        typeProvider,
+                        castToExpression(entry.getValue()),
+                        emptyList(),
+                        WarningCollector.NOOP);
+
+                RowExpression rewritten = SqlToRowExpressionTranslator.translate(
+                        castToExpression(entry.getValue()),
+                        types,
+                        ImmutableMap.of(),
+                        metadata.getFunctionManager(),
+                        metadata.getTypeManager());
+
+                if (!rewritten.equals(entry.getValue())) {
+                    anyRewritten = true;
+                }
+                builder.put(entry.getKey(), rewritten);
+            }
+            Assignments assignments = builder.build();
+            if (anyRewritten) {
+                return new ProjectNode(node.getId(), node.getSource(), assignments);
+            } else {
+                return node;
+            }
+        }
+
+        @Override
         public LogicalPlanNode visitFilter(FilterNode node, RewriteContext<Void> context) {
+            node = (FilterNode) context.defaultRewrite(node);
+
             Map<NodeRef<Expression>, Type> types = ExpressionAnalyzer.getExpressionTypes(
                     null,
                     metadata,

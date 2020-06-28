@@ -1,5 +1,7 @@
 package org.apache.doris.sql.planner.plan;
 
+import org.apache.doris.sql.planner.iterative.GroupReference;
+
 public abstract class PlanVisitor<R, C>
 {
     /**
@@ -28,6 +30,11 @@ public abstract class PlanVisitor<R, C>
     }
 
     public R visitLimit(LimitNode node, C context) {
+        return visitPlan(node, context);
+    }
+
+    public R visitGroupReference(GroupReference node, C context)
+    {
         return visitPlan(node, context);
     }
 }

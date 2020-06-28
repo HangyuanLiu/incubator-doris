@@ -44,11 +44,12 @@ public class QueryPlanner {
     {
         PlanBuilder builder = planQueryBody(query);
 
-        //List<Expression> orderBy = analysis.getOrderByExpressions(query);
+        ///List<Expression> orderBy = analysis.getOrderByExpressions(query);
         //builder = handleSubqueries(builder, query, orderBy);
-        //List<Expression> outputs = analysis.getOutputExpressions(query);
+        List<Expression> outputs = analysis.getOutputExpressions(query);
         //builder = handleSubqueries(builder, query, outputs);
-        //builder = project(builder, Iterables.concat(outputs));
+        //builder = project(builder, Iterables.concat(orderBy, outputs));
+        builder = project(builder, outputs);
 
         //builder = sort(builder, query);
         //builder = limit(builder, query);

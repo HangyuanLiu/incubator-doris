@@ -17,6 +17,7 @@
 
 package org.apache.doris.qe;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -75,10 +76,13 @@ import org.apache.doris.sql.parser.SqlBaseParser;
 import org.apache.doris.sql.planner.LogicalPlanner;
 import org.apache.doris.sql.planner.PhysicalPlanner;
 import org.apache.doris.sql.planner.Plan;
+import org.apache.doris.sql.planner.iterative.IterativeOptimizer;
+import org.apache.doris.sql.planner.iterative.rule.RemoveRedundantIdentityProjections;
 import org.apache.doris.sql.planner.optimizations.LimitPushDown;
 import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
 import org.apache.doris.sql.planner.optimizations.PredicatePushDown;
 import org.apache.doris.sql.planner.optimizations.TranslateExpressions;
+import org.apache.doris.sql.planner.optimizations.UnaliasSymbolReferences;
 import org.apache.doris.sql.planner.plan.OutputNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
@@ -240,6 +244,11 @@ public class ConnectProcessor {
             //logical planner
             List<PlanOptimizer> optimizers = new ArrayList<>();
             optimizers.add(new TranslateExpressions(metadata, null));
+            optimizers.add(new UnaliasSymbolReferences());
+            optimizers.add(
+            new IterativeOptimizer(
+                    null, null, null,
+                    ImmutableSet.of(new RemoveRedundantIdentityProjections())));
             //optimizers.add(new PredicatePushDown());
             //optimizers.add(new LimitPushDown());
 

@@ -55,7 +55,6 @@ public final class TableScanNode
     /**
      * Get the table handle provided by connector
      */
-    @JsonProperty("table")
     public TableHandle getTable()
     {
         return table;
@@ -64,7 +63,6 @@ public final class TableScanNode
     /**
      * Get the mapping from symbols to columns
      */
-    @JsonProperty
     public Map<VariableReferenceExpression, ColumnHandle> getAssignments()
     {
         return assignments;
