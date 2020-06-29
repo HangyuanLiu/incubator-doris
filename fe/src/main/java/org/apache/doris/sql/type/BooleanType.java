@@ -15,12 +15,20 @@ public final class BooleanType
     }
 
     @Override
-    public int getFixedSize() {
-        return 1;
+    public int getFixedSize()
+    {
+        return Byte.BYTES;
     }
 
     @Override
-    public boolean isComparable() {
+    public boolean isComparable()
+    {
+        return true;
+    }
+
+    @Override
+    public boolean isOrderable()
+    {
         return true;
     }
 }

@@ -12,4 +12,9 @@ public interface Type
      * True if the type supports equalTo and hash.
      */
     boolean isComparable();
+
+    /**
+     * True if the type supports compareTo.
+     */
+    boolean isOrderable();
 }

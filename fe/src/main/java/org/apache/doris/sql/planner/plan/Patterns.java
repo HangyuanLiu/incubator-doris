@@ -15,8 +15,12 @@ package org.apache.doris.sql.planner.plan;
 
 
 import org.apache.doris.sql.planner.iterative.matching.Pattern;
+import org.apache.doris.sql.planner.iterative.matching.Property;
+
+import java.util.Optional;
 
 import static org.apache.doris.sql.planner.iterative.matching.Pattern.typeOf;
+import static org.apache.doris.sql.planner.iterative.matching.Property.optionalProperty;
 
 public class Patterns
 {
@@ -25,5 +29,27 @@ public class Patterns
     public static Pattern<ProjectNode> project()
     {
         return typeOf(ProjectNode.class);
+    }
+
+    public static Pattern<FilterNode> filter()
+    {
+        return typeOf(FilterNode.class);
+    }
+
+    public static Pattern<LimitNode> limit()
+    {
+        return typeOf(LimitNode.class);
+    }
+
+    public static Pattern<SortNode> sort()
+    {
+        return typeOf(SortNode.class);
+    }
+
+    public static Property<LogicalPlanNode, LogicalPlanNode> source()
+    {
+        return optionalProperty("source", node -> node.getSources().size() == 1 ?
+                Optional.of(node.getSources().get(0)) :
+                Optional.empty());
     }
 }

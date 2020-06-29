@@ -12,12 +12,20 @@ public final class UnknownType
     }
 
     @Override
-    public int getFixedSize() {
-        return 0;
+    public int getFixedSize()
+    {
+        return Byte.BYTES;
     }
 
     @Override
-    public boolean isComparable() {
-        return false;
+    public boolean isComparable()
+    {
+        return true;
+    }
+
+    @Override
+    public boolean isOrderable()
+    {
+        return true;
     }
 }

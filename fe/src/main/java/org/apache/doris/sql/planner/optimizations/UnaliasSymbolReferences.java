@@ -1,6 +1,8 @@
 package org.apache.doris.sql.planner.optimizations;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNodeId;
@@ -12,9 +14,14 @@ import org.apache.doris.sql.planner.SimplePlanRewriter;
 import org.apache.doris.sql.planner.Symbol;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.FilterNode;
+import org.apache.doris.sql.planner.plan.LimitNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.Ordering;
+import org.apache.doris.sql.planner.plan.OrderingScheme;
 import org.apache.doris.sql.planner.plan.OutputNode;
 import org.apache.doris.sql.planner.plan.ProjectNode;
+import org.apache.doris.sql.planner.plan.SortNode;
+import org.apache.doris.sql.planner.plan.SortOrder;
 import org.apache.doris.sql.planner.plan.TableScanNode;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
@@ -26,10 +33,13 @@ import org.apache.doris.sql.tree.NullLiteral;
 import org.apache.doris.sql.tree.SymbolReference;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
@@ -65,9 +75,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
         public LogicalPlanNode visitFilter(FilterNode node, RewriteContext<Void> context)
         {
             LogicalPlanNode source = context.rewrite(node.getSource());
-            return node;
 
-            //return new FilterNode(node.getId(), source, canonicalize(node.getPredicate()));
+            return new FilterNode(node.getId(), source, canonicalize(node.getPredicate()));
         }
 
         @Override
@@ -86,8 +95,19 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
             return new OutputNode(node.getId(), source, node.getColumnNames(), canonical);
         }
 
+        @Override
+        public LogicalPlanNode visitLimit(LimitNode node, RewriteContext<Void> context)
+        {
+            return context.defaultRewrite(node);
+        }
 
+        @Override
+        public LogicalPlanNode visitSort(SortNode node, RewriteContext<Void> context)
+        {
+            LogicalPlanNode source = context.rewrite(node.getSource());
 
+            return new SortNode(node.getId(), source, canonicalizeAndDistinct(node.getOrderingScheme()), node.isPartial());
+        }
 
         @Override
         public LogicalPlanNode visitPlan(LogicalPlanNode node, RewriteContext<Void> context)
@@ -174,6 +194,23 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
         private RowExpression canonicalize(RowExpression value)
         {
             return RowExpressionVariableInliner.inlineVariables(this::canonicalize, value);
+        }
+
+        private OrderingScheme canonicalizeAndDistinct(OrderingScheme orderingScheme)
+        {
+            Set<VariableReferenceExpression> added = new HashSet<>();
+            ImmutableList.Builder<VariableReferenceExpression> variables = ImmutableList.builder();
+            ImmutableMap.Builder<VariableReferenceExpression, SortOrder> orderings = ImmutableMap.builder();
+            for (VariableReferenceExpression variable : orderingScheme.getOrderByVariables()) {
+                VariableReferenceExpression canonical = canonicalize(variable);
+                if (added.add(canonical)) {
+                    variables.add(canonical);
+                    orderings.put(canonical, orderingScheme.getOrdering(variable));
+                }
+            }
+
+            ImmutableMap<VariableReferenceExpression, SortOrder> orderingsMap = orderings.build();
+            return new OrderingScheme(variables.build().stream().map(variable -> new Ordering(variable, orderingsMap.get(variable))).collect(toImmutableList()));
         }
     }
 }

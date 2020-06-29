@@ -11,32 +11,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.doris.sql.type;
+package org.apache.doris.sql.planner.plan;
 
-public abstract class AbstractLongType
-        extends AbstractType
-        implements FixedWidthType
+public enum SortOrder
 {
+    ASC_NULLS_FIRST(true, true),
+    ASC_NULLS_LAST(true, false),
+    DESC_NULLS_FIRST(false, true),
+    DESC_NULLS_LAST(false, false);
 
-    public AbstractLongType(TypeSignature signature) {
-        super(signature);
+    private final boolean ascending;
+    private final boolean nullsFirst;
+
+    SortOrder(boolean ascending, boolean nullsFirst)
+    {
+        this.ascending = ascending;
+        this.nullsFirst = nullsFirst;
     }
 
-    @Override
-    public final int getFixedSize()
+    public boolean isAscending()
     {
-        return Long.BYTES;
+        return ascending;
     }
 
-    @Override
-    public boolean isComparable()
+    public boolean isNullsFirst()
     {
-        return true;
-    }
-
-    @Override
-    public boolean isOrderable()
-    {
-        return true;
+        return nullsFirst;
     }
 }
