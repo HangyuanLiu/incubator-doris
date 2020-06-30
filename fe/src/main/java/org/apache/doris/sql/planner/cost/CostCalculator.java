@@ -1,6 +1,5 @@
 package org.apache.doris.sql.planner.cost;
 
-import com.sun.org.glassfish.external.probe.provider.StatsProvider;
 import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 
