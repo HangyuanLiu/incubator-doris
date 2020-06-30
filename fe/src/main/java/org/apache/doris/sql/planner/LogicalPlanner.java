@@ -2,6 +2,7 @@ package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.doris.common.IdGenerator;
+import org.apache.doris.common.NotImplementedException;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
@@ -34,12 +35,12 @@ public class LogicalPlanner {
         this.idAllocator = idAllocator;
     }
 
-    public Plan plan(Analysis analysis)
+    public Plan plan(Analysis analysis) throws Exception
     {
         return plan(analysis, Stage.OPTIMIZED_AND_VALIDATED);
     }
 
-    public Plan plan(Analysis analysis, Stage stage)
+    public Plan plan(Analysis analysis, Stage stage) throws Exception
     {
         LogicalPlanNode root = planStatement(analysis, analysis.getStatement());
 
@@ -47,7 +48,7 @@ public class LogicalPlanner {
 
         if (stage.ordinal() >= Stage.OPTIMIZED.ordinal()) {
             for (PlanOptimizer optimizer : planOptimizers) {
-                root = optimizer.optimize(root, null, variableAllocator.getTypes(), idAllocator, null);
+                root = optimizer.optimize(root, null, variableAllocator.getTypes(), variableAllocator, idAllocator, null);
                 requireNonNull(root, format("%s returned a null plan", optimizer.getClass().getName()));
             }
         }
@@ -61,20 +62,19 @@ public class LogicalPlanner {
         return new Plan(root, types);
     }
 
-    public LogicalPlanNode planStatement(Analysis analysis, Statement statement)
+    public LogicalPlanNode planStatement(Analysis analysis, Statement statement) throws Exception
     {
         return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
     }
 
-    private RelationPlan planStatementWithoutOutput(Analysis analysis, Statement statement)
+    private RelationPlan planStatementWithoutOutput(Analysis analysis, Statement statement) throws Exception
     {
         if (statement instanceof Query) {
             return createRelationPlan(analysis, (Query) statement);
         }
         else {
-            //throw new Exception(NOT_SUPPORTED, "Unsupported statement type " + statement.getClass().getSimpleName());
+            throw new NotImplementedException("Not implement");
         }
-        return null;
     }
 
     private LogicalPlanNode createOutputPlan(RelationPlan plan, Analysis analysis)

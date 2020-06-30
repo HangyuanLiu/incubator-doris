@@ -13,13 +13,13 @@
  */
 package org.apache.doris.sql.planner.iterative;
 
-import com.sun.org.glassfish.external.probe.provider.StatsProvider;
 import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.cost.CostProvider;
+import org.apache.doris.sql.planner.cost.StatsProvider;
 import org.apache.doris.sql.planner.iterative.matching.Captures;
 import org.apache.doris.sql.planner.iterative.matching.Pattern;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;

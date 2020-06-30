@@ -12,6 +12,7 @@ import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.planner.RowExpressionVariableInliner;
 import org.apache.doris.sql.planner.SimplePlanRewriter;
 import org.apache.doris.sql.planner.Symbol;
+import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.LimitNode;
@@ -23,6 +24,7 @@ import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.planner.plan.SortNode;
 import org.apache.doris.sql.planner.plan.SortOrder;
 import org.apache.doris.sql.planner.plan.TableScanNode;
+import org.apache.doris.sql.planner.plan.TopNNode;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.relational.Expressions;
@@ -51,8 +53,12 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     }
 
     @Override
-    public LogicalPlanNode optimize(LogicalPlanNode plan, Session session, TypeProvider types, IdGenerator<PlanNodeId> idAllocator, WarningCollector warningCollector)
-    {
+    public LogicalPlanNode optimize(LogicalPlanNode plan,
+                                    Session session,
+                                    TypeProvider types,
+                                    VariableAllocator variableAllocator,
+                                    IdGenerator<PlanNodeId> idAllocator,
+                                    WarningCollector warningCollector) {
         return SimplePlanRewriter.rewriteWith(new Rewriter(types), plan);
     }
 
@@ -99,6 +105,15 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
         public LogicalPlanNode visitLimit(LimitNode node, RewriteContext<Void> context)
         {
             return context.defaultRewrite(node);
+        }
+
+        @Override
+        public LogicalPlanNode visitTopN(TopNNode node, RewriteContext<Void> context)
+        {
+            LogicalPlanNode source = context.rewrite(node.getSource());
+
+            SymbolMapper mapper = new SymbolMapper(mapping, types);
+            return mapper.map(node, source, node.getId());
         }
 
         @Override

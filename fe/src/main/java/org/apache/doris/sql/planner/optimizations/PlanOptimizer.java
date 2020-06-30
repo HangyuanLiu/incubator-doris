@@ -18,12 +18,14 @@ import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.metadata.WarningCollector;
+import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 
 public interface PlanOptimizer {
     LogicalPlanNode optimize(LogicalPlanNode plan,
                              Session session,
                              TypeProvider types,
+                             VariableAllocator variableAllocator,
                              IdGenerator<PlanNodeId> idAllocator,
                              WarningCollector warningCollector);
 }

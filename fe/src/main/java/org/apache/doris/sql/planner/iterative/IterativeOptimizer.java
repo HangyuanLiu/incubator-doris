@@ -71,8 +71,12 @@ public class IterativeOptimizer
     }
 
     @Override
-    public LogicalPlanNode optimize(LogicalPlanNode plan, Session session, TypeProvider types, IdGenerator<PlanNodeId> idAllocator, WarningCollector warningCollector)
-    {
+    public LogicalPlanNode optimize(LogicalPlanNode plan,
+                                    Session session,
+                                    TypeProvider types,
+                                    VariableAllocator variableAllocator,
+                                    IdGenerator<PlanNodeId> idAllocator,
+                                    WarningCollector warningCollector) {
         // only disable new rules if we have legacy rules to fall back to
         /*
         if (!SystemSessionProperties.isNewOptimizerEnabled(session) && !legacyRules.isEmpty()) {
@@ -90,7 +94,7 @@ public class IterativeOptimizer
         Matcher matcher = new PlanNodeMatcher(lookup);
 
         //Duration timeout = SystemSessionProperties.getOptimizerTimeout(session);
-        Context context = new Context(memo, lookup, idAllocator, null, System.nanoTime(), 30000, session, warningCollector);
+        Context context = new Context(memo, lookup, idAllocator, variableAllocator, System.nanoTime(), 30000, session, warningCollector);
         exploreGroup(memo.getRootGroup(), context, matcher);
 
         return memo.extract();

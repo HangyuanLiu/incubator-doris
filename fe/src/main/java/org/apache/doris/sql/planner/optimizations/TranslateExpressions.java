@@ -10,6 +10,7 @@ import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.parser.SqlParser;
 import org.apache.doris.sql.planner.SimplePlanRewriter;
+import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.iterative.Rule;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.FilterNode;
@@ -39,7 +40,12 @@ public class TranslateExpressions implements PlanOptimizer {
     }
 
     @Override
-    public LogicalPlanNode optimize(LogicalPlanNode plan, Session session, TypeProvider types, IdGenerator<PlanNodeId> idAllocator, WarningCollector warningCollector) {
+    public LogicalPlanNode optimize(LogicalPlanNode plan,
+                                    Session session,
+                                    TypeProvider types,
+                                    VariableAllocator variableAllocator,
+                                    IdGenerator<PlanNodeId> idAllocator,
+                                    WarningCollector warningCollector) {
         return SimplePlanRewriter.rewriteWith(new Rewriter(metadata, sqlParser, types), plan, null);
     }
 

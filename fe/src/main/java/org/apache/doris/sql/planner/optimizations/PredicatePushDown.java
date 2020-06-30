@@ -6,6 +6,7 @@ import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.planner.SimplePlanRewriter;
+import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.relation.RowExpression;
@@ -19,8 +20,12 @@ public class PredicatePushDown
         implements PlanOptimizer
 {
     @Override
-    public LogicalPlanNode optimize(LogicalPlanNode plan, Session session, TypeProvider types, IdGenerator<PlanNodeId> idAllocator, WarningCollector warningCollector)
-    {
+    public LogicalPlanNode optimize(LogicalPlanNode plan,
+                                    Session session,
+                                    TypeProvider types,
+                                    VariableAllocator variableAllocator,
+                                    IdGenerator<PlanNodeId> idAllocator,
+                                    WarningCollector warningCollector) {
         //requireNonNull(plan, "plan is null");
         //requireNonNull(session, "session is null");
         //requireNonNull(types, "types is null");

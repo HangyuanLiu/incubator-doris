@@ -76,6 +76,7 @@ import org.apache.doris.sql.parser.SqlBaseParser;
 import org.apache.doris.sql.planner.LogicalPlanner;
 import org.apache.doris.sql.planner.PhysicalPlanner;
 import org.apache.doris.sql.planner.Plan;
+import org.apache.doris.sql.planner.PlanOptimizers;
 import org.apache.doris.sql.planner.iterative.IterativeOptimizer;
 import org.apache.doris.sql.planner.iterative.rule.RemoveRedundantIdentityProjections;
 import org.apache.doris.sql.planner.optimizations.LimitPushDown;
@@ -242,19 +243,9 @@ public class ConnectProcessor {
             analyzer.analyze(stmt, Optional.empty());
 
             //logical planner
-            List<PlanOptimizer> optimizers = new ArrayList<>();
-            optimizers.add(new TranslateExpressions(metadata, null));
-            optimizers.add(new UnaliasSymbolReferences());
-            optimizers.add(
-            new IterativeOptimizer(
-                    null, null, null,
-                    ImmutableSet.of(new RemoveRedundantIdentityProjections())));
-            //optimizers.add(new PredicatePushDown());
-            //optimizers.add(new LimitPushDown());
-
-            LogicalPlanner logicalPlanner = new LogicalPlanner(optimizers, PlanNodeId.createGenerator());
+            PlanOptimizers optimizers = new PlanOptimizers(metadata);
+            LogicalPlanner logicalPlanner = new LogicalPlanner(optimizers.get(), PlanNodeId.createGenerator());
             Plan plan = logicalPlanner.plan(analysis);
-
 
             TQueryOptions tQueryOptions = new TQueryOptions();
             tQueryOptions.num_nodes = 3;
