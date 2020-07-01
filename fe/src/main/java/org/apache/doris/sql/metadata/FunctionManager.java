@@ -32,7 +32,7 @@ public class FunctionManager
             arguments.add(new TypeSignature(type.toString()));
         }
 
-        return new FunctionMetadata(arguments, new TypeSignature(fn.getReturnType().toString()));
+        return new FunctionMetadata(arguments, new TypeSignature(fn.getReturnType().toString()), FunctionMetadata.FunctionKind.SCALAR);
     }
 
     public FunctionHandle resolveOperator(OperatorType operatorType, List<Type> argumentTypes) {

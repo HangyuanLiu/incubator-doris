@@ -18,6 +18,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.FunctionCall;
+import org.apache.doris.sql.tree.GroupingOperation;
 import org.apache.doris.sql.tree.Identifier;
 import org.apache.doris.sql.tree.Join;
 import org.apache.doris.sql.tree.Node;
@@ -38,6 +39,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableCollection;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
@@ -58,6 +60,7 @@ public class Analysis
     private final Map<NodeRef<QuerySpecification>, List<FunctionCall>> aggregates = new LinkedHashMap<>();
     private final Map<NodeRef<OrderBy>, List<Expression>> orderByAggregates = new LinkedHashMap<>();
     private final Map<NodeRef<QuerySpecification>, List<Expression>> groupByExpressions = new LinkedHashMap<>();
+    private final Map<NodeRef<QuerySpecification>, GroupingSetAnalysis> groupingSets = new LinkedHashMap<>();
 
     private final Map<NodeRef<Node>, Expression> where = new LinkedHashMap<>();
     private final Map<NodeRef<QuerySpecification>, Expression> having = new LinkedHashMap<>();
@@ -72,10 +75,11 @@ public class Analysis
     private final Map<NodeRef<Expression>, Type> coercions = new LinkedHashMap<>();
     private final Set<NodeRef<Expression>> typeOnlyCoercions = new LinkedHashSet<>();
     private final Map<NodeRef<Relation>, List<Type>> relationCoercions = new LinkedHashMap<>();
+    private final Map<NodeRef<FunctionCall>, FunctionHandle> functionHandles = new LinkedHashMap<>();
 
     private final Map<Field, ColumnHandle> columns = new LinkedHashMap<>();
 
-    private final Map<NodeRef<SampledRelation>, Double> sampleRatios = new LinkedHashMap<>();
+    private final Map<NodeRef<QuerySpecification>, List<GroupingOperation>> groupingOperations = new LinkedHashMap<>();
 
     // for create table
     private Optional<QualifiedObjectName> createTableDestination = Optional.empty();
@@ -205,6 +209,11 @@ public class Analysis
         return coercions.get(NodeRef.of(expression));
     }
 
+    public void setGroupingSets(QuerySpecification node, GroupingSetAnalysis groupingSets)
+    {
+        this.groupingSets.put(NodeRef.of(node), groupingSets);
+    }
+
     public void setGroupByExpressions(QuerySpecification node, List<Expression> expressions)
     {
         groupByExpressions.put(NodeRef.of(node), expressions);
@@ -218,6 +227,11 @@ public class Analysis
     public boolean isTypeOnlyCoercion(Expression expression)
     {
         return typeOnlyCoercions.contains(NodeRef.of(expression));
+    }
+
+    public GroupingSetAnalysis getGroupingSets(QuerySpecification node)
+    {
+        return groupingSets.get(NodeRef.of(node));
     }
 
     public List<Expression> getGroupByExpressions(QuerySpecification node)
@@ -332,6 +346,16 @@ public class Analysis
         tables.put(NodeRef.of(table), handle);
     }
 
+    public FunctionHandle getFunctionHandle(FunctionCall function)
+    {
+        return functionHandles.get(NodeRef.of(function));
+    }
+
+    public Map<NodeRef<FunctionCall>, FunctionHandle> getFunctionHandles()
+    {
+        return ImmutableMap.copyOf(functionHandles);
+    }
+
     public Set<NodeRef<Expression>> getColumnReferences()
     {
         return unmodifiableSet(columnReferences.keySet());
@@ -365,6 +389,11 @@ public class Analysis
     {
         this.coercions.putAll(coercions);
         this.typeOnlyCoercions.addAll(typeOnlyCoercions);
+    }
+
+    public Expression getHaving(QuerySpecification query)
+    {
+        return having.get(NodeRef.of(query));
     }
 
     public void setColumn(Field field, ColumnHandle handle)
@@ -430,6 +459,17 @@ public class Analysis
         namedQueries.put(NodeRef.of(tableReference), query);
     }
 
+    public void setGroupingOperations(QuerySpecification querySpecification, List<GroupingOperation> groupingOperations)
+    {
+        this.groupingOperations.put(NodeRef.of(querySpecification), ImmutableList.copyOf(groupingOperations));
+    }
+
+    public List<GroupingOperation> getGroupingOperations(QuerySpecification querySpecification)
+    {
+        return Optional.ofNullable(groupingOperations.get(NodeRef.of(querySpecification)))
+                .orElse(emptyList());
+    }
+
     public List<Expression> getParameters()
     {
         return parameters;
@@ -438,5 +478,45 @@ public class Analysis
     public boolean isDescribe()
     {
         return isDescribe;
+    }
+
+    public static class GroupingSetAnalysis
+    {
+        private final List<Set<FieldId>> cubes;
+        private final List<List<FieldId>> rollups;
+        private final List<List<Set<FieldId>>> ordinarySets;
+        private final List<Expression> complexExpressions;
+
+        public GroupingSetAnalysis(
+                List<Set<FieldId>> cubes,
+                List<List<FieldId>> rollups,
+                List<List<Set<FieldId>>> ordinarySets,
+                List<Expression> complexExpressions)
+        {
+            this.cubes = ImmutableList.copyOf(cubes);
+            this.rollups = ImmutableList.copyOf(rollups);
+            this.ordinarySets = ImmutableList.copyOf(ordinarySets);
+            this.complexExpressions = ImmutableList.copyOf(complexExpressions);
+        }
+
+        public List<Set<FieldId>> getCubes()
+        {
+            return cubes;
+        }
+
+        public List<List<FieldId>> getRollups()
+        {
+            return rollups;
+        }
+
+        public List<List<Set<FieldId>>> getOrdinarySets()
+        {
+            return ordinarySets;
+        }
+
+        public List<Expression> getComplexExpressions()
+        {
+            return complexExpressions;
+        }
     }
 }

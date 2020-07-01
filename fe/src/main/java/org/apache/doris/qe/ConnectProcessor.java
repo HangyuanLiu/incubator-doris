@@ -244,7 +244,7 @@ public class ConnectProcessor {
 
             //logical planner
             PlanOptimizers optimizers = new PlanOptimizers(metadata);
-            LogicalPlanner logicalPlanner = new LogicalPlanner(optimizers.get(), PlanNodeId.createGenerator());
+            LogicalPlanner logicalPlanner = new LogicalPlanner(optimizers.get(), PlanNodeId.createGenerator(), metadata);
             Plan plan = logicalPlanner.plan(analysis);
 
             TQueryOptions tQueryOptions = new TQueryOptions();
@@ -255,12 +255,12 @@ public class ConnectProcessor {
             HashMap<String, SlotId> variableToSlotRef = new HashMap<>();
 
             PhysicalPlanner physicalPlanner = new PhysicalPlanner();
-            PlanNode root = physicalPlanner.createPhysicalPlan(plan, descTbl, plannerContext, variableToSlotRef);
+            PhysicalPlanner.PhysicalPlan physicalPlan = physicalPlanner.createPhysicalPlan(plan, descTbl, plannerContext, variableToSlotRef);
             System.out.println("DescriptorTable : " + descTbl.getTupleDescs());
 
             //execute plan
             DistributedPlanner distributedPlanner = new DistributedPlanner(plannerContext);
-            ArrayList<PlanFragment> fragments = distributedPlanner.createPlanFragments(root);
+            ArrayList<PlanFragment> fragments = distributedPlanner.createPlanFragments(physicalPlan.getRoot());
 
             for (PlanFragment fragment : fragments) {
                 System.out.println("fragments : " + fragment.toThrift());
@@ -285,10 +285,8 @@ public class ConnectProcessor {
             //execute this query
             ctx.getState().reset();
             executor = new StmtExecutor(ctx);
-            //FIXME (lhy)
-            ScanNode scanNode = (ScanNode) fragments.get(1).getPlanRoot();
 
-            executor.executeV2(fragments, Lists.newArrayList(scanNode), descTbl.toThrift(), outputExprs);
+            executor.executeV2(fragments, physicalPlan.getScanNodes(), descTbl.toThrift(), outputExprs);
             System.out.println("Query success");
             return;
         } catch (Exception ex) {

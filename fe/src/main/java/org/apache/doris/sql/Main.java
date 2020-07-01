@@ -291,14 +291,14 @@ public class Main {
         analyzer.analyze(stmt, Optional.empty());
 
         //planner
-        LogicalPlanner logicalPlanner = new LogicalPlanner(null, PlanNodeId.createGenerator());
+        LogicalPlanner logicalPlanner = new LogicalPlanner(null, PlanNodeId.createGenerator(), metadata);
         Plan plan = logicalPlanner.plan(analysis);
 
         System.out.println("Hello world");
         //physical plan
         PhysicalPlanner physicalPlanner = new PhysicalPlanner();
         DescriptorTable descTbl = new DescriptorTable();
-        PlanNode root = physicalPlanner.createPhysicalPlan(plan, descTbl, null, null);
+        PhysicalPlanner.PhysicalPlan root = physicalPlanner.createPhysicalPlan(plan, descTbl, null, null);
         System.out.println(descTbl.getTupleDescs());
 
 
@@ -306,7 +306,7 @@ public class Main {
         tQueryOptions.num_nodes = 3;
         PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
         DistributedPlanner distributedPlanner = new DistributedPlanner(plannerContext);
-        ArrayList<PlanFragment> fragments = distributedPlanner.createPlanFragments(root);
+        ArrayList<PlanFragment> fragments = distributedPlanner.createPlanFragments(root.getRoot());
         System.out.println("fragments : " + fragments);
     }
 

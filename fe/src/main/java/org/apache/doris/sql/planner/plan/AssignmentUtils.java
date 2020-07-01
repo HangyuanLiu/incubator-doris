@@ -19,17 +19,43 @@ import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collector;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonMap;
+import static org.apache.doris.sql.relational.OriginalExpressionUtils.asSymbolReference;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 
 public class AssignmentUtils
 {
     private AssignmentUtils() {}
+
+    @Deprecated
+    public static Map.Entry<VariableReferenceExpression, RowExpression> identityAsSymbolReference(VariableReferenceExpression variable)
+    {
+        return singletonMap(variable, castToRowExpression(asSymbolReference(variable)))
+                .entrySet().iterator().next();
+    }
+
+    @Deprecated
+    public static Map<VariableReferenceExpression, RowExpression> identitiesAsSymbolReferences(Collection<VariableReferenceExpression> variables)
+    {
+        Map<VariableReferenceExpression, RowExpression> map = new LinkedHashMap<>();
+        for (VariableReferenceExpression variable : variables) {
+            map.put(variable, castToRowExpression(asSymbolReference(variable)));
+        }
+        return map;
+    }
+
+    @Deprecated
+    public static Assignments identityAssignmentsAsSymbolReferences(Collection<VariableReferenceExpression> variables)
+    {
+        return Assignments.builder().putAll(identitiesAsSymbolReferences(variables)).build();
+    }
 
     public static Assignments identityAssignments(Collection<VariableReferenceExpression> variables)
     {

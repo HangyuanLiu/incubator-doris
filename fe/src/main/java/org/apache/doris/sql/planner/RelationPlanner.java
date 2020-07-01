@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNode;
 import org.apache.doris.planner.PlanNodeId;
+import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.ProjectNode;
@@ -28,11 +29,13 @@ class RelationPlanner
     private final Analysis analysis;
     private final VariableAllocator variableAllocator;
     private final IdGenerator<PlanNodeId> idAllocator;
+    private final Metadata metadata;
 
-    RelationPlanner(Analysis analysis, VariableAllocator variableAllocator, IdGenerator<PlanNodeId> idAllocator) {
+    RelationPlanner(Analysis analysis, VariableAllocator variableAllocator, IdGenerator<PlanNodeId> idAllocator, Metadata metadata) {
         this.analysis = analysis;
         this.variableAllocator = variableAllocator;
         this.idAllocator = idAllocator;
+        this.metadata = metadata;
     }
 
     @Override
@@ -86,14 +89,14 @@ class RelationPlanner
     @Override
     protected RelationPlan visitQuery(Query node, Void context)
     {
-        return new QueryPlanner(analysis, variableAllocator, idAllocator)
+        return new QueryPlanner(analysis, variableAllocator, idAllocator, metadata)
                 .plan(node);
     }
 
     @Override
     protected RelationPlan visitQuerySpecification(QuerySpecification node, Void context)
     {
-        return new QueryPlanner(analysis, variableAllocator, idAllocator)
+        return new QueryPlanner(analysis, variableAllocator, idAllocator, metadata)
                 .plan(node);
     }
 }

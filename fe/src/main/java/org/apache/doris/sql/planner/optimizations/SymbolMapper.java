@@ -16,16 +16,19 @@ package org.apache.doris.sql.planner.optimizations;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.expressions.RowExpressionRewriter;
 import org.apache.doris.sql.expressions.RowExpressionTreeRewriter;
 import org.apache.doris.sql.planner.Symbol;
+import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.Ordering;
 import org.apache.doris.sql.planner.plan.OrderingScheme;
 import org.apache.doris.sql.planner.plan.SortOrder;
 import org.apache.doris.sql.planner.plan.TopNNode;
+import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
@@ -42,6 +45,7 @@ import java.util.Set;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.planner.plan.AggregationNode.groupingSets;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.isExpression;
@@ -134,21 +138,21 @@ public class SymbolMapper
         return new OrderingScheme(orderBy.build().stream().map(variable -> new Ordering(variable, orderingMap.get(variable))).collect(toImmutableList()));
     }
 
-    /*
-    public AggregationNode map(AggregationNode node, PlanNode source)
+
+    public AggregationNode map(AggregationNode node, LogicalPlanNode source)
     {
         return map(node, source, node.getId());
     }
 
-    public AggregationNode map(AggregationNode node, PlanNode source, PlanNodeIdAllocator idAllocator)
+    public AggregationNode map(AggregationNode node, LogicalPlanNode source, IdGenerator<PlanNodeId> idAllocator)
     {
         return map(node, source, idAllocator.getNextId());
     }
 
-    private AggregationNode map(AggregationNode node, PlanNode source, PlanNodeId newNodeId)
+    private AggregationNode map(AggregationNode node, LogicalPlanNode source, PlanNodeId newNodeId)
     {
-        ImmutableMap.Builder<VariableReferenceExpression, Aggregation> aggregations = ImmutableMap.builder();
-        for (Entry<VariableReferenceExpression, Aggregation> entry : node.getAggregations().entrySet()) {
+        ImmutableMap.Builder<VariableReferenceExpression, AggregationNode.Aggregation> aggregations = ImmutableMap.builder();
+        for (Entry<VariableReferenceExpression, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
             aggregations.put(map(entry.getKey()), map(entry.getValue()));
         }
 
@@ -166,9 +170,9 @@ public class SymbolMapper
                 node.getGroupIdVariable().map(this::map));
     }
 
-    private Aggregation map(Aggregation aggregation)
+    private AggregationNode.Aggregation map(AggregationNode.Aggregation aggregation)
     {
-        return new Aggregation(
+        return new AggregationNode.Aggregation(
                 new CallExpression(
                         aggregation.getCall().getDisplayName(),
                         aggregation.getCall().getFunctionHandle(),
@@ -179,8 +183,6 @@ public class SymbolMapper
                 aggregation.isDistinct(),
                 aggregation.getMask().map(this::map));
     }
-
-     */
 
     public TopNNode map(TopNNode node, LogicalPlanNode source, PlanNodeId newNodeId)
     {

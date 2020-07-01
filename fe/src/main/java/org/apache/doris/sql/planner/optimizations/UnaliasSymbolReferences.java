@@ -13,6 +13,7 @@ import org.apache.doris.sql.planner.RowExpressionVariableInliner;
 import org.apache.doris.sql.planner.SimplePlanRewriter;
 import org.apache.doris.sql.planner.Symbol;
 import org.apache.doris.sql.planner.VariableAllocator;
+import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.LimitNode;
@@ -69,6 +70,15 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
         private final TypeProvider types;
         private Rewriter(TypeProvider types) {
             this.types = types;
+        }
+
+        @Override
+        public LogicalPlanNode visitAggregation(AggregationNode node, RewriteContext<Void> context)
+        {
+            LogicalPlanNode source = context.rewrite(node.getSource());
+            //TODO: use mapper in other methods
+            SymbolMapper mapper = new SymbolMapper(mapping, types);
+            return mapper.map(node, source);
         }
 
         @Override

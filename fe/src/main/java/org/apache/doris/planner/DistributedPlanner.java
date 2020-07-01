@@ -1090,8 +1090,8 @@ public class DistributedPlanner {
             childSortNode.setLimit(limit + offset);
         }
         childSortNode.setOffset(0);
-        childSortNode.computeStats(ctx_.getRootAnalyzer());
-        exchNode.computeStats(ctx_.getRootAnalyzer());
+        //childSortNode.computeStats(ctx_.getRootAnalyzer());
+        //exchNode.computeStats(ctx_.getRootAnalyzer());
 
         return mergeFragment;
     }

@@ -217,12 +217,37 @@ public abstract class AstVisitor<R, C>
         return visitNode(node, context);
     }
 
+    protected R visitCube(Cube node, C context)
+    {
+        return visitGroupingElement(node, context);
+    }
+
+    protected R visitGroupingSets(GroupingSets node, C context)
+    {
+        return visitGroupingElement(node, context);
+    }
+
+    protected R visitRollup(Rollup node, C context)
+    {
+        return visitGroupingElement(node, context);
+    }
+
+    protected R visitSimpleGroupBy(SimpleGroupBy node, C context)
+    {
+        return visitGroupingElement(node, context);
+    }
+
     protected R visitSymbolReference(SymbolReference node, C context)
     {
         return visitExpression(node, context);
     }
 
     protected R visitQuantifiedComparisonExpression(QuantifiedComparisonExpression node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
+    protected R visitGroupingOperation(GroupingOperation node, C context)
     {
         return visitExpression(node, context);
     }

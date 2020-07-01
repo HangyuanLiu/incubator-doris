@@ -56,7 +56,7 @@ public class SortNode extends PlanNode {
     private boolean isAnalyticSort;
 
     // info_.sortTupleSlotExprs_ substituted with the outputSmap_ for materialized slots in init().
-    List<Expr> resolvedTupleExprs;
+    public List<Expr> resolvedTupleExprs;
 
     public void setIsAnalyticSort(boolean v) {
         isAnalyticSort = v;

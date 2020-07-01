@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -161,6 +162,24 @@ public class AstBuilder
     public Node visitGroupBy(SqlBaseParser.GroupByContext context)
     {
         return new GroupBy(getLocation(context), isDistinct(context.setQuantifier()), visit(context.groupingElement(), GroupingElement.class));
+    }
+
+    @Override
+    public Node visitSingleGroupingSet(SqlBaseParser.SingleGroupingSetContext context)
+    {
+        return new SimpleGroupBy(getLocation(context), visit(context.groupingSet().expression(), Expression.class));
+    }
+
+    @Override
+    public Node visitRollup(SqlBaseParser.RollupContext context)
+    {
+        return new Rollup(getLocation(context), visit(context.expression(), Expression.class));
+    }
+
+    @Override
+    public Node visitCube(SqlBaseParser.CubeContext context)
+    {
+        return new Cube(getLocation(context), visit(context.expression(), Expression.class));
     }
 
     @Override
@@ -353,6 +372,34 @@ public class AstBuilder
     public Node visitColumnReference(SqlBaseParser.ColumnReferenceContext context)
     {
         return visit(context.identifier());
+    }
+
+    @Override
+    public Node visitFunctionCall(SqlBaseParser.FunctionCallContext context)
+    {
+        Optional<Expression> filter = visitIfPresent(context.filter(), Expression.class);
+        Optional<Window> window = visitIfPresent(context.over(), Window.class);
+
+        Optional<OrderBy> orderBy = Optional.empty();
+        if (context.ORDER() != null) {
+            orderBy = Optional.of(new OrderBy(visit(context.sortItem(), SortItem.class)));
+        }
+
+        QualifiedName name = getQualifiedName(context.qualifiedName());
+
+        boolean distinct = isDistinct(context.setQuantifier());
+
+        boolean ignoreNulls = context.nullTreatment() != null && context.nullTreatment().IGNORE() != null;
+
+        return new FunctionCall(
+                getLocation(context),
+                getQualifiedName(context.qualifiedName()),
+                window,
+                filter,
+                orderBy,
+                distinct,
+                ignoreNulls,
+                visit(context.expression(), Expression.class));
     }
 
     @Override

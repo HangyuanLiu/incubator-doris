@@ -27,11 +27,14 @@ import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.tree.*;
 import org.apache.doris.sql.type.TypeManager;
+import sun.jvm.hotspot.debugger.cdbg.FunctionType;
 
 import javax.annotation.Nullable;
 import java.util.*;
 
 import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.analyzer.SemanticErrorCode.TYPE_MISMATCH;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
 
 public class ExpressionAnalyzer
@@ -280,6 +283,54 @@ public class ExpressionAnalyzer
             return setExpressionType(node, BigintType.BIGINT);
         }
 
+        @Override
+        protected Type visitFunctionCall(FunctionCall node, StackableAstVisitorContext<Context> context)
+        {
+            if (node.getFilter().isPresent()) {
+                Expression expression = node.getFilter().get();
+                process(expression, context);
+            }
+
+            ImmutableList.Builder<TypeSignatureProvider> argumentTypesBuilder = ImmutableList.builder();
+            for (Expression expression : node.getArguments()) {
+                argumentTypesBuilder.add(new TypeSignatureProvider(process(expression, context).getTypeSignature()));
+            }
+
+            ImmutableList<TypeSignatureProvider> argumentTypes = argumentTypesBuilder.build();
+            FunctionHandle function = resolveFunction(transactionId, node, argumentTypes, functionManager);
+            FunctionMetadata functionMetadata = functionManager.getFunctionMetadata(function);
+
+            if (node.getOrderBy().isPresent()) {
+                for (SortItem sortItem : node.getOrderBy().get().getSortItems()) {
+                    Type sortKeyType = process(sortItem.getSortKey(), context);
+                    if (!sortKeyType.isOrderable()) {
+                        throw new SemanticException(TYPE_MISMATCH, node, "ORDER BY can only be applied to orderable types (actual: %s)", sortKeyType.getDisplayName());
+                    }
+                }
+            }
+
+            for (int i = 0; i < node.getArguments().size(); i++) {
+                Expression expression = node.getArguments().get(i);
+                Type expectedType = typeManager.getType(functionMetadata.getArgumentTypes().get(i));
+                requireNonNull(expectedType, format("Type %s not found", functionMetadata.getArgumentTypes().get(i)));
+                if (node.isDistinct() && !expectedType.isComparable()) {
+                    throw new SemanticException(TYPE_MISMATCH, node, "DISTINCT can only be applied to comparable types (actual: %s)", expectedType);
+                }
+                if (argumentTypes.get(i).hasDependency()) {
+                    FunctionType expectedFunctionType = (FunctionType) expectedType;
+                    process(expression, new StackableAstVisitorContext<>(context.getContext().expectingLambda(expectedFunctionType.getArgumentTypes())));
+                }
+                else {
+                    Type actualType = typeManager.getType(argumentTypes.get(i).getTypeSignature());
+                    coerceType(expression, actualType, expectedType, format("Function %s argument %d", function, i));
+                }
+            }
+            resolvedFunctions.put(NodeRef.of(node), function);
+
+            Type type = typeManager.getType(functionMetadata.getReturnType());
+            return setExpressionType(node, type);
+        }
+
         private Type getOperator(StackableAstVisitorContext<Context> context, Expression node, OperatorType operatorType, Expression... arguments)
         {
             ImmutableList.Builder<Type> argumentTypes = ImmutableList.builder();
@@ -289,16 +340,43 @@ public class ExpressionAnalyzer
 
             FunctionHandle functionHandle = functionManager.resolveOperator(operatorType, argumentTypes.build());
             FunctionMetadata operatorMetadata = functionManager.getFunctionMetadata(functionHandle);
-            /*
+
             for (int i = 0; i < arguments.length; i++) {
                 Expression expression = arguments[i];
                 Type type = typeManager.getType(operatorMetadata.getArgumentTypes().get(i));
                 coerceType(context, expression, type, format("Operator %s argument %d", operatorMetadata, i));
             }
-             */
-            //FIXME
+
             Type type = typeManager.getType(operatorMetadata.getReturnType());
             return setExpressionType(node, type);
+        }
+
+        private void coerceType(Expression expression, Type actualType, Type expectedType, String message)
+        {
+            if (!actualType.equals(expectedType)) {
+                if (!typeManager.canCoerce(actualType, expectedType)) {
+                    throw new SemanticException(TYPE_MISMATCH, expression, message + " must evaluate to a %s (actual: %s)", expectedType, actualType);
+                }
+                addOrReplaceExpressionCoercion(expression, actualType, expectedType);
+            }
+        }
+
+        private void coerceType(StackableAstVisitorContext<Context> context, Expression expression, Type expectedType, String message)
+        {
+            Type actualType = process(expression, context);
+            coerceType(expression, actualType, expectedType, message);
+        }
+
+        private void addOrReplaceExpressionCoercion(Expression expression, Type type, Type superType)
+        {
+            NodeRef<Expression> ref = NodeRef.of(expression);
+            expressionCoercions.put(ref, superType);
+            if (typeManager.isTypeOnlyCoercion(type, superType)) {
+                typeOnlyCoercions.add(ref);
+            }
+            else if (typeOnlyCoercions.contains(ref)) {
+                typeOnlyCoercions.remove(ref);
+            }
         }
     }
 
@@ -315,6 +393,22 @@ public class ExpressionAnalyzer
         Scope getScope()
         {
             return scope;
+        }
+    }
+
+    public static FunctionHandle resolveFunction(Optional<TransactionId> transactionId, FunctionCall node, List<TypeSignatureProvider> argumentTypes, FunctionManager functionManager)
+    {
+        try {
+            return functionManager.resolveFunction(transactionId, qualifyFunctionName(node.getName()), argumentTypes);
+        }
+        catch (PrestoException e) {
+            if (e.getErrorCode().getCode() == StandardErrorCode.FUNCTION_NOT_FOUND.toErrorCode().getCode()) {
+                throw new SemanticException(SemanticErrorCode.FUNCTION_NOT_FOUND, node, e.getMessage());
+            }
+            if (e.getErrorCode().getCode() == StandardErrorCode.AMBIGUOUS_FUNCTION_CALL.toErrorCode().getCode()) {
+                throw new SemanticException(SemanticErrorCode.AMBIGUOUS_FUNCTION_CALL, node, e.getMessage());
+            }
+            throw e;
         }
     }
 

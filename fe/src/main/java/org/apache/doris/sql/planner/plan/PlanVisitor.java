@@ -9,6 +9,11 @@ public abstract class PlanVisitor<R, C>
      */
     public abstract R visitPlan(LogicalPlanNode node, C context);
 
+    public R visitAggregation(AggregationNode node, C context)
+    {
+        return visitPlan(node, context);
+    }
+
     public R visitOutput(OutputNode node, C context)
     {
         return visitPlan(node, context);
@@ -44,6 +49,11 @@ public abstract class PlanVisitor<R, C>
     }
 
     public R visitTopN(TopNNode node, C context)
+    {
+        return visitPlan(node, context);
+    }
+
+    public R visitGroupId(GroupIdNode node, C context)
     {
         return visitPlan(node, context);
     }

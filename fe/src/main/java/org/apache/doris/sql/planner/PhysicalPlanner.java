@@ -5,6 +5,7 @@ import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.SlotDescriptor;
 import org.apache.doris.analysis.SlotId;
+import org.apache.doris.analysis.SlotRef;
 import org.apache.doris.analysis.SortInfo;
 import org.apache.doris.analysis.TupleDescriptor;
 import org.apache.doris.analysis.TupleId;
@@ -14,10 +15,9 @@ import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.catalog.Table;
 import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.planner.OlapScanNode;
-import org.apache.doris.planner.PartitionColumnFilter;
 import org.apache.doris.planner.PlanNode;
-import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.planner.PlannerContext;
+import org.apache.doris.planner.ScanNode;
 import org.apache.doris.sql.metadata.DorisTableHandle;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
@@ -32,18 +32,37 @@ import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.relational.RowExpressionToExpr;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public class PhysicalPlanner {
-    public PlanNode createPhysicalPlan(Plan plan, DescriptorTable descTbl, PlannerContext plannerContext, Map<String, SlotId> variableToSlotRef) {
+    public class PhysicalPlan {
+        PlanNode root;
+        List<org.apache.doris.planner.ScanNode> scanNodes;
+        PhysicalPlan(PlanNode root, List<org.apache.doris.planner.ScanNode> scanNodes) {
+            this.root = root;
+            this.scanNodes = scanNodes;
+        }
+
+        public PlanNode getRoot() {
+            return root;
+        }
+
+        public List<ScanNode> getScanNodes() {
+            return scanNodes;
+        }
+    }
+
+    public PhysicalPlan createPhysicalPlan(Plan plan, DescriptorTable descTbl, PlannerContext plannerContext, Map<String, SlotId> variableToSlotRef) {
         PhysicalPlanTranslator physicalPlanTranslator = new PhysicalPlanTranslator();
         //PlanNode root = SimplePlanRewriter.rewriteWith(physicalPlanTranslator, plan.getRoot());
-        FragmentProperties fraPro = new FragmentProperties(descTbl, plannerContext, variableToSlotRef);
+        List<org.apache.doris.planner.ScanNode> scanNodes = new ArrayList<>();
+        FragmentProperties fraPro = new FragmentProperties(descTbl, plannerContext, variableToSlotRef, scanNodes);
         PlanNode root = physicalPlanTranslator.visitPlan(plan.getRoot(), fraPro);
-        return root;
+        return new PhysicalPlan(root, fraPro.scanNodes);
     }
 
     private static class PhysicalPlanTranslator
@@ -77,22 +96,38 @@ public class PhysicalPlanner {
         @Override
         public PlanNode visitTopN(TopNNode node, FragmentProperties context) {
             PlanNode children = visitPlan(node.getSource(), context);
-            OrderingScheme orderingScheme = node.getOrderingScheme();
 
+            OrderingScheme orderingScheme = node.getOrderingScheme();
             List<Expr> sortExpr = orderingScheme.getOrderByVariables().stream().
                     map(rowExpression -> RowExpressionToExpr.formatRowExpression(rowExpression, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef))).collect(Collectors.toList());
-
             List<Boolean> isAscOrder = orderingScheme.getOrderByVariables().stream().
                     map(rowExpression -> orderingScheme.getOrdering(rowExpression).isAscending()).collect(Collectors.toList());
-
             List<Boolean> isNullsFirst = orderingScheme.getOrderByVariables().
                     stream().map(rowExpression -> orderingScheme.getOrdering(rowExpression).isNullsFirst()).collect(Collectors.toList());
-
             SortInfo sortInfo = new SortInfo(sortExpr, isAscOrder, isNullsFirst);
-            //sortInfo.setMaterializedTupleInfo(context.descTbl.getTupleDesc(0), );
+
+            //tupleSlotExprs
+            List<Expr> tupleSlotExprs = Lists.newArrayList();
+            for (VariableReferenceExpression variable : node.getSource().getOutputVariables()) {
+                tupleSlotExprs.add(new SlotRef(context.descTbl.getSlotDesc(context.variableToSlotRef.get(variable.getName()))));
+            }
+
+            //Create Tuple tupleDescriptor
+            TupleDescriptor tupleDescriptor = context.descTbl.createTupleDescriptor();
+            for (VariableReferenceExpression variable : node.getOutputVariables()) {
+                SlotDescriptor slotDescriptor =  context.descTbl.addSlotDescriptor(tupleDescriptor);
+                slotDescriptor.setColumn(new Column(variable.getName(), ScalarType.INT));
+                slotDescriptor.setIsNullable(true);
+                slotDescriptor.setIsMaterialized(true);
+
+                context.variableToSlotRef.put(variable.getName(), slotDescriptor.getId());
+            }
+
+            sortInfo.setMaterializedTupleInfo(tupleDescriptor, tupleSlotExprs);
 
             org.apache.doris.planner.SortNode sortNode =
                     new org.apache.doris.planner.SortNode(context.plannerContext.getNextNodeId(), children, sortInfo, true, true, node.getCount());
+            sortNode.resolvedTupleExprs = tupleSlotExprs;
 
             return sortNode;
         }
@@ -137,6 +172,7 @@ public class PhysicalPlanner {
             }
 
             tupleDescriptor.computeMemLayout();
+            context.scanNodes.add(scanNode);
             return scanNode;
         }
     }
@@ -144,10 +180,13 @@ public class PhysicalPlanner {
         private final DescriptorTable descTbl;
         private final PlannerContext plannerContext;
         private final Map<String, SlotId> variableToSlotRef;
-        FragmentProperties (DescriptorTable descTbl, PlannerContext plannerContext, Map<String, SlotId> variableToSlotRef) {
+        private final List<org.apache.doris.planner.ScanNode> scanNodes;
+        FragmentProperties (DescriptorTable descTbl, PlannerContext plannerContext, Map<String, SlotId> variableToSlotRef,
+                            List<org.apache.doris.planner.ScanNode> scanNodes) {
             this.descTbl = descTbl;
             this.plannerContext = plannerContext;
             this.variableToSlotRef = variableToSlotRef;
+            this.scanNodes = scanNodes;
         }
     }
 }
