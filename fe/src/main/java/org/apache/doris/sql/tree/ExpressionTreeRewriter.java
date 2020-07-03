@@ -1,8 +1,11 @@
 package org.apache.doris.sql.tree;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 
+import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 
 public class ExpressionTreeRewriter<C> {
     private final ExpressionRewriter<C> rewriter;
@@ -192,6 +195,61 @@ public class ExpressionTreeRewriter<C> {
 
             return node;
         }
+
+
+        @Override
+        public Expression visitFunctionCall(FunctionCall node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteFunctionCall(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Optional<Expression> filter = node.getFilter();
+            if (filter.isPresent()) {
+                Expression filterExpression = filter.get();
+                Expression newFilterExpression = rewrite(filterExpression, context.get());
+                filter = Optional.of(newFilterExpression);
+            }
+
+            Optional<Window> rewrittenWindow = node.getWindow();
+
+            List<Expression> arguments = rewrite(node.getArguments(), context);
+
+            if (!sameElements(node.getArguments(), arguments) || !sameElements(rewrittenWindow, node.getWindow())
+                    || !sameElements(filter, node.getFilter())) {
+                return new FunctionCall(node.getName(), rewrittenWindow, filter, node.getOrderBy().map(orderBy -> rewriteOrderBy(orderBy, context)), node.isDistinct(), node.isIgnoreNulls(), arguments);
+            }
+            return node;
+        }
+
+        // Since OrderBy contains list of SortItems, we want to process each SortItem's key, which is an expression
+        private OrderBy rewriteOrderBy(OrderBy orderBy, Context<C> context)
+        {
+            List<SortItem> rewrittenSortItems = rewriteSortItems(orderBy.getSortItems(), context);
+            if (sameElements(orderBy.getSortItems(), rewrittenSortItems)) {
+                return orderBy;
+            }
+
+            return new OrderBy(rewrittenSortItems);
+        }
+
+        private List<SortItem> rewriteSortItems(List<SortItem> sortItems, Context<C> context)
+        {
+            ImmutableList.Builder<SortItem> rewrittenSortItems = ImmutableList.builder();
+            for (SortItem sortItem : sortItems) {
+                Expression sortKey = rewrite(sortItem.getSortKey(), context.get());
+                if (sortItem.getSortKey() != sortKey) {
+                    rewrittenSortItems.add(new SortItem(sortKey, sortItem.getOrdering(), sortItem.getNullOrdering()));
+                }
+                else {
+                    rewrittenSortItems.add(sortItem);
+                }
+            }
+            return rewrittenSortItems.build();
+        }
     }
 
     public static class Context<C>
@@ -214,5 +272,35 @@ public class ExpressionTreeRewriter<C> {
         {
             return defaultRewrite;
         }
+    }
+
+    private static <T> boolean sameElements(Optional<T> a, Optional<T> b)
+    {
+        if (!a.isPresent() && !b.isPresent()) {
+            return true;
+        }
+        else if (a.isPresent() != b.isPresent()) {
+            return false;
+        }
+
+        return a.get() == b.get();
+    }
+
+    private static <T> boolean sameElements(Iterable<? extends T> a, Iterable<? extends T> b)
+    {
+        if (Iterables.size(a) != Iterables.size(b)) {
+            return false;
+        }
+
+        Iterator<? extends T> first = a.iterator();
+        Iterator<? extends T> second = b.iterator();
+
+        while (first.hasNext() && second.hasNext()) {
+            if (first.next() != second.next()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

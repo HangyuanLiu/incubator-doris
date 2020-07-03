@@ -17,11 +17,8 @@
 
 package org.apache.doris.qe;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.apache.commons.validator.Var;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.KillStmt;
@@ -38,7 +35,6 @@ import org.apache.doris.catalog.Database;
 import org.apache.doris.catalog.Table;
 import org.apache.doris.cluster.ClusterNamespace;
 import org.apache.doris.common.AnalysisException;
-import org.apache.doris.common.Config;
 import org.apache.doris.common.DdlException;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
@@ -54,13 +50,10 @@ import org.apache.doris.mysql.MysqlSerializer;
 import org.apache.doris.mysql.MysqlServerStatusFlag;
 import org.apache.doris.planner.DistributedPlanner;
 import org.apache.doris.planner.PlanFragment;
-import org.apache.doris.planner.PlanNode;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.planner.PlannerContext;
-import org.apache.doris.planner.ScanNode;
 import org.apache.doris.plugin.AuditEvent.EventType;
 import org.apache.doris.proto.PQueryStatistics;
-import org.apache.doris.rpc.RpcException;
 import org.apache.doris.service.FrontendOptions;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.StatementAnalyzer;
@@ -76,16 +69,9 @@ import org.apache.doris.sql.parser.SqlBaseParser;
 import org.apache.doris.sql.planner.LogicalPlanner;
 import org.apache.doris.sql.planner.PhysicalPlanner;
 import org.apache.doris.sql.planner.Plan;
+import org.apache.doris.sql.planner.PlanFragmentBuilder;
 import org.apache.doris.sql.planner.PlanOptimizers;
-import org.apache.doris.sql.planner.iterative.IterativeOptimizer;
-import org.apache.doris.sql.planner.iterative.rule.RemoveRedundantIdentityProjections;
-import org.apache.doris.sql.planner.optimizations.LimitPushDown;
-import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
-import org.apache.doris.sql.planner.optimizations.PredicatePushDown;
-import org.apache.doris.sql.planner.optimizations.TranslateExpressions;
-import org.apache.doris.sql.planner.optimizations.UnaliasSymbolReferences;
 import org.apache.doris.sql.planner.plan.OutputNode;
-import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.Statement;
@@ -96,7 +82,6 @@ import org.apache.doris.thrift.TQueryOptions;
 
 import com.google.common.base.Strings;
 
-import org.apache.doris.thrift.TQueryOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -243,7 +228,7 @@ public class ConnectProcessor {
             analyzer.analyze(stmt, Optional.empty());
 
             //logical planner
-            PlanOptimizers optimizers = new PlanOptimizers(metadata);
+            PlanOptimizers optimizers = new PlanOptimizers(metadata, null);
             LogicalPlanner logicalPlanner = new LogicalPlanner(optimizers.get(), PlanNodeId.createGenerator(), metadata);
             Plan plan = logicalPlanner.plan(analysis);
 
@@ -254,6 +239,7 @@ public class ConnectProcessor {
             PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
             HashMap<String, SlotId> variableToSlotRef = new HashMap<>();
 
+            /*
             PhysicalPlanner physicalPlanner = new PhysicalPlanner();
             PhysicalPlanner.PhysicalPlan physicalPlan = physicalPlanner.createPhysicalPlan(plan, descTbl, plannerContext, variableToSlotRef);
             System.out.println("DescriptorTable : " + descTbl.getTupleDescs());
@@ -268,18 +254,26 @@ public class ConnectProcessor {
             }
 
             PlanFragment rootFragment = fragments.get(fragments.size() - 1);
+            List<Expr> outputExprs = physicalPlan.getOutputExprs();
 
-
-            OutputNode outputNode = (OutputNode) plan.getRoot();
-            List<Expr> outputExprs = new ArrayList<>();
-            for (String variable : outputNode.getColumnNames()) {
-                SlotDescriptor slotDesc = descTbl.getSlotDesc(variableToSlotRef.get(variable));
-                SlotRef slot = new SlotRef(slotDesc);
-                slot.setCol(variable);
-                outputExprs.add(slot);
-            }
             rootFragment.setOutputExprs(outputExprs);
+            Collections.reverse(fragments);
+             */
 
+            PlanFragmentBuilder fragmentBuilder = new PlanFragmentBuilder();
+            PlanFragmentBuilder.PhysicalPlan  physicalPlan =
+                    fragmentBuilder.createPhysicalPlan(plan, descTbl, plannerContext, variableToSlotRef);
+            ArrayList<PlanFragment> fragments = physicalPlan.getFragments();
+
+            for (PlanFragment fragment : fragments) {
+                System.out.println("fragments : " + fragment.toThrift());
+                fragment.finalize(null, false);
+            }
+
+            PlanFragment rootFragment = fragments.get(fragments.size() - 1);
+            List<Expr> outputExprs = physicalPlan.getOutputExprs();
+
+            rootFragment.setOutputExprs(outputExprs);
             Collections.reverse(fragments);
 
             //execute this query

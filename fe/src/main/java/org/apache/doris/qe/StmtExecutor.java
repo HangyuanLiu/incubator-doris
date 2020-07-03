@@ -266,7 +266,7 @@ public class StmtExecutor {
 
                 List<String> colNames = new ArrayList<>();
                 for (Expr slot : outputExprs) {
-                    colNames.add(((SlotRef) slot).getColumnName());
+                    colNames.add(slot.toSql());
                 }
                 sendFields(colNames, outputExprs);
                 while (true) {

@@ -18,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.metadata.ColumnHandle;
 import org.apache.doris.sql.metadata.TableHandle;
+import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 
 import javax.annotation.concurrent.Immutable;
@@ -38,6 +39,8 @@ public final class TableScanNode
     private final TableHandle table;
     private final Map<VariableReferenceExpression, ColumnHandle> assignments;
     private final List<VariableReferenceExpression> outputVariables;
+
+    RowExpression predicate;
 
     public TableScanNode(
             PlanNodeId id,

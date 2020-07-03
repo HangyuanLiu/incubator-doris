@@ -12,6 +12,7 @@ import org.apache.doris.sql.type.Type;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
 import static org.apache.doris.sql.type.OperatorType.*;
 
 public final class FunctionResolution {
@@ -26,7 +27,7 @@ public final class FunctionResolution {
     public FunctionHandle arithmeticFunction(OperatorType operator, Type leftType, Type rightType)
     {
         checkArgument(operator.isArithmeticOperator(), format("unexpected arithmetic type %s", operator));
-        return functionManager.resolveOperator(operator, Lists.newArrayList(leftType, rightType));
+        return functionManager.resolveOperator(operator, fromTypes(leftType, rightType));
     }
 
     public FunctionHandle arithmeticFunction(ArithmeticBinaryExpression.Operator operator, Type leftType, Type rightType)
@@ -59,7 +60,7 @@ public final class FunctionResolution {
     public FunctionHandle comparisonFunction(OperatorType operator, Type leftType, Type rightType)
     {
         checkArgument(operator.isComparisonOperator(), format("unexpected comparison type %s", operator));
-        return functionManager.resolveOperator(operator, Lists.newArrayList(leftType, rightType));
+        return functionManager.resolveOperator(operator, fromTypes(leftType, rightType));
     }
 
     public FunctionHandle comparisonFunction(ComparisonExpression.Operator operator, Type leftType, Type rightType)

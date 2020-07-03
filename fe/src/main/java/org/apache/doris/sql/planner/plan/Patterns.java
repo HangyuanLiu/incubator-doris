@@ -26,6 +26,11 @@ public class Patterns
 {
     private Patterns() {}
 
+    public static Pattern<AggregationNode> aggregation()
+    {
+        return typeOf(AggregationNode.class);
+    }
+
     public static Pattern<ProjectNode> project()
     {
         return typeOf(ProjectNode.class);

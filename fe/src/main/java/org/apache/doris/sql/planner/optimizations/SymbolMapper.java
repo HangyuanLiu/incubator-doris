@@ -23,6 +23,7 @@ import org.apache.doris.sql.expressions.RowExpressionRewriter;
 import org.apache.doris.sql.expressions.RowExpressionTreeRewriter;
 import org.apache.doris.sql.planner.Symbol;
 import org.apache.doris.sql.planner.plan.AggregationNode;
+import org.apache.doris.sql.planner.plan.AggregationNode.Aggregation;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.Ordering;
 import org.apache.doris.sql.planner.plan.OrderingScheme;
@@ -138,7 +139,6 @@ public class SymbolMapper
         return new OrderingScheme(orderBy.build().stream().map(variable -> new Ordering(variable, orderingMap.get(variable))).collect(toImmutableList()));
     }
 
-
     public AggregationNode map(AggregationNode node, LogicalPlanNode source)
     {
         return map(node, source, node.getId());
@@ -151,8 +151,8 @@ public class SymbolMapper
 
     private AggregationNode map(AggregationNode node, LogicalPlanNode source, PlanNodeId newNodeId)
     {
-        ImmutableMap.Builder<VariableReferenceExpression, AggregationNode.Aggregation> aggregations = ImmutableMap.builder();
-        for (Entry<VariableReferenceExpression, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
+        ImmutableMap.Builder<VariableReferenceExpression, Aggregation> aggregations = ImmutableMap.builder();
+        for (Entry<VariableReferenceExpression, Aggregation> entry : node.getAggregations().entrySet()) {
             aggregations.put(map(entry.getKey()), map(entry.getValue()));
         }
 
@@ -170,9 +170,9 @@ public class SymbolMapper
                 node.getGroupIdVariable().map(this::map));
     }
 
-    private AggregationNode.Aggregation map(AggregationNode.Aggregation aggregation)
+    private Aggregation map(Aggregation aggregation)
     {
-        return new AggregationNode.Aggregation(
+        return new Aggregation(
                 new CallExpression(
                         aggregation.getCall().getDisplayName(),
                         aggregation.getCall().getFunctionHandle(),

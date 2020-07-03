@@ -15,6 +15,7 @@ import org.apache.doris.sql.planner.Symbol;
 import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.Assignments;
+import org.apache.doris.sql.planner.plan.ExchangeNode;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.LimitNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
@@ -85,6 +86,11 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
         public LogicalPlanNode visitTableScan(TableScanNode node, RewriteContext<Void> context)
         {
             return node;
+        }
+
+        @Override
+        public LogicalPlanNode visitExchange(ExchangeNode node, RewriteContext<Void> context) {
+            return context.defaultRewrite(node);
         }
 
         @Override

@@ -16,11 +16,16 @@ import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.catalog.Table;
 import org.apache.doris.catalog.OlapTable;
+import org.apache.doris.common.IdGenerator;
+import org.apache.doris.planner.DataPartition;
+import org.apache.doris.planner.PlanFragment;
+import org.apache.doris.planner.PlanFragmentId;
 import org.apache.doris.planner.PlanNode;
 import org.apache.doris.planner.PlannerContext;
 import org.apache.doris.sql.metadata.DorisTableHandle;
 import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.Assignments;
+import org.apache.doris.sql.planner.plan.ExchangeNode;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.OrderingScheme;
@@ -40,19 +45,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class PhysicalPlanner {
+import static org.apache.doris.sql.planner.plan.ExchangeNode.Type.GATHER;
+
+public class PlanFragmentBuilder {
     public class PhysicalPlan {
-        PlanNode root;
         List<org.apache.doris.planner.ScanNode> scanNodes;
         List<Expr> outputExprs;
-        PhysicalPlan(PlanNode root, List<org.apache.doris.planner.ScanNode> scanNodes, List<Expr> outputExprs) {
-            this.root = root;
+        ArrayList<PlanFragment> fragments;
+
+        PhysicalPlan(List<org.apache.doris.planner.ScanNode> scanNodes, List<Expr> outputExprs, ArrayList<PlanFragment> fragments) {
             this.scanNodes = scanNodes;
             this.outputExprs = outputExprs;
-        }
-
-        public PlanNode getRoot() {
-            return root;
+            this.fragments = fragments;
         }
 
         public List<org.apache.doris.planner.ScanNode> getScanNodes() {
@@ -62,6 +66,10 @@ public class PhysicalPlanner {
         public List<Expr> getOutputExprs() {
             return outputExprs;
         }
+
+        public ArrayList<PlanFragment> getFragments() {
+            return fragments;
+        }
     }
 
     public PhysicalPlan createPhysicalPlan(Plan plan, DescriptorTable descTbl, PlannerContext plannerContext, Map<String, SlotId> variableToSlotRef) {
@@ -70,52 +78,58 @@ public class PhysicalPlanner {
         List<org.apache.doris.planner.ScanNode> scanNodes = new ArrayList<>();
         List<Expr> outputExprs = new ArrayList<>();
         FragmentProperties fraPro = new FragmentProperties(descTbl, plannerContext, variableToSlotRef, scanNodes, outputExprs);
-        PlanNode root = physicalPlanTranslator.visitPlan(plan.getRoot(), fraPro);
-        return new PhysicalPlan(root, scanNodes, outputExprs);
+        PlanFragment root = physicalPlanTranslator.visitPlan(plan.getRoot(), fraPro);
+        return new PhysicalPlan(scanNodes, outputExprs, fraPro.fragments);
     }
 
     private static class PhysicalPlanTranslator
-            extends PlanVisitor<PlanNode, FragmentProperties> {
+            extends PlanVisitor<PlanFragment, FragmentProperties> {
         @Override
-        public PlanNode visitPlan(LogicalPlanNode node, FragmentProperties context) {
+        public PlanFragment visitPlan(LogicalPlanNode node, FragmentProperties context) {
             return node.accept(this, context);
         }
 
         @Override
-        public PlanNode visitOutput(OutputNode node, FragmentProperties context) {
+        public PlanFragment visitOutput(OutputNode node, FragmentProperties context) {
             for (int i = 0;i < node.getOutputVariables().size(); ++i) {
                 context.outputRowExpression.put(node.getOutputVariables().get(i), null);
             }
-            PlanNode root =  visitPlan(node.getSource(), context);
+
+            PlanFragment root =  visitPlan(node.getSource(), context);
 
             for (VariableReferenceExpression variable : node.getOutputVariables()) {
                 context.outputExprs.add(context.outputRowExpression.get(variable));
             }
+            root.setOutputExprs(context.outputExprs);
             return root;
         }
 
         @Override
-        public PlanNode visitAggregation(AggregationNode node, FragmentProperties context) {
-            PlanNode children = visitPlan(node.getSource(), context);
+        public PlanFragment visitExchange(ExchangeNode node, FragmentProperties context) {
 
-            ArrayList<FunctionCallExpr> aggExprs = Lists.newArrayList();
-            for (AggregationNode.Aggregation aggregation : node.getAggregations().values()) {
-                FunctionCallExpr functionCallExpr =
-                        (FunctionCallExpr) RowExpressionToExpr.formatRowExpression(aggregation.getCall(),
-                                new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-                aggExprs.add(functionCallExpr);
+            List<PlanFragment> exchanges = new ArrayList<>();
+
+            for (LogicalPlanNode source : node.getSources()) {
+                PlanFragment inputFragment = visitPlan(source, context);
+
+                org.apache.doris.planner.ExchangeNode exchangeNode =
+                        new org.apache.doris.planner.ExchangeNode(
+                                context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), false);
+                exchangeNode.setNumInstances(1);
+                PlanFragment exchangeFragment = new PlanFragment(context.plannerContext.getNextFragmentId(), exchangeNode, DataPartition.UNPARTITIONED);
+                inputFragment.setDestination(exchangeNode);
+
+                exchanges.add(exchangeFragment);
+                context.fragments.add(exchangeFragment);
             }
 
-            //AggregateInfo aggInfo = AggregateInfo.create(null, aggExprs, null, analyzer);
-
-            //PlanNode newRoot = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), children, aggInfo);
-            //return newRoot;
-            return null;
+            //FIXME : support join
+            return exchanges.get(0);
         }
 
         @Override
-        public PlanNode visitProject(ProjectNode node, FragmentProperties context) {
-            PlanNode root = visitPlan(node.getSource(), context);
+        public PlanFragment visitProject(ProjectNode node, FragmentProperties context) {
+            PlanFragment root = visitPlan(node.getSource(), context);
             for (Map.Entry<VariableReferenceExpression, RowExpression> entry : node.getAssignments().getMap().entrySet()) {
                 if (context.outputRowExpression.containsKey(entry.getKey())) {
                     Expr expr = RowExpressionToExpr.formatRowExpression(entry.getValue(), new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
@@ -127,67 +141,29 @@ public class PhysicalPlanner {
         }
 
         @Override
-        public PlanNode visitFilter(FilterNode node, FragmentProperties context) {
-            if (node.getSource() instanceof TableScanNode) {
-                org.apache.doris.planner.ScanNode scanNode = (org.apache.doris.planner.ScanNode) visitPlan(node.getSource(), context);
-                RowExpression rowExpression = node.getPredicate();
-                scanNode.addConjuncts(Lists.newArrayList(RowExpressionToExpr.formatRowExpression(rowExpression, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef))));
-                return scanNode;
+        public PlanFragment visitAggregation(AggregationNode node, FragmentProperties context) {
+            /*
+            PlanNode children = visitPlan(node.getSource(), context);
+
+            ArrayList<FunctionCallExpr> aggExprs = Lists.newArrayList();
+            for (AggregationNode.Aggregation aggregation : node.getAggregations().values()) {
+                FunctionCallExpr functionCallExpr =
+                        (FunctionCallExpr) RowExpressionToExpr.formatRowExpression(aggregation.getCall(),
+                                new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                aggExprs.add(functionCallExpr);
             }
+
+            AggregateInfo aggInfo = AggregateInfo.create(null, aggExprs, null, analyzer);
+
+            //PlanNode newRoot = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), children, aggInfo);
+            //return newRoot;
+
+             */
             return null;
         }
 
         @Override
-        public PlanNode visitTopN(TopNNode node, FragmentProperties context) {
-            PlanNode children = visitPlan(node.getSource(), context);
-
-            OrderingScheme orderingScheme = node.getOrderingScheme();
-            List<Expr> sortExpr = orderingScheme.getOrderByVariables().stream().
-                    map(rowExpression -> RowExpressionToExpr.formatRowExpression(rowExpression, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef))).collect(Collectors.toList());
-            List<Boolean> isAscOrder = orderingScheme.getOrderByVariables().stream().
-                    map(rowExpression -> orderingScheme.getOrdering(rowExpression).isAscending()).collect(Collectors.toList());
-            List<Boolean> isNullsFirst = orderingScheme.getOrderByVariables().
-                    stream().map(rowExpression -> orderingScheme.getOrdering(rowExpression).isNullsFirst()).collect(Collectors.toList());
-            SortInfo sortInfo = new SortInfo(sortExpr, isAscOrder, isNullsFirst);
-
-            //tupleSlotExprs
-            List<Expr> tupleSlotExprs = Lists.newArrayList();
-            for (VariableReferenceExpression variable : node.getSource().getOutputVariables()) {
-                tupleSlotExprs.add(new SlotRef(context.descTbl.getSlotDesc(context.variableToSlotRef.get(variable.getName()))));
-            }
-
-            //Create Tuple tupleDescriptor
-            TupleDescriptor tupleDescriptor = context.descTbl.createTupleDescriptor();
-            for (VariableReferenceExpression variable : node.getOutputVariables()) {
-                SlotDescriptor slotDescriptor =  context.descTbl.addSlotDescriptor(tupleDescriptor);
-                slotDescriptor.setColumn(new Column(variable.getName(), ScalarType.INT));
-                slotDescriptor.setIsNullable(true);
-                slotDescriptor.setIsMaterialized(true);
-
-                context.variableToSlotRef.put(variable.getName(), slotDescriptor.getId());
-            }
-
-            sortInfo.setMaterializedTupleInfo(tupleDescriptor, tupleSlotExprs);
-
-            org.apache.doris.planner.SortNode sortNode =
-                    new org.apache.doris.planner.SortNode(context.plannerContext.getNextNodeId(), children, sortInfo, true, true, node.getCount());
-            sortNode.resolvedTupleExprs = tupleSlotExprs;
-
-            return sortNode;
-        }
-
-        @Override
-        public PlanNode visitSort(SortNode node, FragmentProperties context) {
-            PlanNode children = visitPlan(node.getSource(), context);
-            SortInfo sortInfo = null;
-            org.apache.doris.planner.SortNode sortNode =
-                    new org.apache.doris.planner.SortNode(context.plannerContext.getNextNodeId(), children, sortInfo, true, true, 65535);
-
-            return sortNode;
-        }
-
-        @Override
-        public PlanNode visitTableScan(TableScanNode node, FragmentProperties context)
+        public PlanFragment visitTableScan(TableScanNode node, FragmentProperties context)
         {
             DorisTableHandle tableHandler = (DorisTableHandle) node.getTable().getConnectorHandle();
             Table referenceTable = tableHandler.getTable();
@@ -217,7 +193,9 @@ public class PhysicalPlanner {
 
             tupleDescriptor.computeMemLayout();
             context.scanNodes.add(scanNode);
-            return scanNode;
+            PlanFragment fragment = new PlanFragment(context.plannerContext.getNextFragmentId(), scanNode, DataPartition.RANDOM);
+            context.fragments.add(fragment);
+            return fragment;
         }
     }
     private static class FragmentProperties {
@@ -227,6 +205,9 @@ public class PhysicalPlanner {
         private final List<org.apache.doris.planner.ScanNode> scanNodes;
         private final List<Expr> outputExprs;
         private final Map<VariableReferenceExpression, Expr> outputRowExpression = Maps.newHashMap();
+
+        private PlanFragment fragment_ctx;
+        private final ArrayList<PlanFragment> fragments = new ArrayList<>();
 
         FragmentProperties (DescriptorTable descTbl, PlannerContext plannerContext, Map<String, SlotId> variableToSlotRef,
                             List<org.apache.doris.planner.ScanNode> scanNodes, List<Expr> outputExprs) {

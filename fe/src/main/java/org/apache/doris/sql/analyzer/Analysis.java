@@ -356,6 +356,11 @@ public class Analysis
         return ImmutableMap.copyOf(functionHandles);
     }
 
+    public void addFunctionHandles(Map<NodeRef<FunctionCall>, FunctionHandle> infos)
+    {
+        functionHandles.putAll(infos);
+    }
+
     public Set<NodeRef<Expression>> getColumnReferences()
     {
         return unmodifiableSet(columnReferences.keySet());

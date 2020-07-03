@@ -16,18 +16,23 @@ package org.apache.doris.sql.relational;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import org.apache.doris.sql.analyzer.TypeSignatureProvider;
 import org.apache.doris.sql.metadata.FunctionManager;
 import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.relation.RowExpression;
+import org.apache.doris.sql.relation.SpecialFormExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.ArithmeticUnaryExpression;
 import org.apache.doris.sql.tree.AstVisitor;
 import org.apache.doris.sql.tree.BooleanLiteral;
+import org.apache.doris.sql.tree.Cast;
 import org.apache.doris.sql.tree.ComparisonExpression;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.FieldReference;
+import org.apache.doris.sql.tree.FunctionCall;
 import org.apache.doris.sql.tree.Identifier;
+import org.apache.doris.sql.tree.LogicalBinaryExpression;
 import org.apache.doris.sql.tree.LongLiteral;
 import org.apache.doris.sql.tree.NodeRef;
 import org.apache.doris.sql.tree.NullLiteral;
@@ -39,15 +44,21 @@ import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.type.TypeManager;
 import org.apache.doris.sql.type.UnknownType;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
+import static org.apache.doris.sql.relation.SpecialFormExpression.Form.AND;
+import static org.apache.doris.sql.relation.SpecialFormExpression.Form.OR;
 import static org.apache.doris.sql.relational.Expressions.call;
 import static org.apache.doris.sql.relational.Expressions.constant;
 import static org.apache.doris.sql.relational.Expressions.constantNull;
 import static org.apache.doris.sql.relational.Expressions.field;
+import static org.apache.doris.sql.relational.Expressions.specialForm;
+import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 import static org.apache.doris.sql.type.OperatorType.NEGATION;
 
 public final class SqlToRowExpressionTranslator
@@ -127,7 +138,7 @@ public final class SqlToRowExpressionTranslator
         @Override
         protected RowExpression visitBooleanLiteral(BooleanLiteral node, Void context)
         {
-            return constant(node.getValue(), BooleanType.BOOLEAN);
+            return constant(node.getValue(), BOOLEAN);
         }
 
         @Override
@@ -148,9 +159,25 @@ public final class SqlToRowExpressionTranslator
             return call(
                     node.getOperator().name(),
                     functionResolution.comparisonFunction(node.getOperator(), left.getType(), right.getType()),
-                    BooleanType.BOOLEAN,
+                    BOOLEAN,
                     left,
                     right);
+        }
+
+        @Override
+        protected RowExpression visitFunctionCall(FunctionCall node, Void context)
+        {
+            List<RowExpression> arguments = node.getArguments().stream()
+                    .map(value -> process(value, context))
+                    .collect(toImmutableList());
+
+            List<TypeSignatureProvider> argumentTypes = arguments.stream()
+                    .map(RowExpression::getType)
+                    .map(Type::getTypeSignature)
+                    .map(TypeSignatureProvider::new)
+                    .collect(toImmutableList());
+
+            return call(node.getName().toString(), functionManager.resolveFunction(node.getName(), argumentTypes), getType(node), arguments);
         }
 
         @Override
@@ -191,12 +218,29 @@ public final class SqlToRowExpressionTranslator
                 case MINUS:
                     return call(
                             NEGATION.name(),
-                            functionManager.resolveOperator(NEGATION, Lists.newArrayList(expression.getType())),
+                            functionManager.resolveOperator(NEGATION, fromTypes(expression.getType())),
                             getType(node),
                             expression);
             }
 
             throw new UnsupportedOperationException("Unsupported unary operator: " + node.getSign());
+        }
+
+        @Override
+        protected RowExpression visitLogicalBinaryExpression(LogicalBinaryExpression node, Void context)
+        {
+            SpecialFormExpression.Form form;
+            switch (node.getOperator()) {
+                case AND:
+                    form = AND;
+                    break;
+                case OR:
+                    form = OR;
+                    break;
+                default:
+                    throw new IllegalStateException("Unknown logical operator: " + node.getOperator());
+            }
+            return specialForm(form, BOOLEAN, process(node.getLeft(), context), process(node.getRight(), context));
         }
     }
 }

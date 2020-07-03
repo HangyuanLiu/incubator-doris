@@ -1,12 +1,14 @@
 package org.apache.doris.sql.planner;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import org.apache.doris.common.IdGenerator;
 import org.apache.doris.common.NotImplementedException;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
+import org.apache.doris.sql.planner.plan.ExchangeNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.Field;
@@ -98,7 +100,15 @@ public class LogicalPlanner {
 
             columnNumber++;
         }
-        return new OutputNode(idAllocator.getNextId(), plan.getRoot(), names.build(), outputs.build());
+
+        ExchangeNode mergeNode = new ExchangeNode(idAllocator.getNextId(),
+                ExchangeNode.Type.GATHER,
+                ExchangeNode.Scope.REMOTE_STREAMING,
+                Lists.newArrayList(plan.getRoot()),
+                ImmutableList.of(outputs.build()));
+
+        OutputNode outputNode =  new OutputNode(idAllocator.getNextId(), mergeNode, names.build(), outputs.build());
+        return outputNode;
     }
 
     private RelationPlan createRelationPlan(Analysis analysis, Query query)

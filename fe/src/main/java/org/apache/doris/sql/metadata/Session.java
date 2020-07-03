@@ -38,6 +38,7 @@ public final class Session
 
     public Optional<String> getSchema() {
         return Optional.of(context.getDatabase());
+        //return Optional.of(context.getDatabase().substring(16));
     }
 
     public Catalog getCatalog() {

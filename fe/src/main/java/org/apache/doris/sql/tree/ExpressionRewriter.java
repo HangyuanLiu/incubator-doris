@@ -34,6 +34,11 @@ public class ExpressionRewriter<C> {
         return rewriteExpression(node, context, treeRewriter);
     }
 
+    public Expression rewriteFunctionCall(FunctionCall node, C context, ExpressionTreeRewriter<C> treeRewriter)
+    {
+        return rewriteExpression(node, context, treeRewriter);
+    }
+
     public Expression rewriteLiteral(Literal node, C context, ExpressionTreeRewriter<C> treeRewriter)
     {
         return rewriteExpression(node, context, treeRewriter);

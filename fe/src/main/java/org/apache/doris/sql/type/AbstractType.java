@@ -14,4 +14,10 @@ public abstract class AbstractType
     {
         return signature;
     }
+
+    @Override
+    public String getDisplayName()
+    {
+        return signature.toString();
+    }
 }

@@ -33,6 +33,7 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 import static java.lang.String.format;
+import static java.util.Collections.unmodifiableMap;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.SemanticErrorCode.TYPE_MISMATCH;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
@@ -41,10 +42,10 @@ public class ExpressionAnalyzer
 {
     private final FunctionManager functionManager;
     private final TypeManager typeManager;
-
     private final TypeProvider symbolTypes;
     private final boolean isDescribe;
 
+    private final Map<NodeRef<FunctionCall>, FunctionHandle> resolvedFunctions = new LinkedHashMap<>();
     private final Map<NodeRef<Expression>, Type> expressionCoercions = new LinkedHashMap<>();
     private final Set<NodeRef<Expression>> typeOnlyCoercions = new LinkedHashSet<>();
     private final Map<NodeRef<Expression>, FieldId> columnReferences = new LinkedHashMap<>();
@@ -71,6 +72,11 @@ public class ExpressionAnalyzer
         this.isDescribe = isDescribe;
         //this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
         this.warningCollector = null;
+    }
+
+    public Map<NodeRef<FunctionCall>, FunctionHandle> getResolvedFunctions()
+    {
+        return unmodifiableMap(resolvedFunctions);
     }
 
     public Map<NodeRef<Expression>, Type> getExpressionTypes()
@@ -297,7 +303,7 @@ public class ExpressionAnalyzer
             }
 
             ImmutableList<TypeSignatureProvider> argumentTypes = argumentTypesBuilder.build();
-            FunctionHandle function = resolveFunction(transactionId, node, argumentTypes, functionManager);
+            FunctionHandle function = resolveFunction(node, argumentTypes, functionManager);
             FunctionMetadata functionMetadata = functionManager.getFunctionMetadata(function);
 
             if (node.getOrderBy().isPresent()) {
@@ -316,14 +322,17 @@ public class ExpressionAnalyzer
                 if (node.isDistinct() && !expectedType.isComparable()) {
                     throw new SemanticException(TYPE_MISMATCH, node, "DISTINCT can only be applied to comparable types (actual: %s)", expectedType);
                 }
+                /*
                 if (argumentTypes.get(i).hasDependency()) {
                     FunctionType expectedFunctionType = (FunctionType) expectedType;
                     process(expression, new StackableAstVisitorContext<>(context.getContext().expectingLambda(expectedFunctionType.getArgumentTypes())));
                 }
                 else {
+
+                 */
                     Type actualType = typeManager.getType(argumentTypes.get(i).getTypeSignature());
                     coerceType(expression, actualType, expectedType, format("Function %s argument %d", function, i));
-                }
+                //}
             }
             resolvedFunctions.put(NodeRef.of(node), function);
 
@@ -338,7 +347,7 @@ public class ExpressionAnalyzer
                 argumentTypes.add(process(expression, context));
             }
 
-            FunctionHandle functionHandle = functionManager.resolveOperator(operatorType, argumentTypes.build());
+            FunctionHandle functionHandle = functionManager.resolveOperator(operatorType, fromTypes(argumentTypes.build()));
             FunctionMetadata operatorMetadata = functionManager.getFunctionMetadata(functionHandle);
 
             for (int i = 0; i < arguments.length; i++) {
@@ -396,20 +405,9 @@ public class ExpressionAnalyzer
         }
     }
 
-    public static FunctionHandle resolveFunction(Optional<TransactionId> transactionId, FunctionCall node, List<TypeSignatureProvider> argumentTypes, FunctionManager functionManager)
+    public static FunctionHandle resolveFunction(FunctionCall node, List<TypeSignatureProvider> argumentTypes, FunctionManager functionManager)
     {
-        try {
-            return functionManager.resolveFunction(transactionId, qualifyFunctionName(node.getName()), argumentTypes);
-        }
-        catch (PrestoException e) {
-            if (e.getErrorCode().getCode() == StandardErrorCode.FUNCTION_NOT_FOUND.toErrorCode().getCode()) {
-                throw new SemanticException(SemanticErrorCode.FUNCTION_NOT_FOUND, node, e.getMessage());
-            }
-            if (e.getErrorCode().getCode() == StandardErrorCode.AMBIGUOUS_FUNCTION_CALL.toErrorCode().getCode()) {
-                throw new SemanticException(SemanticErrorCode.AMBIGUOUS_FUNCTION_CALL, node, e.getMessage());
-            }
-            throw e;
-        }
+        return functionManager.resolveFunction(node.getName(), argumentTypes);
     }
 
     public static Map<NodeRef<Expression>, Type> getExpressionTypes(
@@ -491,11 +489,11 @@ public class ExpressionAnalyzer
         Map<NodeRef<Expression>, Type> expressionTypes = analyzer.getExpressionTypes();
         Map<NodeRef<Expression>, Type> expressionCoercions = analyzer.getExpressionCoercions();
         Set<NodeRef<Expression>> typeOnlyCoercions = analyzer.getTypeOnlyCoercions();
-        //Map<NodeRef<FunctionCall>, FunctionHandle> resolvedFunctions = analyzer.getResolvedFunctions();
+        Map<NodeRef<FunctionCall>, FunctionHandle> resolvedFunctions = analyzer.getResolvedFunctions();
 
         analysis.addTypes(expressionTypes);
         analysis.addCoercions(expressionCoercions, typeOnlyCoercions);
-        //analysis.addFunctionHandles(resolvedFunctions);
+        analysis.addFunctionHandles(resolvedFunctions);
         analysis.addColumnReferences(analyzer.getColumnReferences());
         //analysis.addLambdaArgumentReferences(analyzer.getLambdaArgumentReferences());
         //analysis.addTableColumnReferences(accessControl, session.getIdentity(), analyzer.getTableColumnReferences());
