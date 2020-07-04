@@ -205,39 +205,40 @@ public class ConnectProcessor {
             .setUser(ctx.getQualifiedUser())
             .setDb(ctx.getDatabase());
 
-        try {
-            System.out.println("Query :" + originStmt);
-            //parser
-            CaseInsensitiveStream stream = new CaseInsensitiveStream(CharStreams.fromString(originStmt));
-            SqlBaseLexer lexer = new SqlBaseLexer(stream);
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            SqlBaseParser parser = new SqlBaseParser(tokens);
-            AstBuilder visitor = new AstBuilder(new ParsingOptions());
-            Node stmt = visitor.visit(parser.singleStatement());
+        if (true) {
+            try {
+                System.out.println("Query :" + originStmt);
+                //parser
+                CaseInsensitiveStream stream = new CaseInsensitiveStream(CharStreams.fromString(originStmt));
+                SqlBaseLexer lexer = new SqlBaseLexer(stream);
+                CommonTokenStream tokens = new CommonTokenStream(lexer);
+                SqlBaseParser parser = new SqlBaseParser(tokens);
+                AstBuilder visitor = new AstBuilder(new ParsingOptions());
+                Node stmt = visitor.visit(parser.singleStatement());
 
-            //Session
-            Session session = new Session(ctx.getCatalog(), ctx);
+                //Session
+                Session session = new Session(ctx.getCatalog(), ctx);
 
-            //DorisMetadata
-            Metadata metadata = new MetadataManager(new TypeRegistry(), new FunctionManager(ctx.getCatalog()), ctx.getCatalog());
+                //DorisMetadata
+                Metadata metadata = new MetadataManager(new TypeRegistry(), new FunctionManager(ctx.getCatalog()), ctx.getCatalog());
 
-            //analyzer
-            ArrayList<Expression> parameters = new ArrayList<>();
-            Analysis analysis = new Analysis((Statement) stmt, parameters, true);
-            StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, session);
-            analyzer.analyze(stmt, Optional.empty());
+                //analyzer
+                ArrayList<Expression> parameters = new ArrayList<>();
+                Analysis analysis = new Analysis((Statement) stmt, parameters, true);
+                StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, session);
+                analyzer.analyze(stmt, Optional.empty());
 
-            //logical planner
-            PlanOptimizers optimizers = new PlanOptimizers(metadata, null);
-            LogicalPlanner logicalPlanner = new LogicalPlanner(optimizers.get(), PlanNodeId.createGenerator(), metadata);
-            Plan plan = logicalPlanner.plan(analysis);
+                //logical planner
+                PlanOptimizers optimizers = new PlanOptimizers(metadata, null);
+                LogicalPlanner logicalPlanner = new LogicalPlanner(optimizers.get(), PlanNodeId.createGenerator(), metadata);
+                Plan plan = logicalPlanner.plan(analysis);
 
-            TQueryOptions tQueryOptions = new TQueryOptions();
-            tQueryOptions.num_nodes = 3;
+                TQueryOptions tQueryOptions = new TQueryOptions();
+                tQueryOptions.num_nodes = 3;
 
-            DescriptorTable descTbl = new DescriptorTable();
-            PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
-            HashMap<String, SlotId> variableToSlotRef = new HashMap<>();
+                DescriptorTable descTbl = new DescriptorTable();
+                PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
+                HashMap<String, SlotId> variableToSlotRef = new HashMap<>();
 
             /*
             PhysicalPlanner physicalPlanner = new PhysicalPlanner();
@@ -260,32 +261,33 @@ public class ConnectProcessor {
             Collections.reverse(fragments);
              */
 
-            PlanFragmentBuilder fragmentBuilder = new PlanFragmentBuilder();
-            PlanFragmentBuilder.PhysicalPlan  physicalPlan =
-                    fragmentBuilder.createPhysicalPlan(plan, descTbl, plannerContext, variableToSlotRef);
-            ArrayList<PlanFragment> fragments = physicalPlan.getFragments();
+                PlanFragmentBuilder fragmentBuilder = new PlanFragmentBuilder();
+                PlanFragmentBuilder.PhysicalPlan physicalPlan =
+                        fragmentBuilder.createPhysicalPlan(plan, descTbl, plannerContext, variableToSlotRef);
+                ArrayList<PlanFragment> fragments = physicalPlan.getFragments();
 
-            for (PlanFragment fragment : fragments) {
-                System.out.println("fragments : " + fragment.toThrift());
-                fragment.finalize(null, false);
+                for (PlanFragment fragment : fragments) {
+                    System.out.println("fragments : " + fragment.toThrift());
+                    fragment.finalize(null, false);
+                }
+
+                PlanFragment rootFragment = fragments.get(fragments.size() - 1);
+                List<Expr> outputExprs = physicalPlan.getOutputExprs();
+
+                rootFragment.setOutputExprs(outputExprs);
+                Collections.reverse(fragments);
+
+                //execute this query
+                ctx.getState().reset();
+                executor = new StmtExecutor(ctx);
+
+                executor.executeV2(fragments, physicalPlan.getScanNodes(), descTbl.toThrift(), outputExprs);
+                System.out.println("Query success");
+                return;
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                System.out.println("Query fail");
             }
-
-            PlanFragment rootFragment = fragments.get(fragments.size() - 1);
-            List<Expr> outputExprs = physicalPlan.getOutputExprs();
-
-            rootFragment.setOutputExprs(outputExprs);
-            Collections.reverse(fragments);
-
-            //execute this query
-            ctx.getState().reset();
-            executor = new StmtExecutor(ctx);
-
-            executor.executeV2(fragments, physicalPlan.getScanNodes(), descTbl.toThrift(), outputExprs);
-            System.out.println("Query success");
-            return;
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            System.out.println("Query fail");
         }
 
         // execute this query.

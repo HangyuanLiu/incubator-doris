@@ -1,8 +1,8 @@
 package org.apache.doris.sql.planner.optimizations;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import org.apache.doris.common.IdGenerator;
-import org.apache.doris.planner.ExchangeNode;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.metadata.Metadata;
@@ -11,6 +11,7 @@ import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.planner.SimplePlanRewriter;
 import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.plan.AggregationNode;
+import org.apache.doris.sql.planner.plan.ExchangeNode;
 import org.apache.doris.sql.planner.plan.LimitNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.PlanVisitor;
@@ -68,46 +69,10 @@ public class AddExchanges
             Map<VariableReferenceExpression, AggregationNode.Aggregation> intermediateAggregation = new HashMap<>();
             Map<VariableReferenceExpression, AggregationNode.Aggregation> finalAggregation = new HashMap<>();
             for (Map.Entry<VariableReferenceExpression, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
-                AggregationNode.Aggregation originalAggregation = entry.getValue();
-                String functionName = functionManager.getFunctionMetadata(originalAggregation.getFunctionHandle()).getName().getFunctionName();
-                FunctionHandle functionHandle = originalAggregation.getFunctionHandle();
-                InternalAggregationFunction function = functionManager.getAggregateFunctionImplementation(functionHandle);
-                VariableReferenceExpression intermediateVariable = context.getVariableAllocator().newVariable(functionName, function.getIntermediateType());
-
-                checkState(!originalAggregation.getOrderBy().isPresent(), "Aggregate with ORDER BY does not support partial aggregation");
-                intermediateAggregation.put(intermediateVariable, new AggregationNode.Aggregation(
-                        new CallExpression(
-                                functionName,
-                                functionHandle,
-                                function.getIntermediateType(),
-                                originalAggregation.getArguments()),
-                        originalAggregation.getFilter(),
-                        originalAggregation.getOrderBy(),
-                        originalAggregation.isDistinct(),
-                        originalAggregation.getMask()));
-
-                // rewrite final aggregation in terms of intermediate function
-                finalAggregation.put(entry.getKey(),
-                        new AggregationNode.Aggregation(
-                                new CallExpression(
-                                        functionName,
-                                        functionHandle,
-                                        function.getFinalType(),
-                                        ImmutableList.<RowExpression>builder()
-                                                .add(intermediateVariable)
-                                                .addAll(originalAggregation.getArguments()
-                                                        .stream()
-                                                        .filter(PushPartialAggregationThroughExchange::isLambda)
-                                                        .collect(toImmutableList()))
-                                                .build()),
-                                Optional.empty(),
-                                Optional.empty(),
-                                false,
-                                Optional.empty()));
             }
 
             LogicalPlanNode partial = new AggregationNode(
-                    context.getIdAllocator().getNextId(),
+                    node.getId(),
                     node.getSource(),
                     intermediateAggregation,
                     node.getGroupingSets(),
@@ -118,9 +83,15 @@ public class AddExchanges
                     node.getHashVariable(),
                     node.getGroupIdVariable());
 
+           ExchangeNode mergeNode = new ExchangeNode(idAllocator.getNextId(),
+                    org.apache.doris.sql.planner.plan.ExchangeNode.Type.GATHER,
+                    ExchangeNode.Scope.REMOTE_STREAMING,
+                    Lists.newArrayList(partial),
+                    ImmutableList.of(partial.getOutputVariables()));
+
             return new AggregationNode(
                     node.getId(),
-                    partial,
+                    mergeNode,
                     finalAggregation,
                     node.getGroupingSets(),
                     // preGroupedSymbols reflect properties of the input. Splitting the aggregation and pushing partial aggregation

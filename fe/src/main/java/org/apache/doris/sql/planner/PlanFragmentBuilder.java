@@ -142,8 +142,17 @@ public class PlanFragmentBuilder {
 
         @Override
         public PlanFragment visitAggregation(AggregationNode node, FragmentProperties context) {
-            /*
-            PlanNode children = visitPlan(node.getSource(), context);
+            TupleDescriptor tupleDescriptor = context.descTbl.createTupleDescriptor();
+            ArrayList<Expr> groupingExprs = Lists.newArrayList();
+            for(VariableReferenceExpression groupKey : node.getGroupingKeys()) {
+                SlotDescriptor slotDescriptor =  context.descTbl.addSlotDescriptor(tupleDescriptor);
+                slotDescriptor.setColumn(new Column(groupKey.getName(), ScalarType.INT));
+                slotDescriptor.setIsNullable(true);
+                slotDescriptor.setIsMaterialized(true);
+
+                context.variableToSlotRef.put(groupKey.getName(), slotDescriptor.getId());
+                groupingExprs.add(new SlotRef(slotDescriptor));
+            }
 
             ArrayList<FunctionCallExpr> aggExprs = Lists.newArrayList();
             for (AggregationNode.Aggregation aggregation : node.getAggregations().values()) {
@@ -153,13 +162,21 @@ public class PlanFragmentBuilder {
                 aggExprs.add(functionCallExpr);
             }
 
-            AggregateInfo aggInfo = AggregateInfo.create(null, aggExprs, null, analyzer);
+            AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, tupleDescriptor);
 
-            //PlanNode newRoot = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), children, aggInfo);
-            //return newRoot;
-
-             */
-            return null;
+            if (node.getStep().equals(AggregationNode.Step.FINAL)) {
+                PlanFragment inputFragment = visitPlan(node.getSource(), context);
+                PlanNode aggregationNode = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), aggInfo);
+                inputFragment.setPlanRoot(aggregationNode);
+                return inputFragment;
+            } else if (node.getStep().equals(AggregationNode.Step.PARTIAL)) {
+                PlanFragment inputFragment = visitPlan(node.getSource(), context);
+                PlanNode aggregationNode = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), aggInfo);
+                inputFragment.setPlanRoot(aggregationNode);
+                return inputFragment;
+            } else {
+                return null;
+            }
         }
 
         @Override

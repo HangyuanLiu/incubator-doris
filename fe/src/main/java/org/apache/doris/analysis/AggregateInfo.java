@@ -213,6 +213,15 @@ public final class AggregateInfo extends AggregateInfoBase {
         return result;
     }
 
+    static public AggregateInfo create(
+            ArrayList<Expr> groupingExprs, ArrayList<FunctionCallExpr> aggExprs,
+            TupleDescriptor tupleDesc) {
+        AggregateInfo result = new AggregateInfo(groupingExprs, aggExprs, AggPhase.FIRST);
+        result.outputTupleDesc_ = tupleDesc;
+        result.intermediateTupleDesc_ = tupleDesc;
+        return result;
+    }
+
 
     /**
      * estimate if functions contains multi distinct

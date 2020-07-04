@@ -764,41 +764,6 @@ public class DistributedPlanner {
             return childFragment;
         }
 
-        // can local aggregation
-        PlanNode scanChild = node.getChild(0);
-        if (scanChild instanceof OlapScanNode) {
-            ArrayList<String> allDisColumn = new ArrayList<>();
-
-            // build distribute columns
-            DistributionInfo distributionInfo = ((OlapScanNode) scanChild).getOlapTable().getDefaultDistributionInfo();
-            List<Column> disColumns = ((HashDistributionInfo) distributionInfo).getDistributionColumns();
-            for (Column c : disColumns) {
-                allDisColumn.add(c.getName());
-            }
-            // build partition column
-            // TODO
-            ((OlapScanNode) scanChild).getOlapTable().getPartition(0).toString();
-
-            ArrayList<Expr> groupingExprs = node.getAggInfo().getGroupingExprs();
-            for (Expr expr : groupingExprs) {
-                if (allDisColumn.size() == 0){
-                    childFragment.addPlanRoot(node);
-                    return childFragment;
-                }
-                if (expr instanceof SlotRef) {
-                    if(!allDisColumn.contains(((SlotRef) expr).getColumnName())) {
-                        break;
-                    } else {
-                        allDisColumn.remove(((SlotRef) expr).getColumnName());
-                    }
-                }
-            }
-            if (allDisColumn.size() == 0){
-                childFragment.addPlanRoot(node);
-                return childFragment;
-            }
-        }
-
         // 2nd phase of DISTINCT aggregation
         boolean isDistinct = node.getChild(0) instanceof AggregationNode
                 && ((AggregationNode) (node.getChild(0))).getAggInfo().isDistinctAgg();

@@ -8,6 +8,7 @@ import org.apache.doris.sql.planner.iterative.IterativeOptimizer;
 import org.apache.doris.sql.planner.iterative.rule.InlineProjections;
 import org.apache.doris.sql.planner.iterative.rule.MergeLimitWithSort;
 import org.apache.doris.sql.planner.iterative.rule.RemoveRedundantIdentityProjections;
+import org.apache.doris.sql.planner.optimizations.AddExchanges;
 import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
 import org.apache.doris.sql.planner.iterative.rule.TranslateExpressions;
 import org.apache.doris.sql.planner.optimizations.UnaliasSymbolReferences;
@@ -42,6 +43,8 @@ public class PlanOptimizers {
                         new RemoveRedundantIdentityProjections())),
                 inlineProjections
         );
+
+        builder.add(new AddExchanges(metadata));
         this.optimizers = builder.build();
     }
     public List<PlanOptimizer> get()
