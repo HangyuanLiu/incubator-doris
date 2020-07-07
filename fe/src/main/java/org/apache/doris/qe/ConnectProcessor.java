@@ -76,6 +76,7 @@ import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.Statement;
 import org.apache.doris.sql.type.TypeRegistry;
+import org.apache.doris.thrift.TExplainLevel;
 import org.apache.doris.thrift.TMasterOpRequest;
 import org.apache.doris.thrift.TMasterOpResult;
 import org.apache.doris.thrift.TQueryOptions;
@@ -267,15 +268,20 @@ public class ConnectProcessor {
                 ArrayList<PlanFragment> fragments = physicalPlan.getFragments();
 
                 for (PlanFragment fragment : fragments) {
-                    System.out.println("fragments : " + fragment.toThrift());
                     fragment.finalize(null, false);
+                    System.out.println("fragments : " + fragment.toThrift());
                 }
 
                 PlanFragment rootFragment = fragments.get(fragments.size() - 1);
                 List<Expr> outputExprs = physicalPlan.getOutputExprs();
 
-                rootFragment.setOutputExprs(outputExprs);
+                //rootFragment.setOutputExprs(outputExprs);
                 Collections.reverse(fragments);
+
+                for (PlanFragment fragment : fragments) {
+                    System.out.println("------------------------------");
+                    System.out.println(fragment.getExplainString(TExplainLevel.NORMAL));
+                }
 
                 //execute this query
                 ctx.getState().reset();

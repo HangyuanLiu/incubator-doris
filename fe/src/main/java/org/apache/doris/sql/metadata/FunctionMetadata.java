@@ -13,11 +13,17 @@ public class FunctionMetadata {
         WINDOW
     }
 
+    private final QualifiedFunctionName name;
     private final List<TypeSignature> argumentTypes;
     private final TypeSignature returnType;
     private final FunctionKind functionKind;
 
-    public FunctionMetadata(List<TypeSignature> argumentTypes, TypeSignature returnType, FunctionKind functionKind) {
+    public FunctionMetadata(
+            QualifiedFunctionName name,
+            List<TypeSignature> argumentTypes,
+            TypeSignature returnType,
+            FunctionKind functionKind) {
+        this.name = name;
         this.argumentTypes = argumentTypes;
         this.returnType = returnType;
         this.functionKind = functionKind;
@@ -35,5 +41,10 @@ public class FunctionMetadata {
     public FunctionKind getFunctionKind()
     {
         return functionKind;
+    }
+
+    public QualifiedFunctionName getName()
+    {
+        return name;
     }
 }

@@ -44,7 +44,7 @@ public class OutputNode
 
         requireNonNull(source, "source is null");
         requireNonNull(columnNames, "columnNames is null");
-        Preconditions.checkArgument(columnNames.size() == outputVariables.size(), "columnNames and assignments sizes don't match");
+       // Preconditions.checkArgument(columnNames.size() == outputVariables.size(), "columnNames and assignments sizes don't match");
 
         this.source = source;
         this.columnNames = columnNames;

@@ -50,7 +50,10 @@ public class FunctionManager
             arguments.add(new TypeSignature(type.toString()));
         }
 
-        return new FunctionMetadata(arguments, new TypeSignature(fn.getReturnType().toString()), fnKind);
+        QualifiedFunctionName functionName =
+                QualifiedFunctionName.of(new CatalogSchemaName("", ""), fn.getFunctionName().getFunction());
+
+        return new FunctionMetadata(functionName, arguments, new TypeSignature(fn.getReturnType().toString()), fnKind);
     }
 
     public FunctionHandle resolveOperator(OperatorType operatorType,  List<TypeSignatureProvider> argumentTypes) {

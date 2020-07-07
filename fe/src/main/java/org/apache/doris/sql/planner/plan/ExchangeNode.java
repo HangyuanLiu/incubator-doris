@@ -1,6 +1,8 @@
 package org.apache.doris.sql.planner.plan;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.doris.planner.PlanNodeId;
+import org.apache.doris.sql.planner.PartitioningScheme;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 
 import java.util.List;
@@ -39,13 +41,21 @@ public class ExchangeNode
 
     private final List<LogicalPlanNode> sources;
 
+    private final PartitioningScheme partitioningScheme;
+
     // for each source, the list of inputs corresponding to each output
     private final List<List<VariableReferenceExpression>> inputs;
 
-    public ExchangeNode(PlanNodeId id, Type type, Scope scope, List<LogicalPlanNode> sources, List<List<VariableReferenceExpression>> inputs) {
+    public ExchangeNode(
+            PlanNodeId id,
+            Type type,
+            Scope scope,
+            PartitioningScheme partitioningScheme,
+            List<LogicalPlanNode> sources, List<List<VariableReferenceExpression>> inputs) {
         super(id);
         this.type = type;
         this.scope = scope;
+        this.partitioningScheme = partitioningScheme;
         this.sources = sources;
         this.inputs = inputs;
     }
@@ -68,7 +78,7 @@ public class ExchangeNode
 
     @Override
     public List<VariableReferenceExpression> getOutputVariables() {
-        return inputs.get(0);
+        return partitioningScheme.getOutputLayout();
     }
 
     public List<List<VariableReferenceExpression>> getInputs()
@@ -85,6 +95,6 @@ public class ExchangeNode
     @Override
     public LogicalPlanNode replaceChildren(List<LogicalPlanNode> newChildren)
     {
-        return new ExchangeNode(getId(), type, scope, newChildren, inputs);
+        return new ExchangeNode(getId(), type, scope, partitioningScheme, newChildren, inputs);
     }
 }

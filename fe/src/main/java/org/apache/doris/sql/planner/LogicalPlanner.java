@@ -18,6 +18,7 @@ import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.tree.Query;
 import org.apache.doris.sql.tree.Statement;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static java.lang.String.format;
@@ -85,6 +86,7 @@ public class LogicalPlanner {
 
     private LogicalPlanNode createOutputPlan(RelationPlan plan, Analysis analysis)
     {
+        /*
         ImmutableList.Builder<VariableReferenceExpression> outputs = ImmutableList.builder();
         ImmutableList.Builder<String> names = ImmutableList.builder();
 
@@ -101,14 +103,9 @@ public class LogicalPlanner {
             columnNumber++;
         }
 
-        ExchangeNode mergeNode = new ExchangeNode(idAllocator.getNextId(),
-                ExchangeNode.Type.GATHER,
-                ExchangeNode.Scope.REMOTE_STREAMING,
-                Lists.newArrayList(plan.getRoot()),
-                ImmutableList.of(outputs.build()));
+         */
 
-        OutputNode outputNode =  new OutputNode(idAllocator.getNextId(), mergeNode, names.build(), outputs.build());
-        return outputNode;
+        return new OutputNode(idAllocator.getNextId(), plan.getRoot(), new ArrayList<>(), plan.getRoot().getOutputVariables());
     }
 
     private RelationPlan createRelationPlan(Analysis analysis, Query query)

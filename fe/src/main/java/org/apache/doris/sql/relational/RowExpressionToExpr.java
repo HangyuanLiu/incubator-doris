@@ -1,9 +1,12 @@
 package org.apache.doris.sql.relational;
 
+import com.google.common.collect.Lists;
 import org.apache.doris.analysis.ArithmeticExpr;
 import org.apache.doris.analysis.BinaryPredicate;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
+import org.apache.doris.analysis.FunctionCallExpr;
+import org.apache.doris.analysis.FunctionName;
 import org.apache.doris.analysis.IntLiteral;
 import org.apache.doris.analysis.SlotId;
 import org.apache.doris.analysis.SlotRef;
@@ -42,14 +45,22 @@ public class RowExpressionToExpr {
     {
         @Override
         public Expr visitCall(CallExpression node, FormatterContext context) {
-            Expr left = formatRowExpression(node.getArguments().get(0), context);
-            Expr right = formatRowExpression(node.getArguments().get(1), context);
-
             Expr callExpr;
             if (((BuiltInFunctionHandle)node.getFunctionHandle()).getFunctionName().equalsIgnoreCase("add")) {
+                Expr left = formatRowExpression(node.getArguments().get(0), context);
+                Expr right = formatRowExpression(node.getArguments().get(1), context);
                 callExpr = new ArithmeticExpr(ArithmeticExpr.Operator.ADD, left, right);
                 callExpr.setType(ScalarType.INT);
-            } else {
+            } else if (((BuiltInFunctionHandle)node.getFunctionHandle()).getFunctionName().equalsIgnoreCase("sum")) {
+                Expr left = formatRowExpression(node.getArguments().get(0), context);
+                callExpr = new FunctionCallExpr(new FunctionName("sum"), Lists.newArrayList(left));
+                callExpr.setType(ScalarType.INT);
+
+
+            }
+            else {
+                Expr left = formatRowExpression(node.getArguments().get(0), context);
+                Expr right = formatRowExpression(node.getArguments().get(1), context);
                 callExpr = new BinaryPredicate(BinaryPredicate.Operator.EQ, left,right);
                 callExpr.setType(ScalarType.BOOLEAN);
             }
