@@ -81,7 +81,8 @@ public class AddExchanges implements PlanOptimizer {
         public LogicalPlanNode visitAggregation(AggregationNode node, RewriteContext<ExchangeContext> context) {
             Map<VariableReferenceExpression, AggregationNode.Aggregation> intermediateAggregation = new HashMap<>();
             Map<VariableReferenceExpression, AggregationNode.Aggregation> finalAggregation = new HashMap<>();
-            List<VariableReferenceExpression> exchangeOutput = new ArrayList<>();
+            List<VariableReferenceExpression> exchangeOutput = new ArrayList<>(node.getGroupingKeys());
+
             for (Map.Entry<VariableReferenceExpression, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
                 AggregationNode.Aggregation originalAggregation = entry.getValue();
                 FunctionHandle functionHandle = originalAggregation.getFunctionHandle();

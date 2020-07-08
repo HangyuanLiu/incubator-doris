@@ -7,9 +7,13 @@ import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.FunctionCallExpr;
 import org.apache.doris.analysis.FunctionName;
+import org.apache.doris.analysis.FunctionParams;
 import org.apache.doris.analysis.IntLiteral;
 import org.apache.doris.analysis.SlotId;
 import org.apache.doris.analysis.SlotRef;
+import org.apache.doris.catalog.Catalog;
+import org.apache.doris.catalog.Function;
+import org.apache.doris.catalog.ScalarFunction;
 import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.catalog.Type;
 import org.apache.doris.sql.metadata.BuiltInFunctionHandle;
@@ -50,13 +54,17 @@ public class RowExpressionToExpr {
                 Expr left = formatRowExpression(node.getArguments().get(0), context);
                 Expr right = formatRowExpression(node.getArguments().get(1), context);
                 callExpr = new ArithmeticExpr(ArithmeticExpr.Operator.ADD, left, right);
-                callExpr.setType(ScalarType.INT);
+                callExpr.setType(ScalarType.BIGINT);
             } else if (((BuiltInFunctionHandle)node.getFunctionHandle()).getFunctionName().equalsIgnoreCase("sum")) {
                 Expr left = formatRowExpression(node.getArguments().get(0), context);
-                callExpr = new FunctionCallExpr(new FunctionName("sum"), Lists.newArrayList(left));
-                callExpr.setType(ScalarType.INT);
+                callExpr = new FunctionCallExpr(new FunctionName("sum"), new FunctionParams(false, Lists.newArrayList(left)));
+                callExpr.setType(ScalarType.BIGINT);
 
+                FunctionName fnName = new FunctionName("sum");
+                Function searchDesc = new Function(fnName, Lists.newArrayList(ScalarType.BIGINT), Type.INVALID, false);
+                Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
 
+                callExpr.setFn(fn);
             }
             else {
                 Expr left = formatRowExpression(node.getArguments().get(0), context);
@@ -77,7 +85,7 @@ public class RowExpressionToExpr {
         public Expr visitConstant(ConstantExpression node, FormatterContext context) {
             try {
                 if (node.getType().equals(BigintType.BIGINT)) {
-                    return new IntLiteral((Long) node.getValue(), Type.INT);
+                    return new IntLiteral((Long) node.getValue(), Type.BIGINT);
                 } else {
                     throw new UnsupportedOperationException("not yet implemented");
                 }

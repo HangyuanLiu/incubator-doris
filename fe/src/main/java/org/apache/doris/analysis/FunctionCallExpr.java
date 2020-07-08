@@ -151,6 +151,10 @@ public class FunctionCallExpr extends Expr {
         return isMergeAggFn;
     }
 
+    public void setMergeAggFn() {
+        isMergeAggFn = true;
+    }
+
     @Override
     public Expr clone() {
         return new FunctionCallExpr(this);

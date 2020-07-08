@@ -236,6 +236,7 @@ public class ConnectProcessor {
 
                 TQueryOptions tQueryOptions = new TQueryOptions();
                 tQueryOptions.num_nodes = 3;
+                tQueryOptions.setDisable_stream_preaggregations(false);
 
                 DescriptorTable descTbl = new DescriptorTable();
                 PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);

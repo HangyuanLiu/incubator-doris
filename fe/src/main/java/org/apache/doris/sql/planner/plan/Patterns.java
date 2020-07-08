@@ -51,6 +51,11 @@ public class Patterns
         return typeOf(SortNode.class);
     }
 
+    public static Pattern<TableScanNode> tableScan()
+    {
+        return typeOf(TableScanNode.class);
+    }
+
     public static Property<LogicalPlanNode, LogicalPlanNode> source()
     {
         return optionalProperty("source", node -> node.getSources().size() == 1 ?

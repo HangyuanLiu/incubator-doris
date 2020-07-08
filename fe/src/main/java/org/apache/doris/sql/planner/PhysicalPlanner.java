@@ -160,7 +160,7 @@ public class PhysicalPlanner {
             TupleDescriptor tupleDescriptor = context.descTbl.createTupleDescriptor();
             for (VariableReferenceExpression variable : node.getOutputVariables()) {
                 SlotDescriptor slotDescriptor =  context.descTbl.addSlotDescriptor(tupleDescriptor);
-                slotDescriptor.setColumn(new Column(variable.getName(), ScalarType.INT));
+                slotDescriptor.setColumn(new Column(variable.getName(), ScalarType.BIGINT));
                 slotDescriptor.setIsNullable(true);
                 slotDescriptor.setIsMaterialized(true);
 
@@ -208,7 +208,7 @@ public class PhysicalPlanner {
 
             for (VariableReferenceExpression variable : node.getOutputVariables()) {
                 SlotDescriptor slotDescriptor =  context.descTbl.addSlotDescriptor(tupleDescriptor);
-                slotDescriptor.setColumn(new Column(variable.getName(), ScalarType.INT));
+                slotDescriptor.setColumn(new Column(variable.getName(), ScalarType.BIGINT));
                 slotDescriptor.setIsNullable(true);
                 slotDescriptor.setIsMaterialized(true);
 

@@ -216,9 +216,15 @@ public final class AggregateInfo extends AggregateInfoBase {
     static public AggregateInfo create(
             ArrayList<Expr> groupingExprs, ArrayList<FunctionCallExpr> aggExprs,
             TupleDescriptor tupleDesc, AggPhase phase) {
+        return create(groupingExprs, aggExprs, tupleDesc, tupleDesc, phase);
+    }
+
+    static public AggregateInfo create(
+            ArrayList<Expr> groupingExprs, ArrayList<FunctionCallExpr> aggExprs,
+            TupleDescriptor tupleDesc, TupleDescriptor intermediateTupleDesc, AggPhase phase) {
         AggregateInfo result = new AggregateInfo(groupingExprs, aggExprs, phase);
         result.outputTupleDesc_ = tupleDesc;
-        result.intermediateTupleDesc_ = tupleDesc;
+        result.intermediateTupleDesc_ = intermediateTupleDesc;
 
         for (int i = 0; i < result.getAggregateExprs().size(); ++i) {
             result.materializedSlots_.add(i);

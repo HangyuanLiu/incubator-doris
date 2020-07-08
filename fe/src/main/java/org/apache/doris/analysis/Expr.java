@@ -330,6 +330,9 @@ abstract public class Expr extends TreeNode<Expr> implements ParseNode, Cloneabl
     public Function getFn() {
         return fn;
     }
+    public void setFn(Function fn) {
+        this.fn = fn;
+    }
 
     public boolean getPrintSqlInParens() {
         return printSqlInParens;
