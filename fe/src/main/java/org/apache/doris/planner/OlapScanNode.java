@@ -27,6 +27,7 @@ import org.apache.doris.analysis.PartitionNames;
 import org.apache.doris.analysis.SlotDescriptor;
 import org.apache.doris.analysis.SlotRef;
 import org.apache.doris.analysis.TupleDescriptor;
+import org.apache.doris.analysis.TupleId;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.DistributionInfo;
@@ -184,7 +185,7 @@ public class OlapScanNode extends ScanNode {
      * @throws UserException
      */
     public void updateScanRangeInfoByNewMVSelector(long selectedIndexId, boolean isPreAggregation, String
-            reasonOfDisable)
+            reasonOfDisable, Analyzer analyzer)
             throws UserException {
         if (selectedIndexId == this.selectedIndexId && isPreAggregation == this.isPreAggregation) {
             return;
@@ -226,7 +227,10 @@ public class OlapScanNode extends ScanNode {
             this.selectedIndexId = selectedIndexId;
             this.isPreAggregation = isPreAggregation;
             this.reasonOfPreAggregation = reasonOfDisable;
+            long start = System.currentTimeMillis();
             computeTabletInfo();
+            computeStats(analyzer);
+            LOG.debug("distribution prune cost: {} ms", (System.currentTimeMillis() - start));
             LOG.info("Using the new scan range info instead of the old one. {}, {}", situation ,scanRangeInfo);
         } else {
             LOG.warn("Using the old scan range info instead of the new one. {}, {}", situation, scanRangeInfo);
@@ -322,7 +326,11 @@ public class OlapScanNode extends ScanNode {
                                        MaterializedIndex index,
                                        List<Tablet> tablets,
                                        long localBeId) throws UserException {
-
+        /**
+         * The addScanRangeLocations could be invoked only once.
+         * So the scanBackendIds should be empty in the beginning.
+         */
+        Preconditions.checkState(scanBackendIds.size() == 0);
         int logNum = 0;
         int schemaHash = olapTable.getSchemaHashByIndexId(index.getId());
         String schemaHashStr = String.valueOf(schemaHash);
@@ -441,6 +449,10 @@ public class OlapScanNode extends ScanNode {
             isPreAggregation = true;
         }
         // TODO: Remove the logic of old selector.
+        if (olapTable.getKeysType() == KeysType.DUP_KEYS) {
+            LOG.debug("The best index will be selected later in mv selector");
+            return;
+        }
         final RollupSelector rollupSelector = new RollupSelector(analyzer, desc, olapTable);
         selectedIndexId = rollupSelector.selectBestRollup(selectedPartitionIds, conjuncts, isPreAggregation);
         LOG.debug("select best roll up cost: {} ms, best index id: {}",
@@ -648,6 +660,11 @@ public class OlapScanNode extends ScanNode {
                 }
             }
         }
+    }
+
+    public TupleId getTupleId(){
+        Preconditions.checkNotNull(desc);
+        return desc.getId();
     }
 
 
