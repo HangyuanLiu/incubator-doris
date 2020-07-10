@@ -97,24 +97,46 @@ public class PlanFragmentBuilder {
 
             PlanFragment inputFragment = visitPlan(node.getSource(), context);
 
-            org.apache.doris.planner.ExchangeNode exchangeNode =
-                    new org.apache.doris.planner.ExchangeNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), false);
-            exchangeNode.setNumInstances(1);
-            PlanFragment exchangeFragment = new PlanFragment(context.plannerContext.getNextFragmentId(), exchangeNode, DataPartition.UNPARTITIONED);
+            if (inputFragment.getPlanRoot() instanceof org.apache.doris.planner.SortNode) {
+                org.apache.doris.planner.ExchangeNode exchangeNode =
+                        new org.apache.doris.planner.ExchangeNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), false);
+                exchangeNode.setNumInstances(1);
+                exchangeNode.setMergeInfo(((org.apache.doris.planner.SortNode) inputFragment.getPlanRoot()).getSortInfo(), 0);
+                PlanFragment exchangeFragment = new PlanFragment(context.plannerContext.getNextFragmentId(), exchangeNode, DataPartition.UNPARTITIONED);
 
-            List<Expr> outputExprs = new ArrayList<>();
-            for (VariableReferenceExpression variable : node.getOutputVariables()) {
-                Expr expr = RowExpressionToExpr.formatRowExpression(variable, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-                outputExprs.add(expr);
+                List<Expr> outputExprs = new ArrayList<>();
+                for (VariableReferenceExpression variable : node.getOutputVariables()) {
+                    Expr expr = RowExpressionToExpr.formatRowExpression(variable, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                    outputExprs.add(expr);
+                }
+                exchangeFragment.setOutputExprs(outputExprs);
+                context.outputExprs.addAll(outputExprs);
+
+                inputFragment.setDestination(exchangeNode);
+
+                context.fragments.add(exchangeFragment);
+
+                return exchangeFragment;
+            } else {
+                org.apache.doris.planner.ExchangeNode exchangeNode =
+                        new org.apache.doris.planner.ExchangeNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), false);
+                exchangeNode.setNumInstances(1);
+                PlanFragment exchangeFragment = new PlanFragment(context.plannerContext.getNextFragmentId(), exchangeNode, DataPartition.UNPARTITIONED);
+
+                List<Expr> outputExprs = new ArrayList<>();
+                for (VariableReferenceExpression variable : node.getOutputVariables()) {
+                    Expr expr = RowExpressionToExpr.formatRowExpression(variable, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                    outputExprs.add(expr);
+                }
+                exchangeFragment.setOutputExprs(outputExprs);
+                context.outputExprs.addAll(outputExprs);
+
+                inputFragment.setDestination(exchangeNode);
+
+                context.fragments.add(exchangeFragment);
+
+                return exchangeFragment;
             }
-            exchangeFragment.setOutputExprs(outputExprs);
-            context.outputExprs.addAll(outputExprs);
-
-            inputFragment.setDestination(exchangeNode);
-
-            context.fragments.add(exchangeFragment);
-
-            return exchangeFragment;
             /*
             for (VariableReferenceExpression variable : node.getOutputVariables()) {
                 context.outputExprs.add(context.outputRowExpression.get(variable));
@@ -154,9 +176,66 @@ public class PlanFragmentBuilder {
         }
 
         @Override
+        public PlanFragment visitTopN(TopNNode node, FragmentProperties context) {
+            PlanFragment inputFragment = visitPlan(node.getSource(), context);
+            //Get order ascending and is null first
+            OrderingScheme orderingScheme = node.getOrderingScheme();
+            List<Boolean> isAscOrder = orderingScheme.getOrderByVariables().stream().
+                    map(rowExpression -> orderingScheme.getOrdering(rowExpression).isAscending()).collect(Collectors.toList());
+            List<Boolean> isNullsFirst = orderingScheme.getOrderByVariables().
+                    stream().map(rowExpression -> orderingScheme.getOrdering(rowExpression).isNullsFirst()).collect(Collectors.toList());
+
+
+            List<Expr> resolvedTupleExprs = new ArrayList<>();
+            List<Expr> sortExprs = new ArrayList<>();
+            TupleDescriptor tupleDescriptor = context.descTbl.createTupleDescriptor();
+            for (VariableReferenceExpression orderByVar : orderingScheme.getOrderByVariables()) {
+                Expr sortExpr = RowExpressionToExpr.formatRowExpression(orderByVar, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(tupleDescriptor);
+                slotDesc.initFromExpr(sortExpr);
+                slotDesc.setIsNullable(true);
+                slotDesc.setIsMaterialized(true);
+
+                context.variableToSlotRef.put(orderByVar.getName(), slotDesc.getId());
+                resolvedTupleExprs.add(sortExpr);
+                sortExprs.add(new SlotRef(slotDesc));
+            }
+            for (VariableReferenceExpression var : node.getOutputVariables()) {
+                if (!orderingScheme.getOrderByVariables().contains(var)) {
+                    Expr sortExpr = RowExpressionToExpr.formatRowExpression(var, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                    SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(tupleDescriptor);
+                    slotDesc.initFromExpr(sortExpr);
+                    slotDesc.setIsNullable(true);
+                    slotDesc.setIsMaterialized(true);
+
+                    context.variableToSlotRef.put(var.getName(), slotDesc.getId());
+                    resolvedTupleExprs.add(sortExpr);
+                }
+            }
+
+            tupleDescriptor.computeMemLayout();
+
+            SortInfo sortInfo = new SortInfo(sortExprs, isAscOrder, isNullsFirst);
+            sortInfo.setMaterializedTupleInfo(tupleDescriptor, resolvedTupleExprs);
+
+            org.apache.doris.planner.SortNode sortNode =
+                    new org.apache.doris.planner.SortNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), sortInfo, true, false, 0);
+            sortNode.setLimit(node.getCount());
+            sortNode.resolvedTupleExprs = resolvedTupleExprs;
+
+            inputFragment.setPlanRoot(sortNode);
+
+            return inputFragment;
+        }
+
+        @Override
+        public PlanFragment visitSort(SortNode node, FragmentProperties context) {
+            return null;
+        }
+
+        @Override
         public PlanFragment visitAggregation(AggregationNode node, FragmentProperties context) {
             PlanFragment inputFragment = visitPlan(node.getSource(), context);
-
 
             TupleDescriptor tupleDescriptor = context.descTbl.createTupleDescriptor();
 
@@ -236,6 +315,21 @@ public class PlanFragmentBuilder {
              */
 
             return inputFragment;
+        }
+
+        @Override
+        public PlanFragment visitFilter(FilterNode node, FragmentProperties context) {
+            PlanFragment inputFragment = visitPlan(node.getSource(), context);
+            if (inputFragment.getPlanRoot() instanceof org.apache.doris.planner.OlapScanNode) {
+                RowExpression rowExpression = node.getPredicate();
+                inputFragment.getPlanRoot().addConjuncts(Lists.newArrayList(RowExpressionToExpr.formatRowExpression(rowExpression, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef))));
+                return inputFragment;
+            } else if (inputFragment.getPlanRoot() instanceof  org.apache.doris.planner.AggregationNode) {
+                RowExpression rowExpression = node.getPredicate();
+                inputFragment.getPlanRoot().addConjuncts(Lists.newArrayList(RowExpressionToExpr.formatRowExpression(rowExpression, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef))));
+                return inputFragment;
+            }
+            return null;
         }
 
         @Override

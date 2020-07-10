@@ -21,12 +21,14 @@ import org.apache.doris.sql.relational.FunctionResolution;
 import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.ArithmeticUnaryExpression;
 import org.apache.doris.sql.tree.AstVisitor;
+import org.apache.doris.sql.tree.ComparisonExpression;
 import org.apache.doris.sql.tree.DereferenceExpression;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.FieldReference;
 import org.apache.doris.sql.tree.FunctionCall;
 import org.apache.doris.sql.tree.GroupingOperation;
 import org.apache.doris.sql.tree.Identifier;
+import org.apache.doris.sql.tree.Literal;
 import org.apache.doris.sql.tree.LogicalBinaryExpression;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.NodeRef;
@@ -137,6 +139,18 @@ class AggregationAnalyzer
 
         @Override
         protected Boolean visitArithmeticBinary(ArithmeticBinaryExpression node, Void context)
+        {
+            return process(node.getLeft(), context) && process(node.getRight(), context);
+        }
+
+        @Override
+        protected Boolean visitLiteral(Literal node, Void context)
+        {
+            return true;
+        }
+
+        @Override
+        protected Boolean visitComparisonExpression(ComparisonExpression node, Void context)
         {
             return process(node.getLeft(), context) && process(node.getRight(), context);
         }

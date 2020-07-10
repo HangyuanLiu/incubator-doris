@@ -52,6 +52,7 @@ import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Streams.stream;
 import static org.apache.doris.sql.planner.PlannerUtils.toOrderingScheme;
 import static org.apache.doris.sql.planner.plan.AggregationNode.groupingSets;
+import static org.apache.doris.sql.planner.plan.AggregationNode.singleGroupingSet;
 import static org.apache.doris.sql.planner.plan.AssignmentUtils.identitiesAsSymbolReferences;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.asSymbolReference;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
@@ -129,7 +130,7 @@ public class QueryPlanner {
         builder = handleSubqueries(builder, node, orderBy);
         builder = project(builder, Iterables.concat(orderBy, outputs));
 
-        //builder = distinct(builder, node);
+        builder = distinct(builder, node);
         builder = sort(builder, node);
         builder = limit(builder, node);
         builder = project(builder, outputs);
@@ -593,6 +594,24 @@ public class QueryPlanner {
             //subPlan = subqueryPlanner.handleSubqueries(subPlan, subPlan.rewrite(input), node);
             subPlan.rewrite(input);
         }
+        return subPlan;
+    }
+
+    private PlanBuilder distinct(PlanBuilder subPlan, QuerySpecification node)
+    {
+        if (node.getSelect().isDistinct()) {
+            return subPlan.withNewRoot(
+                    new AggregationNode(
+                            idAllocator.getNextId(),
+                            subPlan.getRoot(),
+                            ImmutableMap.of(),
+                            singleGroupingSet(subPlan.getRoot().getOutputVariables()),
+                            ImmutableList.of(),
+                            AggregationNode.Step.SINGLE,
+                            Optional.empty(),
+                            Optional.empty()));
+        }
+
         return subPlan;
     }
 

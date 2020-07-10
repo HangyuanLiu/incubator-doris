@@ -36,7 +36,9 @@ public class PlanOptimizers {
         ImmutableList.Builder<PlanOptimizer> builder = ImmutableList.builder();
 
         builder.add(new IterativeOptimizer(
-                null, null, null, columnPruningRules));
+                null, null, null, columnPruningRules),
+                new IterativeOptimizer(null, null, null, ImmutableSet.of(new MergeLimitWithSort()))
+        );
 
         builder.add(new IterativeOptimizer(
                 null, null, null,
