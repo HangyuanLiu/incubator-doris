@@ -19,13 +19,13 @@ package org.apache.doris.analysis;
 
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.common.AnalysisException;
+import org.apache.doris.common.Config;
 import org.apache.doris.common.DdlException;
 import org.apache.doris.common.UserException;
 import org.apache.doris.common.util.PrintableMap;
 import org.apache.doris.common.util.TimeUtils;
 import org.apache.doris.load.EtlJobType;
 import org.apache.doris.load.Load;
-import org.apache.doris.load.loadv2.SparkLoadJob;
 import org.apache.doris.mysql.privilege.PrivPredicate;
 import org.apache.doris.qe.ConnectContext;
 
@@ -101,9 +101,6 @@ public class LoadStmt extends DdlStmt {
 
     private String version = "v2";
 
-    // TODO(wyb): spark-load
-    public static boolean disableSparkLoad = true;
-
     // properties set
     private final static ImmutableSet<String> PROPERTIES_SET = new ImmutableSet.Builder<String>()
             .add(TIMEOUT_PROPERTY)
@@ -176,11 +173,6 @@ public class LoadStmt extends DdlStmt {
         }
 
         for (Entry<String, String> entry : properties.entrySet()) {
-            // temporary use for global dict
-            if (entry.getKey().startsWith(SparkLoadJob.BITMAP_DATA_PROPERTY)) {
-                continue;
-            }
-
             if (!PROPERTIES_SET.contains(entry.getKey())) {
                 throw new DdlException(entry.getKey() + " is invalid property");
             }
@@ -267,18 +259,34 @@ public class LoadStmt extends DdlStmt {
         if (dataDescriptions == null || dataDescriptions.isEmpty()) {
             throw new AnalysisException("No data file in load statement.");
         }
+        // check data descriptions, support 2 cases bellow:
+        // case 1: muti file paths, muti data descriptions
+        // case 2: one hive table, one data description
+        boolean isLoadFromTable = false;
         for (DataDescription dataDescription : dataDescriptions) {
             if (brokerDesc == null && resourceDesc == null) {
                 dataDescription.setIsHadoopLoad(true);
             }
             dataDescription.analyze(label.getDbName());
+
+            if (dataDescription.isLoadFromTable()) {
+                isLoadFromTable = true;
+            }
+        }
+        if (isLoadFromTable) {
+            if (dataDescriptions.size() > 1) {
+                throw new AnalysisException("Only support one olap table load from one external table");
+            }
+            if (resourceDesc == null) {
+                throw new AnalysisException("Load from table should use Spark Load");
+            }
         }
 
         if (resourceDesc != null) {
             resourceDesc.analyze();
             etlJobType = resourceDesc.getEtlJobType();
             // TODO(wyb): spark-load
-            if (disableSparkLoad) {
+            if (!Config.enable_spark_load) {
                 throw new AnalysisException("Spark Load is comming soon");
             }
             // check resource usage privilege
@@ -296,7 +304,7 @@ public class LoadStmt extends DdlStmt {
             // if cluster is not null, use this hadoop cluster
             etlJobType = EtlJobType.HADOOP;
         }
-        
+
         try {
             checkProperties(properties);
         } catch (DdlException e) {

@@ -55,6 +55,7 @@ module.exports = [
           "insert-into-manual",
           "spark-load-manual",
           "delete-manual",
+          "load-json-format",
         ],
         sidebarDepth: 2,
       },
@@ -84,6 +85,10 @@ module.exports = [
           "fe-get-log-file",
           "get-label-state",
           "restore-tablet",
+          "profile-action",
+          "connection-action",
+          "query-detail-action",
+          "show-data-action",
         ],
         sidebarDepth: 1,
       },
@@ -98,6 +103,14 @@ module.exports = [
           "tablet-meta-tool",
           "tablet-repair-and-balance",
           "tablet-restore-tool",
+          {
+            title: "监控项",
+            directoryPath: "monitor-metrics/",
+            children: [
+              "fe-metrics",
+              "be-metrics",
+            ],
+          },
         ],
         sidebarDepth: 2,
       },
@@ -135,9 +148,21 @@ module.exports = [
       "audit-plugin",
       "doris-on-es",
       "plugin-development-manual",
-      "user-defined-function",
       "spark-doris-connector",
       "logstash",
+      {
+        title: "UDF",
+        directoryPath: "udf/",
+        children: [
+          "user-defined-function",
+          "contribute-udf",
+          {
+            title: "用户贡献的 UDF",
+            directoryPath: "contrib/",
+            children:[],       
+          },          
+        ],
+      },
     ],
   },
   {
@@ -450,7 +475,12 @@ module.exports = [
   {
     title: "开发者手册",
     directoryPath: "developer-guide/",
-    children: ["debug-tool", "format-code"],
+    children: [
+        "debug-tool",
+        "format-code",
+        "fe-idea-dev",
+        "fe-eclipse-dev"
+    ],
   },
   {
     title: "Apache 社区",

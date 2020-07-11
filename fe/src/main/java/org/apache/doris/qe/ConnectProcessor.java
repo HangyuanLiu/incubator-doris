@@ -54,6 +54,8 @@ import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.planner.PlannerContext;
 import org.apache.doris.plugin.AuditEvent.EventType;
 import org.apache.doris.proto.PQueryStatistics;
+import org.apache.doris.qe.QueryDetail;
+import org.apache.doris.qe.QueryDetailQueue;
 import org.apache.doris.service.FrontendOptions;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.StatementAnalyzer;
@@ -143,7 +145,8 @@ public class ConnectProcessor {
 
     private void auditAfterExec(String origStmt, StatementBase parsedStmt, PQueryStatistics statistics) {
         // slow query
-        long elapseMs = System.currentTimeMillis() - ctx.getStartTime();
+        long endTime = System.currentTimeMillis();
+        long elapseMs = endTime - ctx.getStartTime();
         
         ctx.getAuditEventBuilder().setEventType(EventType.AFTER_QUERY)
             .setState(ctx.getState().toString()).setQueryTime(elapseMs)
@@ -164,6 +167,11 @@ public class ConnectProcessor {
                 MetricRepo.HISTO_QUERY_LATENCY.update(elapseMs);
             }
             ctx.getAuditEventBuilder().setIsQuery(true);
+            ctx.getQueryDetail().setEventTime(endTime);
+            ctx.getQueryDetail().setEndTime(endTime);
+            ctx.getQueryDetail().setLatency(elapseMs);
+            ctx.getQueryDetail().setState(QueryDetail.QueryMemState.FINISHED);
+            QueryDetailQueue.addOrUpdateQueryDetail(ctx.getQueryDetail());
         } else {
             ctx.getAuditEventBuilder().setIsQuery(false);
         }

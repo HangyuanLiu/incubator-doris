@@ -184,6 +184,8 @@ namespace config {
     CONF_Int32(port, "20001");
     // default thrift client connect timeout(in seconds)
     CONF_Int32(thrift_connect_timeout_seconds, "3");
+    // default thrift client retry interval (in milliseconds)
+    CONF_mInt64(thrift_client_retry_interval_ms, "1000");
     // max row count number for single scan range
     CONF_mInt32(doris_scan_range_row_count, "524288");
     // size of scanner queue between scanner thread and compute thread
@@ -283,6 +285,10 @@ namespace config {
     // set it to larger than C will be set to equal to C.
     // This config can be set to 0, which means to forbid any compaction, for some special cases.
     CONF_Int32(max_compaction_concurrency, "-1");
+
+    // Threshold to logging compaction trace, in seconds.
+    CONF_mInt32(base_compaction_trace_threshold, "10");
+    CONF_mInt32(cumulative_compaction_trace_threshold, "2");
 
     // Port to start debug webserver on
     CONF_Int32(webserver_port, "8040");
@@ -531,7 +537,6 @@ namespace config {
 
     // Whether to continue to start be when load tablet from header failed.
     CONF_Bool(ignore_load_tablet_failure, "false");
-
 } // namespace config
 
 } // namespace doris
