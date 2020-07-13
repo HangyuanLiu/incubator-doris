@@ -29,8 +29,8 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.doris.sql.tree.BooleanLiteral.FALSE_LITERAL;
 import static org.apache.doris.sql.tree.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.doris.sql.tree.ComparisonExpression.Operator.IS_DISTINCT_FROM;
 
-@Deprecated
 public final class ExpressionUtils
 {
     private ExpressionUtils() {}
@@ -306,12 +306,6 @@ public final class ExpressionUtils
             public Expression rewriteIdentifier(Identifier node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
             {
                 return new SymbolReference(node.getValue());
-            }
-
-            @Override
-            public Expression rewriteLambdaExpression(LambdaExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
-            {
-                return new LambdaExpression(node.getArguments(), treeRewriter.rewrite(node.getBody(), context));
             }
         }, expression);
     }

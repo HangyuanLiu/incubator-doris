@@ -17,6 +17,7 @@ import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.ExchangeNode;
 import org.apache.doris.sql.planner.plan.FilterNode;
+import org.apache.doris.sql.planner.plan.JoinNode;
 import org.apache.doris.sql.planner.plan.LimitNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.Ordering;
@@ -45,6 +46,7 @@ import java.util.Set;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.planner.plan.JoinNode.Type.INNER;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.isExpression;
@@ -141,6 +143,37 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
         }
 
         @Override
+        public LogicalPlanNode visitJoin(JoinNode node, RewriteContext<Void> context)
+        {
+            LogicalPlanNode left = context.rewrite(node.getLeft());
+            LogicalPlanNode right = context.rewrite(node.getRight());
+
+            List<JoinNode.EquiJoinClause> canonicalCriteria = canonicalizeJoinCriteria(node.getCriteria());
+            Optional<RowExpression> canonicalFilter = node.getFilter().map(this::canonicalize);
+            Optional<VariableReferenceExpression> canonicalLeftHashVariable = canonicalize(node.getLeftHashVariable());
+            Optional<VariableReferenceExpression> canonicalRightHashVariable = canonicalize(node.getRightHashVariable());
+
+            if (node.getType().equals(INNER)) {
+                canonicalCriteria.stream()
+                        .filter(clause -> clause.getLeft().getType().equals(clause.getRight().getType()))
+                        .filter(clause -> node.getOutputVariables().contains(clause.getLeft()))
+                        .forEach(clause -> map(clause.getRight(), clause.getLeft()));
+            }
+
+            return new JoinNode(
+                    node.getId(),
+                    node.getType(),
+                    left,
+                    right,
+                    canonicalCriteria,
+                    canonicalizeAndDistinct(node.getOutputVariables()),
+                    canonicalFilter,
+                    canonicalLeftHashVariable,
+                    canonicalRightHashVariable,
+                    node.getDistributionType());
+        }
+
+        @Override
         public LogicalPlanNode visitPlan(LogicalPlanNode node, RewriteContext<Void> context)
         {
             throw new UnsupportedOperationException("Unsupported plan node " + node.getClass().getSimpleName());
@@ -222,9 +255,40 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
             return new VariableReferenceExpression(canonical, types.get(new SymbolReference(canonical)));
         }
 
+        private Optional<VariableReferenceExpression> canonicalize(Optional<VariableReferenceExpression> variable)
+        {
+            if (variable.isPresent()) {
+                return Optional.of(canonicalize(variable.get()));
+            }
+            return Optional.empty();
+        }
+
         private RowExpression canonicalize(RowExpression value)
         {
             return RowExpressionVariableInliner.inlineVariables(this::canonicalize, value);
+        }
+
+        private List<JoinNode.EquiJoinClause> canonicalizeJoinCriteria(List<JoinNode.EquiJoinClause> criteria)
+        {
+            ImmutableList.Builder<JoinNode.EquiJoinClause> builder = ImmutableList.builder();
+            for (JoinNode.EquiJoinClause clause : criteria) {
+                builder.add(new JoinNode.EquiJoinClause(canonicalize(clause.getLeft()), canonicalize(clause.getRight())));
+            }
+
+            return builder.build();
+        }
+
+        private List<VariableReferenceExpression> canonicalizeAndDistinct(List<VariableReferenceExpression> outputs)
+        {
+            Set<VariableReferenceExpression> added = new HashSet<>();
+            ImmutableList.Builder<VariableReferenceExpression> builder = ImmutableList.builder();
+            for (VariableReferenceExpression variable : outputs) {
+                VariableReferenceExpression canonical = canonicalize(variable);
+                if (added.add(canonical)) {
+                    builder.add(canonical);
+                }
+            }
+            return builder.build();
         }
 
         private OrderingScheme canonicalizeAndDistinct(OrderingScheme orderingScheme)

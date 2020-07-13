@@ -152,6 +152,11 @@ public abstract class AstVisitor<R, C>
         return visitExpression(node, context);
     }
 
+    protected R visitNotExpression(NotExpression node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitSelectItem(SelectItem node, C context)
     {
         return visitNode(node, context);
@@ -165,6 +170,16 @@ public abstract class AstVisitor<R, C>
     protected R visitAllColumns(AllColumns node, C context)
     {
         return visitSelectItem(node, context);
+    }
+
+    protected R visitIsNotNullPredicate(IsNotNullPredicate node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
+    protected R visitIsNullPredicate(IsNullPredicate node, C context)
+    {
+        return visitExpression(node, context);
     }
 
     protected R visitLongLiteral(LongLiteral node, C context)
