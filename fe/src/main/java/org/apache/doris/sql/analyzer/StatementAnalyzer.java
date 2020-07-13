@@ -20,37 +20,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.parser.SqlParser;
-import org.apache.doris.sql.tree.AliasedRelation;
-import org.apache.doris.sql.tree.AllColumns;
-import org.apache.doris.sql.tree.AstUtils;
-import org.apache.doris.sql.tree.Cube;
-import org.apache.doris.sql.tree.DefaultTraversalVisitor;
-import org.apache.doris.sql.tree.DereferenceExpression;
-import org.apache.doris.sql.tree.Expression;
-import org.apache.doris.sql.tree.FieldReference;
-import org.apache.doris.sql.tree.FunctionCall;
-import org.apache.doris.sql.tree.GroupBy;
-import org.apache.doris.sql.tree.GroupingElement;
-import org.apache.doris.sql.tree.GroupingOperation;
-import org.apache.doris.sql.tree.GroupingSets;
-import org.apache.doris.sql.tree.Identifier;
-import org.apache.doris.sql.tree.LongLiteral;
-import org.apache.doris.sql.tree.Node;
-import org.apache.doris.sql.tree.NodeRef;
-import org.apache.doris.sql.tree.OrderBy;
-import org.apache.doris.sql.tree.QualifiedName;
-import org.apache.doris.sql.tree.Query;
-import org.apache.doris.sql.tree.QuerySpecification;
-import org.apache.doris.sql.tree.Rollup;
-import org.apache.doris.sql.tree.SampledRelation;
-import org.apache.doris.sql.tree.Select;
-import org.apache.doris.sql.tree.SelectItem;
-import org.apache.doris.sql.tree.SimpleGroupBy;
-import org.apache.doris.sql.tree.SingleColumn;
-import org.apache.doris.sql.tree.SortItem;
-import org.apache.doris.sql.tree.Table;
-import org.apache.doris.sql.tree.With;
-import org.apache.doris.sql.tree.WithQuery;
+import org.apache.doris.sql.tree.*;
 import org.apache.doris.sql.type.Type;
 
 import java.util.*;
@@ -92,12 +62,16 @@ public class StatementAnalyzer
             Session session,
             WarningCollector warningCollector)
     {
+        /*
         this.analysis = Objects.requireNonNull(analysis, "analysis is null");
         this.metadata = Objects.requireNonNull(metadata, "metadata is null");
         this.sqlParser = Objects.requireNonNull(sqlParser, "sqlParser is null");
         this.accessControl = Objects.requireNonNull(accessControl, "accessControl is null");
         this.session = Objects.requireNonNull(session, "session is null");
         this.warningCollector = Objects.requireNonNull(warningCollector, "warningCollector is null");
+
+         */
+        this(analysis, metadata, session);
     }
 
     public StatementAnalyzer (
@@ -283,7 +257,6 @@ public class StatementAnalyzer
         @Override
         protected Scope visitAliasedRelation(AliasedRelation relation, Optional<Scope> scope)
         {
-            System.out.println("visitAliasedRelation");
             Scope relationScope = process(relation.getRelation(), scope);
 
             // todo this check should be inside of TupleDescriptor.withAlias, but the exception needs the node object
@@ -313,6 +286,14 @@ public class StatementAnalyzer
             System.out.println("visitSampledRelation");
             Scope relationScope = process(relation.getRelation(), scope);
             return createAndAssignScope(relation, scope, relationScope.getRelationType());
+        }
+
+        @Override
+        protected Scope visitTableSubquery(TableSubquery node, Optional<Scope> scope)
+        {
+            StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, sqlParser, accessControl, session, WarningCollector.NOOP);
+            Scope queryScope = analyzer.analyze(node.getQuery(), scope);
+            return createAndAssignScope(node, scope, queryScope.getRelationType());
         }
 
         @Override
@@ -368,6 +349,63 @@ public class StatementAnalyzer
             }
 
             return outputScope;
+        }
+
+        @Override
+        protected Scope visitJoin(Join node, Optional<Scope> scope)
+        {
+            JoinCriteria criteria = node.getCriteria().orElse(null);
+            if (criteria instanceof NaturalJoin) {
+                throw new SemanticException(NOT_SUPPORTED, node, "Natural join not supported");
+            }
+
+            Scope left = process(node.getLeft(), scope);
+            Scope right = process(node.getRight(), isLateralRelation(node.getRight()) ? Optional.of(left) : scope);
+            /*
+            if (criteria instanceof JoinUsing) {
+                return analyzeJoinUsing(node, ((JoinUsing) criteria).getColumns(), scope, left, right);
+            }
+            */
+            Scope output = createAndAssignScope(node, scope, left.getRelationType().joinWith(right.getRelationType()));
+
+            if (node.getType() == Join.Type.CROSS || node.getType() == Join.Type.IMPLICIT) {
+                return output;
+            }
+            else if (criteria instanceof JoinOn) {
+                Expression expression = ((JoinOn) criteria).getExpression();
+
+                // need to register coercions in case when join criteria requires coercion (e.g. join on char(1) = char(2))
+                ExpressionAnalysis expressionAnalysis = analyzeExpression(expression, output);
+                Type clauseType = expressionAnalysis.getType(expression);
+                if (!clauseType.equals(BOOLEAN)) {
+                    if (!clauseType.equals(UNKNOWN)) {
+                        throw new SemanticException(TYPE_MISMATCH, expression, "JOIN ON clause must evaluate to a boolean: actual type %s", clauseType);
+                    }
+                    // coerce null to boolean
+                    analysis.addCoercion(expression, BOOLEAN, false);
+                }
+
+                //Analyzer.verifyNoAggregateWindowOrGroupingFunctions(analysis.getFunctionHandles(), metadata.getFunctionManager(), expression, "JOIN clause");
+
+                analysis.recordSubqueries(node, expressionAnalysis);
+                analysis.setJoinCriteria(node, expression);
+            }
+            else {
+                throw new UnsupportedOperationException("unsupported join criteria: " + criteria.getClass().getName());
+            }
+
+            return output;
+        }
+
+        private boolean isLateralRelation(Relation node)
+        {
+            /*
+            if (node instanceof AliasedRelation) {
+                return isLateralRelation(((AliasedRelation) node).getRelation());
+            }
+            return node instanceof Unnest || node instanceof Lateral;
+             */
+            return false;
         }
 
         private List<Expression> analyzeGroupBy(QuerySpecification node, Scope scope, List<Expression> outputExpressions)
@@ -611,7 +649,7 @@ public class StatementAnalyzer
                 else if (item instanceof SingleColumn) {
                     SingleColumn column = (SingleColumn) item;
                     ExpressionAnalysis expressionAnalysis = analyzeExpression(column.getExpression(), scope);
-                    //analysis.recordSubqueries(node, expressionAnalysis);
+                    analysis.recordSubqueries(node, expressionAnalysis);
                     outputExpressionBuilder.add(column.getExpression());
 
                     Type type = expressionAnalysis.getType(column.getExpression());
@@ -776,7 +814,7 @@ public class StatementAnalyzer
                 }
 
                 ExpressionAnalysis expressionAnalysis = analyzeExpression(expression, orderByScope);
-                //analysis.recordSubqueries(node, expressionAnalysis);
+                analysis.recordSubqueries(node, expressionAnalysis);
 
                 Type type = analysis.getType(expression);
                 if (!type.isOrderable()) {

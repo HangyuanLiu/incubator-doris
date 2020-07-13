@@ -59,10 +59,10 @@
 
 namespace doris {
 
-METRIC_DEFINE_INT_COUNTER(streaming_load_requests_total, MetricUnit::NUMBER);
+METRIC_DEFINE_INT_COUNTER(streaming_load_requests_total, MetricUnit::REQUESTS);
 METRIC_DEFINE_INT_COUNTER(streaming_load_bytes, MetricUnit::BYTES);
 METRIC_DEFINE_INT_COUNTER(streaming_load_duration_ms, MetricUnit::MILLISECONDS);
-METRIC_DEFINE_INT_GAUGE(streaming_load_current_processing, MetricUnit::NUMBER);
+METRIC_DEFINE_INT_GAUGE(streaming_load_current_processing, MetricUnit::REQUESTS);
 
 #ifdef BE_TEST
 TStreamLoadPutResult k_stream_load_put_result;
@@ -386,7 +386,7 @@ Status StreamLoadAction::_process_put(HttpRequest* http_req, StreamLoadContext* 
     if (ctx->timeout_second != -1) {
         request.__set_timeout(ctx->timeout_second);
     }
-
+    request.__set_thrift_rpc_timeout_ms(config::thrift_rpc_timeout_ms);
     // plan this load
     TNetworkAddress master_addr = _exec_env->master_info()->network_address;
 #ifndef BE_TEST

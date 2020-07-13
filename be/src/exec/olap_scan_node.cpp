@@ -57,7 +57,6 @@ OlapScanNode::OlapScanNode(ObjectPool* pool, const TPlanNode& tnode, const Descr
         _start(false),
         _scanner_done(false),
         _transfer_done(false),
-        _wait_duration(0, 0, 1, 0),
         _status(Status::OK()),
         _resource_info(nullptr),
         _buffered_bytes(0),
@@ -92,32 +91,23 @@ void OlapScanNode::_init_counter(RuntimeState* state) {
     ADD_TIMER(_runtime_profile, "ShowHintsTime");
 
     _reader_init_timer = ADD_TIMER(_runtime_profile, "ReaderInitTime");
-    _read_compressed_counter =
-        ADD_COUNTER(_runtime_profile, "CompressedBytesRead", TUnit::BYTES);
-    _read_uncompressed_counter =
-        ADD_COUNTER(_runtime_profile, "UncompressedBytesRead", TUnit::BYTES);
+    _read_compressed_counter = ADD_COUNTER(_runtime_profile, "CompressedBytesRead", TUnit::BYTES);
+    _read_uncompressed_counter = ADD_COUNTER(_runtime_profile, "UncompressedBytesRead", TUnit::BYTES);
     _block_load_timer = ADD_TIMER(_runtime_profile, "BlockLoadTime");
-    _block_load_counter =
-        ADD_COUNTER(_runtime_profile, "BlocksLoad", TUnit::UNIT);
-    _block_fetch_timer =
-        ADD_TIMER(_runtime_profile, "BlockFetchTime");
-    _raw_rows_counter =
-        ADD_COUNTER(_runtime_profile, "RawRowsRead", TUnit::UNIT);
+    _block_load_counter = ADD_COUNTER(_runtime_profile, "BlocksLoad", TUnit::UNIT);
+    _block_fetch_timer = ADD_TIMER(_runtime_profile, "BlockFetchTime");
+    _raw_rows_counter = ADD_COUNTER(_runtime_profile, "RawRowsRead", TUnit::UNIT);
     _block_convert_timer = ADD_TIMER(_runtime_profile, "BlockConvertTime");
     _block_seek_timer = ADD_TIMER(_runtime_profile, "BlockSeekTime");
     _block_seek_counter = ADD_COUNTER(_runtime_profile, "BlockSeekCount", TUnit::UNIT);
 
-    _rows_vec_cond_counter =
-        ADD_COUNTER(_runtime_profile, "RowsVectorPredFiltered", TUnit::UNIT);
-    _vec_cond_timer =
-        ADD_TIMER(_runtime_profile, "VectorPredEvalTime");
+    _rows_vec_cond_counter = ADD_COUNTER(_runtime_profile, "RowsVectorPredFiltered", TUnit::UNIT);
+    _vec_cond_timer = ADD_TIMER(_runtime_profile, "VectorPredEvalTime");
 
-    _stats_filtered_counter =
-        ADD_COUNTER(_runtime_profile, "RowsStatsFiltered", TUnit::UNIT);
-    _bf_filtered_counter =
-        ADD_COUNTER(_runtime_profile, "RowsBloomFilterFiltered", TUnit::UNIT);
-    _del_filtered_counter =
-        ADD_COUNTER(_runtime_profile, "RowsDelFiltered", TUnit::UNIT);
+    _stats_filtered_counter = ADD_COUNTER(_runtime_profile, "RowsStatsFiltered", TUnit::UNIT);
+    _bf_filtered_counter = ADD_COUNTER(_runtime_profile, "RowsBloomFilterFiltered", TUnit::UNIT);
+    _del_filtered_counter = ADD_COUNTER(_runtime_profile, "RowsDelFiltered", TUnit::UNIT);
+    _key_range_filtered_counter = ADD_COUNTER(_runtime_profile, "RowsKeyRangeFiltered", TUnit::UNIT);
 
     _io_timer = ADD_TIMER(_runtime_profile, "IOTimer");
     _decompressor_timer = ADD_TIMER(_runtime_profile, "DecompressorTimer");
@@ -128,7 +118,7 @@ void OlapScanNode::_init_counter(RuntimeState* state) {
     _total_pages_num_counter = ADD_COUNTER(_runtime_profile, "TotalPagesNum", TUnit::UNIT);
     _cached_pages_num_counter = ADD_COUNTER(_runtime_profile, "CachedPagesNum", TUnit::UNIT);
 
-    _bitmap_index_filter_counter = ADD_COUNTER(_runtime_profile, "BitmapIndexFilterCount", TUnit::UNIT);
+    _bitmap_index_filter_counter = ADD_COUNTER(_runtime_profile, "RowsBitmapIndexFiltered", TUnit::UNIT);
     _bitmap_index_filter_timer = ADD_TIMER(_runtime_profile, "BitmapIndexFilterTimer");
 
     _num_scanners = ADD_COUNTER(_runtime_profile, "NumScanners", TUnit::UNIT);
@@ -195,9 +185,9 @@ Status OlapScanNode::get_next(RuntimeState* state, RowBatch* row_batch, bool* eo
 
     // check if Canceled.
     if (state->is_cancelled()) {
-        boost::unique_lock<boost::mutex> l(_row_batches_lock);
+        std::unique_lock<std::mutex> l(_row_batches_lock);
         _transfer_done = true;
-        boost::lock_guard<SpinLock> guard(_status_mutex);
+        std::lock_guard<SpinLock> guard(_status_mutex);
         if (LIKELY(_status.ok())) {
             _status = Status::Cancelled("Cancelled");
         }
@@ -225,13 +215,14 @@ Status OlapScanNode::get_next(RuntimeState* state, RowBatch* row_batch, bool* eo
     // wait for batch from queue
     RowBatch* materialized_batch = NULL;
     {
-        boost::unique_lock<boost::mutex> l(_row_batches_lock);
+        std::unique_lock<std::mutex> l(_row_batches_lock);
         while (_materialized_row_batches.empty() && !_transfer_done) {
             if (state->is_cancelled()) {
                 _transfer_done = true;
             }
 
-            _row_batch_added_cv.timed_wait(l, _wait_duration);
+            // use wait_for, not wait, in case to capture the state->is_cancelled()
+            _row_batch_added_cv.wait_for(l, std::chrono::seconds(1));
         }
 
         if (!_materialized_row_batches.empty()) {
@@ -258,7 +249,7 @@ Status OlapScanNode::get_next(RuntimeState* state, RowBatch* row_batch, bool* eo
             COUNTER_SET(_rows_returned_counter, _num_rows_returned);
 
             {
-                boost::unique_lock<boost::mutex> l(_row_batches_lock);
+                std::unique_lock<std::mutex> l(_row_batches_lock);
                 _transfer_done = true;
             }
 
@@ -285,7 +276,7 @@ Status OlapScanNode::get_next(RuntimeState* state, RowBatch* row_batch, bool* eo
 
     // all scanner done, change *eos to true
     *eos = true;
-    boost::lock_guard<SpinLock> guard(_status_mutex);
+    std::lock_guard<SpinLock> guard(_status_mutex);
     return _status;
 }
 
@@ -304,7 +295,7 @@ Status OlapScanNode::close(RuntimeState* state) {
 
     // change done status
     {
-        boost::unique_lock<boost::mutex> l(_row_batches_lock);
+        std::unique_lock<std::mutex> l(_row_batches_lock);
         _transfer_done = true;
     }
     // notify all scanner thread
@@ -567,7 +558,7 @@ static Status get_hints(
         tablet_id, schema_hash, true, &err);
     if (table == nullptr) {
         std::stringstream ss;
-        ss << "failed to get tablet: " << tablet_id << "with schema hash: "
+        ss << "failed to get tablet: " << tablet_id << " with schema hash: "
             << schema_hash << ", reason: " << err;
         LOG(WARNING) << ss.str();
         return Status::InternalError(ss.str());
@@ -690,7 +681,11 @@ Status OlapScanNode::start_scan_thread(RuntimeState* state) {
             }
             OlapScanner* scanner = new OlapScanner(
                 state, this, _olap_scan_node.is_preaggregation, _need_agg_finalize, *scan_range, scanner_ranges);
+            // add scanner to pool before doing prepare.
+            // so that scanner can be automatically deconstructed if prepare failed.
             _scanner_pool->add(scanner);
+            RETURN_IF_ERROR(scanner->prepare(*scan_range, scanner_ranges, _olap_filter, _is_null_vector));
+    
             _olap_scanners.push_back(scanner);
             disk_set.insert(scanner->scan_disk());
         }
@@ -705,8 +700,8 @@ Status OlapScanNode::start_scan_thread(RuntimeState* state) {
     _progress.set_logging_level(1);
 
     _transfer_thread.add_thread(
-        new boost::thread(
-            &OlapScanNode::transfer_thread, this, state));
+            new boost::thread(
+                &OlapScanNode::transfer_thread, this, state));
 
     return Status::OK();
 }
@@ -1089,7 +1084,7 @@ void OlapScanNode::transfer_thread(RuntimeState* state) {
     for (auto scanner : _olap_scanners) {
         status = Expr::clone_if_not_exists(_conjunct_ctxs, state, scanner->conjunct_ctxs());
         if (!status.ok()) {
-            boost::lock_guard<SpinLock> guard(_status_mutex);
+            std::lock_guard<SpinLock> guard(_status_mutex);
             _status = status;
             break;
         }
@@ -1126,7 +1121,7 @@ void OlapScanNode::transfer_thread(RuntimeState* state) {
         int assigned_thread_num = 0;
         // copy to local
         {
-            boost::unique_lock<boost::mutex> l(_scan_batches_lock);
+            std::unique_lock<std::mutex> l(_scan_batches_lock);
             assigned_thread_num = _running_thread;
             // int64_t buf_bytes = __sync_fetch_and_add(&_buffered_bytes, 0);
             // How many thread can apply to this query
@@ -1178,7 +1173,7 @@ void OlapScanNode::transfer_thread(RuntimeState* state) {
         RowBatchInterface* scan_batch = NULL;
         {
             // 1 scanner idle task not empty, assign new sanner task
-            boost::unique_lock<boost::mutex> l(_scan_batches_lock);
+            std::unique_lock<std::mutex> l(_scan_batches_lock);
 
             // scanner_row_num = 16k
             // 16k * 10 * 12 * 8 = 15M(>2s)  --> nice=10
@@ -1220,7 +1215,7 @@ void OlapScanNode::transfer_thread(RuntimeState* state) {
 
     state->resource_pool()->release_thread_token(true);
     VLOG(1) << "TransferThread finish.";
-    boost::unique_lock<boost::mutex> l(_row_batches_lock);
+    std::unique_lock<std::mutex> l(_row_batches_lock);
     _transfer_done = true;
     _row_batch_added_cv.notify_all();
 }
@@ -1233,7 +1228,7 @@ void OlapScanNode::scanner_thread(OlapScanner* scanner) {
     if (!scanner->is_open()) {
         status = scanner->open();
         if (!status.ok()) {
-            boost::lock_guard<SpinLock> guard(_status_mutex);
+            std::lock_guard<SpinLock> guard(_status_mutex);
             _status = status;
             eos = true;
         }
@@ -1285,11 +1280,11 @@ void OlapScanNode::scanner_thread(OlapScanner* scanner) {
     }
 
     {
-        boost::unique_lock<boost::mutex> l(_scan_batches_lock);
+        std::unique_lock<std::mutex> l(_scan_batches_lock);
         // if we failed, check status.
         if (UNLIKELY(!status.ok())) {
             _transfer_done = true;
-            boost::lock_guard<SpinLock> guard(_status_mutex);
+            std::lock_guard<SpinLock> guard(_status_mutex);
             if (LIKELY(_status.ok())) {
                 _status = status;
             }
@@ -1297,7 +1292,7 @@ void OlapScanNode::scanner_thread(OlapScanner* scanner) {
 
         bool global_status_ok = false;
         {
-            boost::lock_guard<SpinLock> guard(_status_mutex);
+            std::lock_guard<SpinLock> guard(_status_mutex);
             global_status_ok = _status.ok();
         }
         if (UNLIKELY(!global_status_ok)) {
@@ -1321,7 +1316,7 @@ void OlapScanNode::scanner_thread(OlapScanner* scanner) {
         // that can assure this object can keep live before we finish.
         scanner->close(_runtime_state);
 
-        boost::unique_lock<boost::mutex> l(_scan_batches_lock);
+        std::unique_lock<std::mutex> l(_scan_batches_lock);
         _progress.update(1);
         if (_progress.done()) {
             // this is the right out
@@ -1333,7 +1328,7 @@ void OlapScanNode::scanner_thread(OlapScanner* scanner) {
 
 Status OlapScanNode::add_one_batch(RowBatchInterface* row_batch) {
     {
-        boost::unique_lock<boost::mutex> l(_row_batches_lock);
+        std::unique_lock<std::mutex> l(_row_batches_lock);
 
         while (UNLIKELY(_materialized_row_batches.size()
                         >= _max_materialized_row_batches

@@ -17,10 +17,9 @@
 
 package org.apache.doris.catalog;
 
-import static org.apache.doris.common.io.IOUtils.writeOptionString;
-
 import org.apache.doris.analysis.FunctionName;
 import org.apache.doris.analysis.HdfsURI;
+import org.apache.doris.common.io.IOUtils;
 import org.apache.doris.common.io.Text;
 import org.apache.doris.common.io.Writable;
 import org.apache.doris.thrift.TFunction;
@@ -610,8 +609,8 @@ public class Function implements Writable {
         if (location != null) {
             libUrl = location.toString();
         }
-        writeOptionString(output, libUrl);
-        writeOptionString(output, checksum);
+        IOUtils.writeOptionString(output, libUrl);
+        IOUtils.writeOptionString(output, checksum);
     }
 
     @Override
