@@ -27,7 +27,6 @@ import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.tree.*;
 import org.apache.doris.sql.type.TypeManager;
-import sun.jvm.hotspot.debugger.cdbg.FunctionType;
 
 import javax.annotation.Nullable;
 import java.util.*;

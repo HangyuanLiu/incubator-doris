@@ -284,6 +284,17 @@ public class Analysis
         return joins.get(NodeRef.of(join));
     }
 
+    public void recordSubqueries(Node node, ExpressionAnalysis expressionAnalysis)
+    {
+        /*
+        NodeRef<Node> key = NodeRef.of(node);
+        this.inPredicatesSubqueries.putAll(key, dereference(expressionAnalysis.getSubqueryInPredicates()));
+        this.scalarSubqueries.putAll(key, dereference(expressionAnalysis.getScalarSubqueries()));
+        this.existsSubqueries.putAll(key, dereference(expressionAnalysis.getExistsSubqueries()));
+        this.quantifiedComparisonSubqueries.putAll(key, dereference(expressionAnalysis.getQuantifiedComparisons()));
+         */
+    }
+
     private <T extends Node> List<T> dereference(Collection<NodeRef<T>> nodeRefs)
     {
         return nodeRefs.stream()

@@ -107,6 +107,11 @@ public abstract class AstVisitor<R, C>
         return visitExpression(node, context);
     }
 
+    protected R visitInPredicate(InPredicate node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitQuerySpecification(QuerySpecification node, C context)
     {
         return visitQueryBody(node, context);
@@ -178,6 +183,11 @@ public abstract class AstVisitor<R, C>
     }
 
     protected R visitTable(Table node, C context)
+    {
+        return visitQueryBody(node, context);
+    }
+
+    protected R visitTableSubquery(TableSubquery node, C context)
     {
         return visitQueryBody(node, context);
     }

@@ -62,6 +62,7 @@ public class QueryPlanner {
     private final VariableAllocator variableAllocator;
     private final IdGenerator<PlanNodeId> idAllocator;
     private final Metadata metadata;
+    private final SubqueryPlanner subqueryPlanner;
 
     QueryPlanner(Analysis analysis,
                  VariableAllocator variableAllocator,
@@ -71,6 +72,9 @@ public class QueryPlanner {
         this.variableAllocator = variableAllocator;
         this.idAllocator = idAllocator;
         this.metadata = metadata;
+
+        this.subqueryPlanner = new SubqueryPlanner(analysis, variableAllocator, idAllocator, metadata, null);
+
     }
 
     public RelationPlan plan(Query query)
@@ -204,10 +208,10 @@ public class QueryPlanner {
 
         // rewrite expressions which contain already handled subqueries
         Expression rewrittenBeforeSubqueries = subPlan.rewrite(predicate);
-        //subPlan = subqueryPlanner.handleSubqueries(subPlan, rewrittenBeforeSubqueries, node);
-        //Expression rewrittenAfterSubqueries = subPlan.rewrite(predicate);
+        subPlan = subqueryPlanner.handleSubqueries(subPlan, rewrittenBeforeSubqueries, node);
+        Expression rewrittenAfterSubqueries = subPlan.rewrite(predicate);
 
-        return subPlan.withNewRoot(new FilterNode(idAllocator.getNextId(), subPlan.getRoot(), castToRowExpression(rewrittenBeforeSubqueries)));
+        return subPlan.withNewRoot(new FilterNode(idAllocator.getNextId(), subPlan.getRoot(), castToRowExpression(rewrittenAfterSubqueries)));
     }
 
     private PlanBuilder project(PlanBuilder subPlan, Iterable<Expression> expressions, RelationPlan parentRelationPlan)
@@ -590,8 +594,7 @@ public class QueryPlanner {
     private PlanBuilder handleSubqueries(PlanBuilder subPlan, Node node, Iterable<Expression> inputs)
     {
         for (Expression input : inputs) {
-            //subPlan = subqueryPlanner.handleSubqueries(subPlan, subPlan.rewrite(input), node);
-            subPlan.rewrite(input);
+            subPlan = subqueryPlanner.handleSubqueries(subPlan, subPlan.rewrite(input), node);
         }
         return subPlan;
     }

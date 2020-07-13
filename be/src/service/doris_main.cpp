@@ -143,6 +143,7 @@ int main(int argc, char** argv) {
         LOG(FATAL) << "parse config storage path failed, path=" << doris::config::storage_root_path;
         exit(-1);
     }
+    /*
     auto it = paths.begin();
     for (;it != paths.end();) {
         if (!doris::check_datapath_rw(it->path)) {
@@ -162,6 +163,7 @@ int main(int argc, char** argv) {
         LOG(FATAL) << "All disks are broken, exit.";
         exit(-1);
     }
+    */
 
     // initilize libcurl here to avoid concurrent initialization
     auto curl_ret = curl_global_init(CURL_GLOBAL_ALL);

@@ -297,6 +297,12 @@ public class AstBuilder
     }
 
     @Override
+    public Node visitSubqueryRelation(SqlBaseParser.SubqueryRelationContext context)
+    {
+        return new TableSubquery(getLocation(context), (Query) visit(context.query()));
+    }
+
+    @Override
     public Node visitParenthesizedRelation(SqlBaseParser.ParenthesizedRelationContext context)
     {
         return visit(context.relation());
