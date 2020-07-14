@@ -439,7 +439,7 @@ public class StatementAnalyzer
                             }
                             else {
                                 //Analyzer.verifyNoAggregateWindowOrGroupingFunctions(analysis.getFunctionHandles(), metadata.getFunctionManager(), column, "GROUP BY clause");
-                                //analysis.recordSubqueries(node, analyzeExpression(column, scope));
+                                analysis.recordSubqueries(node, analyzeExpression(column, scope));
                                 complexExpressions.add(column);
                             }
 
@@ -670,6 +670,11 @@ public class StatementAnalyzer
         public void analyzeWhere(Node node, Scope scope, Expression predicate)
         {
             ExpressionAnalysis expressionAnalysis = analyzeExpression(predicate, scope);
+
+            //Analyzer.verifyNoAggregateWindowOrGroupingFunctions(analysis.getFunctionHandles(), metadata.getFunctionManager(), predicate, "WHERE clause");
+
+            analysis.recordSubqueries(node, expressionAnalysis);
+
             Type predicateType = expressionAnalysis.getType(predicate);
             if (!predicateType.equals(BOOLEAN)) {
                 if (!predicateType.equals(UNKNOWN)) {
@@ -878,9 +883,8 @@ public class StatementAnalyzer
                         .ifPresent(function -> {
                             throw new SemanticException(NESTED_WINDOW, function.getNode(), "HAVING clause cannot contain window functions");
                         });
-
-                analysis.recordSubqueries(node, expressionAnalysis);
                  */
+                analysis.recordSubqueries(node, expressionAnalysis);
 
                 Type predicateType = expressionAnalysis.getType(predicate);
                 if (!predicateType.equals(BOOLEAN) && !predicateType.equals(UNKNOWN)) {

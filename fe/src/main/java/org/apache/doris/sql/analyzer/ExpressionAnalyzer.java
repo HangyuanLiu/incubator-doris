@@ -17,7 +17,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
-import org.apache.doris.catalog.Function;
+import org.apache.doris.common.NotImplementedException;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.parser.SqlParser;
@@ -27,20 +27,27 @@ import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.tree.*;
 import org.apache.doris.sql.type.TypeManager;
+import org.apache.doris.sql.type.UnknownType;
 
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.function.Function;
 
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
+import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.analyzer.SemanticErrorCode.MULTIPLE_FIELDS_FROM_SUBQUERY;
 import static org.apache.doris.sql.analyzer.SemanticErrorCode.TYPE_MISMATCH;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
+import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 
 public class ExpressionAnalyzer
 {
     private final FunctionManager functionManager;
     private final TypeManager typeManager;
+    private final Function<Node, StatementAnalyzer> statementAnalyzerFactory;
     private final TypeProvider symbolTypes;
     private final boolean isDescribe;
 
@@ -59,6 +66,7 @@ public class ExpressionAnalyzer
     private ExpressionAnalyzer(
             FunctionManager functionManager,
             TypeManager typeManager,
+            Function<Node, StatementAnalyzer> statementAnalyzerFactory,
             TypeProvider symbolTypes,
             List<Expression> parameters,
             WarningCollector warningCollector,
@@ -66,7 +74,7 @@ public class ExpressionAnalyzer
     {
         this.functionManager = functionManager;
         this.typeManager = typeManager;
-
+        this.statementAnalyzerFactory = requireNonNull(statementAnalyzerFactory, "statementAnalyzerFactory is null");
         this.symbolTypes = Objects.requireNonNull(symbolTypes, "symbolTypes is null");
         this.parameters = Objects.requireNonNull(parameters, "parameters is null");
         this.isDescribe = isDescribe;
@@ -111,6 +119,11 @@ public class ExpressionAnalyzer
     public Set<NodeRef<Expression>> getTypeOnlyCoercions()
     {
         return Collections.unmodifiableSet(typeOnlyCoercions);
+    }
+
+    public Set<NodeRef<InPredicate>> getSubqueryInPredicates()
+    {
+        return unmodifiableSet(subqueryInPredicates);
     }
 
     public Map<NodeRef<Expression>, FieldId> getColumnReferences()
@@ -242,6 +255,74 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitInPredicate(InPredicate node, StackableAstVisitorContext<Context> context)
+        {
+            Expression value = node.getValue();
+            process(value, context);
+
+            Expression valueList = node.getValueList();
+            process(valueList, context);
+
+            if (valueList instanceof InListExpression) {
+                InListExpression inListExpression = (InListExpression) valueList;
+
+                coerceToSingleType(context,
+                        "IN value and list items must be the same type: %s",
+                        ImmutableList.<Expression>builder().add(value).addAll(inListExpression.getValues()).build());
+            }
+            else if (valueList instanceof SubqueryExpression) {
+                coerceToSingleType(context, node, "value and result of subquery must be of the same type for IN expression: %s vs %s", value, valueList);
+            }
+
+            return setExpressionType(node, BOOLEAN);
+        }
+
+        @Override
+        protected Type visitInListExpression(InListExpression node, StackableAstVisitorContext<Context> context)
+        {
+            Type type = coerceToSingleType(context, "All IN list values must be the same type: %s", node.getValues());
+
+            setExpressionType(node, type);
+            return type; // TODO: this really should a be relation type
+        }
+
+        @Override
+        protected Type visitSubqueryExpression(SubqueryExpression node, StackableAstVisitorContext<Context> context)
+        {
+            StatementAnalyzer analyzer = statementAnalyzerFactory.apply(node);
+            Scope subqueryScope = Scope.builder()
+                    .withParent(context.getContext().getScope())
+                    .build();
+            Scope queryScope = analyzer.analyze(node.getQuery(), subqueryScope);
+
+            // Subquery should only produce one column
+            if (queryScope.getRelationType().getVisibleFieldCount() != 1) {
+                throw new SemanticException(MULTIPLE_FIELDS_FROM_SUBQUERY,
+                        node,
+                        "Multiple columns returned by subquery are not yet supported. Found %s",
+                        queryScope.getRelationType().getVisibleFieldCount());
+            }
+
+            Node previousNode = context.getPreviousNode().orElse(null);
+            if (previousNode instanceof InPredicate && ((InPredicate) previousNode).getValue() != node) {
+                subqueryInPredicates.add(NodeRef.of((InPredicate) previousNode));
+            } else {
+                return null;
+            }
+            /*
+            else if (previousNode instanceof QuantifiedComparisonExpression) {
+                quantifiedComparisons.add(NodeRef.of((QuantifiedComparisonExpression) previousNode));
+            }
+            else {
+                scalarSubqueries.add(NodeRef.of(node));
+            }
+             */
+
+            Type type = getOnlyElement(queryScope.getRelationType().getVisibleFields()).getType();
+            return setExpressionType(node, type);
+        }
+
+        @Override
         protected Type visitQuantifiedComparisonExpression(QuantifiedComparisonExpression node, StackableAstVisitorContext<Context> context) {
             Expression value = node.getValue();
             process(value, context);
@@ -270,7 +351,7 @@ public class ExpressionAnalyzer
                     throw new IllegalStateException(format("Unexpected comparison type: %s", node.getOperator()));
             }
             */
-            return setExpressionType(node, BooleanType.BOOLEAN);
+            return setExpressionType(node, BOOLEAN);
         }
 
         @Override
@@ -376,6 +457,61 @@ public class ExpressionAnalyzer
             coerceType(expression, actualType, expectedType, message);
         }
 
+        private Type coerceToSingleType(StackableAstVisitorContext<Context> context, Node node, String message, Expression first, Expression second)
+        {
+            Type firstType = UnknownType.UNKNOWN;
+            if (first != null) {
+                firstType = process(first, context);
+            }
+            Type secondType = UnknownType.UNKNOWN;
+            if (second != null) {
+                secondType = process(second, context);
+            }
+
+            // coerce types if possible
+            Optional<Type> superTypeOptional = typeManager.getCommonSuperType(firstType, secondType);
+            if (superTypeOptional.isPresent()
+                    && typeManager.canCoerce(firstType, superTypeOptional.get())
+                    && typeManager.canCoerce(secondType, superTypeOptional.get())) {
+                Type superType = superTypeOptional.get();
+                if (!firstType.equals(superType)) {
+                    addOrReplaceExpressionCoercion(first, firstType, superType);
+                }
+                if (!secondType.equals(superType)) {
+                    addOrReplaceExpressionCoercion(second, secondType, superType);
+                }
+                return superType;
+            }
+
+            throw new SemanticException(TYPE_MISMATCH, node, message, firstType, secondType);
+        }
+
+        private Type coerceToSingleType(StackableAstVisitorContext<Context> context, String message, List<Expression> expressions)
+        {
+            // determine super type
+            Type superType = UnknownType.UNKNOWN;
+            for (Expression expression : expressions) {
+                Optional<Type> newSuperType = typeManager.getCommonSuperType(superType, process(expression, context));
+                if (!newSuperType.isPresent()) {
+                    throw new SemanticException(TYPE_MISMATCH, expression, message, superType);
+                }
+                superType = newSuperType.get();
+            }
+
+            // verify all expressions can be coerced to the superType
+            for (Expression expression : expressions) {
+                Type type = process(expression, context);
+                if (!type.equals(superType)) {
+                    if (!typeManager.canCoerce(type, superType)) {
+                        throw new SemanticException(TYPE_MISMATCH, expression, message, superType);
+                    }
+                    addOrReplaceExpressionCoercion(expression, type, superType);
+                }
+            }
+
+            return superType;
+        }
+
         private void addOrReplaceExpressionCoercion(Expression expression, Type type, Type superType)
         {
             NodeRef<Expression> ref = NodeRef.of(expression);
@@ -469,8 +605,7 @@ public class ExpressionAnalyzer
         return new ExpressionAnalysis(
                 analyzer.getExpressionTypes(),
                 analyzer.getExpressionCoercions(),
-                //analyzer.getSubqueryInPredicates(),
-                null,
+                analyzer.getSubqueryInPredicates(),
                 analyzer.getColumnReferences(),
                 analyzer.getTypeOnlyCoercions());
     }
@@ -503,8 +638,7 @@ public class ExpressionAnalyzer
         return new ExpressionAnalysis(
                 expressionTypes,
                 expressionCoercions,
-                //analyzer.getSubqueryInPredicates(),
-                null,
+                analyzer.getSubqueryInPredicates(),
                 analyzer.getColumnReferences(),
                 analyzer.getTypeOnlyCoercions()
         );
@@ -522,6 +656,7 @@ public class ExpressionAnalyzer
         return new ExpressionAnalyzer(
                 metadata.getFunctionManager(),
                 metadata.getTypeManager(),
+                node -> new StatementAnalyzer(analysis, metadata, sqlParser, accessControl, session, warningCollector),
                 types,
                 analysis.getParameters(),
                 warningCollector,

@@ -16,11 +16,14 @@ package org.apache.doris.sql.planner.plan;
 
 import org.apache.doris.sql.planner.iterative.matching.Pattern;
 import org.apache.doris.sql.planner.iterative.matching.Property;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.apache.doris.sql.planner.iterative.matching.Pattern.typeOf;
 import static org.apache.doris.sql.planner.iterative.matching.Property.optionalProperty;
+import static org.apache.doris.sql.planner.iterative.matching.Property.property;
 
 public class Patterns
 {
@@ -31,6 +34,11 @@ public class Patterns
         return typeOf(AggregationNode.class);
     }
 
+    public static Pattern<ApplyNode> applyNode()
+    {
+        return typeOf(ApplyNode.class);
+    }
+
     public static Pattern<ProjectNode> project()
     {
         return typeOf(ProjectNode.class);
@@ -39,6 +47,11 @@ public class Patterns
     public static Pattern<FilterNode> filter()
     {
         return typeOf(FilterNode.class);
+    }
+
+    public static Pattern<JoinNode> join()
+    {
+        return typeOf(JoinNode.class);
     }
 
     public static Pattern<LimitNode> limit()
@@ -61,5 +74,21 @@ public class Patterns
         return optionalProperty("source", node -> node.getSources().size() == 1 ?
                 Optional.of(node.getSources().get(0)) :
                 Optional.empty());
+    }
+
+    public static class Apply
+    {
+        public static Property<ApplyNode, List<VariableReferenceExpression>> correlation()
+        {
+            return property("correlation", ApplyNode::getCorrelation);
+        }
+    }
+
+    public static class Join
+    {
+        public static Property<JoinNode, JoinNode.Type> type()
+        {
+            return property("type", JoinNode::getType);
+        }
     }
 }

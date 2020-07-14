@@ -250,6 +250,59 @@ public class ExpressionTreeRewriter<C> {
             }
             return rewrittenSortItems.build();
         }
+
+        @Override
+        public Expression visitInPredicate(InPredicate node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteInPredicate(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression value = rewrite(node.getValue(), context.get());
+            Expression list = rewrite(node.getValueList(), context.get());
+
+            if (node.getValue() != value || node.getValueList() != list) {
+                return new InPredicate(value, list);
+            }
+
+            return node;
+        }
+
+        @Override
+        protected Expression visitInListExpression(InListExpression node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteInListExpression(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            List<Expression> values = rewrite(node.getValues(), context);
+
+            if (!sameElements(node.getValues(), values)) {
+                return new InListExpression(values);
+            }
+
+            return node;
+        }
+
+        @Override
+        public Expression visitSubqueryExpression(SubqueryExpression node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteSubqueryExpression(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            // No default rewrite for SubqueryExpression since we do not want to traverse subqueries
+            return node;
+        }
     }
 
     public static class Context<C>

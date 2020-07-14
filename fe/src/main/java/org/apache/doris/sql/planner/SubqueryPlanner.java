@@ -41,6 +41,7 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.SemanticExceptions.notSupportedException;
 import static org.apache.doris.sql.analyzer.SemanticExceptions.subQueryNotSupportedError;
 import static org.apache.doris.sql.planner.ExpressionNodeInliner.replaceExpression;
+import static org.apache.doris.sql.planner.optimizations.ApplyNodeUtil.verifySubquerySupported;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
@@ -157,7 +158,7 @@ class SubqueryPlanner {
 
         TranslationMap translations = subPlan.copyTranslations();
         LogicalPlanNode root = subPlan.getRoot();
-        //verifySubquerySupported(subqueryAssignments);
+        verifySubquerySupported(subqueryAssignments);
         return new PlanBuilder(translations,
                 new ApplyNode(idAllocator.getNextId(),
                         root,
@@ -195,7 +196,7 @@ class SubqueryPlanner {
 
     private PlanBuilder createPlanBuilder(Node node)
     {
-        RelationPlan relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, metadata)
+        RelationPlan relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, metadata, session)
                 .process(node, null);
         TranslationMap translations = new TranslationMap(relationPlan, analysis);
 

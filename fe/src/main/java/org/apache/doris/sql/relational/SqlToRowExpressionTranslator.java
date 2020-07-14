@@ -14,6 +14,7 @@
 package org.apache.doris.sql.relational;
 
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.apache.doris.sql.analyzer.TypeSignatureProvider;
@@ -32,6 +33,8 @@ import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.FieldReference;
 import org.apache.doris.sql.tree.FunctionCall;
 import org.apache.doris.sql.tree.Identifier;
+import org.apache.doris.sql.tree.InListExpression;
+import org.apache.doris.sql.tree.InPredicate;
 import org.apache.doris.sql.tree.LogicalBinaryExpression;
 import org.apache.doris.sql.tree.LongLiteral;
 import org.apache.doris.sql.tree.NodeRef;
@@ -52,6 +55,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.AND;
+import static org.apache.doris.sql.relation.SpecialFormExpression.Form.IN;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.OR;
 import static org.apache.doris.sql.relational.Expressions.call;
 import static org.apache.doris.sql.relational.Expressions.constant;
@@ -59,6 +63,7 @@ import static org.apache.doris.sql.relational.Expressions.constantNull;
 import static org.apache.doris.sql.relational.Expressions.field;
 import static org.apache.doris.sql.relational.Expressions.specialForm;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
+import static org.apache.doris.sql.type.OperatorType.EQUAL;
 import static org.apache.doris.sql.type.OperatorType.NEGATION;
 
 public final class SqlToRowExpressionTranslator
@@ -241,6 +246,35 @@ public final class SqlToRowExpressionTranslator
                     throw new IllegalStateException("Unknown logical operator: " + node.getOperator());
             }
             return specialForm(form, BOOLEAN, process(node.getLeft(), context), process(node.getRight(), context));
+        }
+
+        private RowExpression buildEquals(RowExpression lhs, RowExpression rhs)
+        {
+            return call(
+                    EQUAL.getOperator(),
+                    functionResolution.comparisonFunction(ComparisonExpression.Operator.EQUAL, lhs.getType(), rhs.getType()),
+                    BOOLEAN,
+                    lhs,
+                    rhs);
+        }
+
+        @Override
+        protected RowExpression visitInPredicate(InPredicate node, Void context)
+        {
+            ImmutableList.Builder<RowExpression> arguments = ImmutableList.builder();
+            RowExpression value = process(node.getValue(), context);
+            InListExpression values = (InListExpression) node.getValueList();
+
+            if (values.getValues().size() == 1) {
+                return buildEquals(value, process(values.getValues().get(0), context));
+            }
+
+            arguments.add(value);
+            for (Expression inValue : values.getValues()) {
+                arguments.add(process(inValue, context));
+            }
+
+            return specialForm(IN, BOOLEAN, arguments.build());
         }
     }
 }

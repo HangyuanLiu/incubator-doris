@@ -40,6 +40,7 @@ import org.apache.doris.sql.planner.plan.OrderingScheme;
 import org.apache.doris.sql.planner.plan.OutputNode;
 import org.apache.doris.sql.planner.plan.PlanVisitor;
 import org.apache.doris.sql.planner.plan.ProjectNode;
+import org.apache.doris.sql.planner.plan.SemiJoinNode;
 import org.apache.doris.sql.planner.plan.SortNode;
 import org.apache.doris.sql.planner.plan.TableScanNode;
 import org.apache.doris.sql.planner.plan.TopNNode;
@@ -264,6 +265,11 @@ public class PlanFragmentBuilder {
             leftFragment.setPlanRoot(hashJoinNode);
             context.fragments.add(leftFragment);
             return leftFragment;
+        }
+
+        @Override
+        public PlanFragment visitSemiJoin(SemiJoinNode node, FragmentProperties context) {
+            return null;
         }
 
         @Override

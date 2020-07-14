@@ -10,6 +10,7 @@ import org.apache.doris.sql.planner.iterative.rule.InlineProjections;
 import org.apache.doris.sql.planner.iterative.rule.MergeLimitWithSort;
 import org.apache.doris.sql.planner.iterative.rule.PruneTableScanColumns;
 import org.apache.doris.sql.planner.iterative.rule.RemoveRedundantIdentityProjections;
+import org.apache.doris.sql.planner.iterative.rule.TransformUncorrelatedInPredicateSubqueryToSemiJoin;
 import org.apache.doris.sql.planner.optimizations.AddExchanges;
 import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
 import org.apache.doris.sql.planner.iterative.rule.TranslateExpressions;
@@ -40,6 +41,8 @@ public class PlanOptimizers {
                 new IterativeOptimizer(null, null, null, ImmutableSet.of(new MergeLimitWithSort()))
         );
 
+        builder.add(new IterativeOptimizer(null,null,null, ImmutableSet.of(new TransformUncorrelatedInPredicateSubqueryToSemiJoin())));
+
         builder.add(new IterativeOptimizer(
                 null, null, null,
                 new TranslateExpressions(metadata, sqlParser).rules()));
@@ -50,6 +53,7 @@ public class PlanOptimizers {
                         new RemoveRedundantIdentityProjections())),
                 inlineProjections
         );
+
 
         builder.add(new AddExchanges(metadata));
         this.optimizers = builder.build();

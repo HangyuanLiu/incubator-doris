@@ -20,14 +20,17 @@ import org.apache.doris.sql.planner.iterative.Rule;
 import org.apache.doris.sql.planner.iterative.matching.Captures;
 import org.apache.doris.sql.planner.iterative.matching.Pattern;
 import org.apache.doris.sql.planner.plan.AggregationNode;
+import org.apache.doris.sql.planner.plan.ApplyNode;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.FilterNode;
+import org.apache.doris.sql.planner.plan.JoinNode;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -35,7 +38,9 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableMap.builder;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.planner.plan.Patterns.aggregation;
+import static org.apache.doris.sql.planner.plan.Patterns.applyNode;
 import static org.apache.doris.sql.planner.plan.Patterns.filter;
+import static org.apache.doris.sql.planner.plan.Patterns.join;
 import static org.apache.doris.sql.planner.plan.Patterns.project;
 
 public class RowExpressionRewriteRuleSet
@@ -57,6 +62,8 @@ public class RowExpressionRewriteRuleSet
         return ImmutableSet.of(
                 filterRowExpressionRewriteRule(),
                 projectRowExpressionRewriteRule(),
+                applyNodeRowExpressionRewriteRule(),
+                joinRowExpressionRewriteRule(),
                 aggregationRowExpressionRewriteRule());
     }
 
@@ -68,6 +75,16 @@ public class RowExpressionRewriteRuleSet
     public Rule<ProjectNode> projectRowExpressionRewriteRule()
     {
         return new ProjectRowExpressionRewrite();
+    }
+
+    public Rule<ApplyNode> applyNodeRowExpressionRewriteRule()
+    {
+        return new ApplyRowExpressionRewrite();
+    }
+
+    public Rule<JoinNode> joinRowExpressionRewriteRule()
+    {
+        return new JoinRowExpressionRewrite();
     }
 
     public Rule<AggregationNode> aggregationRowExpressionRewriteRule()
@@ -102,6 +119,84 @@ public class RowExpressionRewriteRuleSet
             }
             return Result.empty();
         }
+    }
+
+    private final class JoinRowExpressionRewrite
+            implements Rule<JoinNode>
+    {
+        @Override
+        public Pattern<JoinNode> getPattern()
+        {
+            return join();
+        }
+
+        @Override
+        public Result apply(JoinNode joinNode, Captures captures, Context context)
+        {
+            if (!joinNode.getFilter().isPresent()) {
+                return Result.empty();
+            }
+
+            RowExpression filter = joinNode.getFilter().get();
+            RowExpression rewritten = rewriter.rewrite(filter, context);
+
+            if (filter.equals(rewritten)) {
+                return Result.empty();
+            }
+            return Result.ofPlanNode(new JoinNode(
+                    joinNode.getId(),
+                    joinNode.getType(),
+                    joinNode.getLeft(),
+                    joinNode.getRight(),
+                    joinNode.getCriteria(),
+                    joinNode.getOutputVariables(),
+                    Optional.of(rewritten),
+                    joinNode.getLeftHashVariable(),
+                    joinNode.getRightHashVariable(),
+                    joinNode.getDistributionType()));
+        }
+    }
+
+    private final class ApplyRowExpressionRewrite
+            implements Rule<ApplyNode>
+    {
+        @Override
+        public Pattern<ApplyNode> getPattern()
+        {
+            return applyNode();
+        }
+
+        @Override
+        public Result apply(ApplyNode applyNode, Captures captures, Context context)
+        {
+            Assignments assignments = applyNode.getSubqueryAssignments();
+            Optional<Assignments> rewrittenAssignments = translateAssignments(assignments, context);
+
+            if (!rewrittenAssignments.isPresent()) {
+                return Result.empty();
+            }
+            return Result.ofPlanNode(new ApplyNode(
+                    applyNode.getId(),
+                    applyNode.getInput(),
+                    applyNode.getSubquery(),
+                    rewrittenAssignments.get(),
+                    applyNode.getCorrelation(),
+                    applyNode.getOriginSubqueryError()));
+        }
+    }
+
+    private Optional<Assignments> translateAssignments(Assignments assignments, Rule.Context context)
+    {
+        Assignments.Builder builder = Assignments.builder();
+        assignments.getMap()
+                .entrySet()
+                .stream()
+                .forEach(entry -> builder.put(entry.getKey(), rewriter.rewrite(entry.getValue(), context)));
+        Assignments rewritten = builder.build();
+        if (rewritten.equals(assignments)) {
+            return Optional.empty();
+        }
+        return Optional.of(rewritten);
     }
 
     private final class FilterRowExpressionRewrite

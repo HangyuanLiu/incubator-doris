@@ -8,6 +8,7 @@ import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.ExpressionUtils;
 import org.apache.doris.sql.analyzer.RelationType;
 import org.apache.doris.sql.metadata.Metadata;
+import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.planner.optimizations.JoinNodeUtils;
 import org.apache.doris.sql.planner.plan.*;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
@@ -36,16 +37,18 @@ class RelationPlanner
     private final VariableAllocator variableAllocator;
     private final IdGenerator<PlanNodeId> idAllocator;
     private final Metadata metadata;
-
+    private final Session session;
     private final SubqueryPlanner subqueryPlanner;
 
-    RelationPlanner(Analysis analysis, VariableAllocator variableAllocator, IdGenerator<PlanNodeId> idAllocator, Metadata metadata) {
+    RelationPlanner(Analysis analysis, VariableAllocator variableAllocator, IdGenerator<PlanNodeId> idAllocator,
+                    Metadata metadata,
+                    Session session) {
         this.analysis = analysis;
         this.variableAllocator = variableAllocator;
         this.idAllocator = idAllocator;
         this.metadata = metadata;
-
-        this.subqueryPlanner = new SubqueryPlanner(analysis, variableAllocator, idAllocator, metadata, null);
+        this.session = session;
+        this.subqueryPlanner = new SubqueryPlanner(analysis, variableAllocator, idAllocator, metadata, session);
 
     }
 
@@ -273,14 +276,14 @@ class RelationPlanner
     @Override
     protected RelationPlan visitQuery(Query node, Void context)
     {
-        return new QueryPlanner(analysis, variableAllocator, idAllocator, metadata)
+        return new QueryPlanner(analysis, variableAllocator, idAllocator, metadata, session)
                 .plan(node);
     }
 
     @Override
     protected RelationPlan visitQuerySpecification(QuerySpecification node, Void context)
     {
-        return new QueryPlanner(analysis, variableAllocator, idAllocator, metadata)
+        return new QueryPlanner(analysis, variableAllocator, idAllocator, metadata, session)
                 .plan(node);
     }
 

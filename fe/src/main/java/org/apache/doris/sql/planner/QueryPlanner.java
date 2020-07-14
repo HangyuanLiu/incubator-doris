@@ -10,6 +10,7 @@ import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.analyzer.FieldId;
 import org.apache.doris.sql.analyzer.Scope;
 import org.apache.doris.sql.metadata.Metadata;
+import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.AssignmentUtils;
 import org.apache.doris.sql.planner.plan.Assignments;
@@ -63,18 +64,20 @@ public class QueryPlanner {
     private final VariableAllocator variableAllocator;
     private final IdGenerator<PlanNodeId> idAllocator;
     private final Metadata metadata;
+    private final Session session;
     private final SubqueryPlanner subqueryPlanner;
 
     QueryPlanner(Analysis analysis,
                  VariableAllocator variableAllocator,
                  IdGenerator<PlanNodeId> idAllocator,
-                 Metadata metadata) {
+                 Metadata metadata,
+                 Session session) {
         this.analysis = analysis;
         this.variableAllocator = variableAllocator;
         this.idAllocator = idAllocator;
         this.metadata = metadata;
-
-        this.subqueryPlanner = new SubqueryPlanner(analysis, variableAllocator, idAllocator, metadata, null);
+        this.session = session;
+        this.subqueryPlanner = new SubqueryPlanner(analysis, variableAllocator, idAllocator, metadata, session);
 
     }
 
@@ -153,7 +156,7 @@ public class QueryPlanner {
 
     private PlanBuilder planQueryBody(Query query)
     {
-        RelationPlan relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, metadata)
+        RelationPlan relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, metadata, session)
                 .process(query.getQueryBody(), null);
 
         return planBuilderFor(relationPlan);
@@ -164,7 +167,7 @@ public class QueryPlanner {
         RelationPlan relationPlan;
 
         //if (node.getFrom().isPresent()) {
-            relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, metadata)
+            relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, metadata, session)
                     .process(node.getFrom().get(), null);
         //}
         //else {

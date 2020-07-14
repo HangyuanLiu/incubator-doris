@@ -22,6 +22,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.planner.optimizations.ApplyNodeUtil.verifySubquerySupported;
 
 public class ApplyNode
         extends LogicalPlanNode
@@ -66,7 +67,7 @@ public class ApplyNode
     {
         super(id);
         checkArgument(input.getOutputVariables().containsAll(correlation), "Input does not contain symbols from correlation");
-        //verifySubquerySupported(subqueryAssignments);
+        verifySubquerySupported(subqueryAssignments);
 
         this.input = requireNonNull(input, "input is null");
         this.subquery = requireNonNull(subquery, "subquery is null");

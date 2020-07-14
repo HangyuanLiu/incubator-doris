@@ -239,7 +239,7 @@ public class ConnectProcessor {
 
                 //logical planner
                 PlanOptimizers optimizers = new PlanOptimizers(metadata, null);
-                LogicalPlanner logicalPlanner = new LogicalPlanner(optimizers.get(), PlanNodeId.createGenerator(), metadata);
+                LogicalPlanner logicalPlanner = new LogicalPlanner(session, optimizers.get(), PlanNodeId.createGenerator(), metadata);
                 Plan plan = logicalPlanner.plan(analysis);
 
                 TQueryOptions tQueryOptions = new TQueryOptions();

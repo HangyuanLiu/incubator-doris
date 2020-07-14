@@ -90,7 +90,8 @@ public final class TypeRegistry
     @Override
     public Optional<Type> getCommonSuperType(Type firstType, Type secondType)
     {
-        return Optional.empty();
+        //FIXME
+        return Optional.of(BIGINT);
     }
 
     @Override

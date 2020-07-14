@@ -14,6 +14,7 @@ import org.apache.doris.sql.planner.SimplePlanRewriter;
 import org.apache.doris.sql.planner.Symbol;
 import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.plan.AggregationNode;
+import org.apache.doris.sql.planner.plan.ApplyNode;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.ExchangeNode;
 import org.apache.doris.sql.planner.plan.FilterNode;
@@ -24,6 +25,7 @@ import org.apache.doris.sql.planner.plan.Ordering;
 import org.apache.doris.sql.planner.plan.OrderingScheme;
 import org.apache.doris.sql.planner.plan.OutputNode;
 import org.apache.doris.sql.planner.plan.ProjectNode;
+import org.apache.doris.sql.planner.plan.SemiJoinNode;
 import org.apache.doris.sql.planner.plan.SortNode;
 import org.apache.doris.sql.planner.plan.SortOrder;
 import org.apache.doris.sql.planner.plan.TableScanNode;
@@ -46,11 +48,23 @@ import java.util.Set;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.planner.optimizations.ApplyNodeUtil.verifySubquerySupported;
 import static org.apache.doris.sql.planner.plan.JoinNode.Type.INNER;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.isExpression;
 
+/**
+ * Re-maps symbol references that are just aliases of each other (e.g., due to projections like {@code $0 := $1})
+ * <p/>
+ * E.g.,
+ * <p/>
+ * {@code Output[$0, $1] -> Project[$0 := $2, $1 := $3 * 100] -> Aggregate[$2, $3 := sum($4)] -> ...}
+ * <p/>
+ * gets rewritten as
+ * <p/>
+ * {@code Output[$2, $1] -> Project[$2, $1 := $3 * 100] -> Aggregate[$2, $3 := sum($4)] -> ...}
+ */
 public class UnaliasSymbolReferences implements PlanOptimizer {
     public UnaliasSymbolReferences()
     {
@@ -126,6 +140,18 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
         }
 
         @Override
+        public LogicalPlanNode visitApply(ApplyNode node, RewriteContext<Void> context)
+        {
+            LogicalPlanNode source = context.rewrite(node.getInput());
+            LogicalPlanNode subquery = context.rewrite(node.getSubquery());
+            List<VariableReferenceExpression> canonicalCorrelation = Lists.transform(node.getCorrelation(), this::canonicalize);
+
+            Assignments assignments = canonicalize(node.getSubqueryAssignments());
+            verifySubquerySupported(assignments);
+            return new ApplyNode(node.getId(), source, subquery, assignments, canonicalCorrelation, node.getOriginSubqueryError());
+        }
+
+        @Override
         public LogicalPlanNode visitTopN(TopNNode node, RewriteContext<Void> context)
         {
             LogicalPlanNode source = context.rewrite(node.getSource());
@@ -170,6 +196,24 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                     canonicalFilter,
                     canonicalLeftHashVariable,
                     canonicalRightHashVariable,
+                    node.getDistributionType());
+        }
+
+        @Override
+        public LogicalPlanNode visitSemiJoin(SemiJoinNode node, RewriteContext<Void> context)
+        {
+            LogicalPlanNode source = context.rewrite(node.getSource());
+            LogicalPlanNode filteringSource = context.rewrite(node.getFilteringSource());
+
+            return new SemiJoinNode(
+                    node.getId(),
+                    source,
+                    filteringSource,
+                    canonicalize(node.getSourceJoinVariable()),
+                    canonicalize(node.getFilteringSourceJoinVariable()),
+                    canonicalize(node.getSemiJoinOutput()),
+                    canonicalize(node.getSourceHashVariable()),
+                    canonicalize(node.getFilteringSourceHashVariable()),
                     node.getDistributionType());
         }
 

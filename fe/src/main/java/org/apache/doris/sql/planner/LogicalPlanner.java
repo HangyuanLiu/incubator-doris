@@ -7,6 +7,7 @@ import org.apache.doris.common.NotImplementedException;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.metadata.Metadata;
+import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
 import org.apache.doris.sql.planner.plan.ExchangeNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
@@ -29,14 +30,18 @@ public class LogicalPlanner {
         CREATED, OPTIMIZED, OPTIMIZED_AND_VALIDATED
     }
 
+    private final Session session;
     IdGenerator<PlanNodeId> idAllocator;
     private final List<PlanOptimizer> planOptimizers;
     private final VariableAllocator variableAllocator = new VariableAllocator();
     private final Metadata metadata;
 
-    public LogicalPlanner(List<PlanOptimizer> planOptimizers,
-                          IdGenerator<PlanNodeId> idAllocator,
-                          Metadata metadata) {
+    public LogicalPlanner(
+            Session session,
+            List<PlanOptimizer> planOptimizers,
+            IdGenerator<PlanNodeId> idAllocator,
+            Metadata metadata) {
+        this.session = session;
         this.planOptimizers = planOptimizers;
         this.idAllocator = idAllocator;
         this.metadata = metadata;
@@ -55,7 +60,7 @@ public class LogicalPlanner {
 
         if (stage.ordinal() >= Stage.OPTIMIZED.ordinal()) {
             for (PlanOptimizer optimizer : planOptimizers) {
-                root = optimizer.optimize(root, null, variableAllocator.getTypes(), variableAllocator, idAllocator, null);
+                root = optimizer.optimize(root, session, variableAllocator.getTypes(), variableAllocator, idAllocator, null);
                 requireNonNull(root, format("%s returned a null plan", optimizer.getClass().getName()));
             }
         }
@@ -110,7 +115,7 @@ public class LogicalPlanner {
 
     private RelationPlan createRelationPlan(Analysis analysis, Query query)
     {
-        return new RelationPlanner(analysis, variableAllocator, idAllocator, metadata)
+        return new RelationPlanner(analysis, variableAllocator, idAllocator, metadata, session)
                 .process(query, null);
     }
 }

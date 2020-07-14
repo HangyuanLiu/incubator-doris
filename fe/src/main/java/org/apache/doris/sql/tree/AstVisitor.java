@@ -132,6 +132,11 @@ public abstract class AstVisitor<R, C>
         return visitLiteral(node, context);
     }
 
+    protected R visitInListExpression(InListExpression node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitIdentifier(Identifier node, C context)
     {
         return visitExpression(node, context);

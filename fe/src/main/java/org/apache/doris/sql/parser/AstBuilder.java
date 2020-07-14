@@ -207,6 +207,12 @@ public class AstBuilder
         return new Table(getLocation(context), getQualifiedName(context.qualifiedName()));
     }
 
+    @Override
+    public Node visitSubquery(SqlBaseParser.SubqueryContext context)
+    {
+        return new TableSubquery(getLocation(context), (Query) visit(context.queryNoWith()));
+    }
+
 
 
     // *************** from clause *****************
@@ -328,6 +334,36 @@ public class AstBuilder
                 getComparisonOperator(((TerminalNode) context.comparisonOperator().getChild(0)).getSymbol()),
                 (Expression) visit(context.value),
                 (Expression) visit(context.right));
+    }
+
+    @Override
+    public Node visitInList(SqlBaseParser.InListContext context)
+    {
+        Expression result = new InPredicate(
+                getLocation(context),
+                (Expression) visit(context.value),
+                new InListExpression(getLocation(context), visit(context.expression(), Expression.class)));
+
+        if (context.NOT() != null) {
+            result = new NotExpression(getLocation(context), result);
+        }
+
+        return result;
+    }
+
+    @Override
+    public Node visitInSubquery(SqlBaseParser.InSubqueryContext context)
+    {
+        Expression result = new InPredicate(
+                getLocation(context),
+                (Expression) visit(context.value),
+                new SubqueryExpression(getLocation(context), (Query) visit(context.query())));
+
+        if (context.NOT() != null) {
+            result = new NotExpression(getLocation(context), result);
+        }
+
+        return result;
     }
 
     // ************** value expressions **************
