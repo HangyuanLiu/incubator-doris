@@ -13,13 +13,16 @@
  */
 package org.apache.doris.sql.analyzer;
 
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ListMultimap;
 import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.FunctionCall;
 import org.apache.doris.sql.tree.GroupingOperation;
 import org.apache.doris.sql.tree.Identifier;
+import org.apache.doris.sql.tree.InPredicate;
 import org.apache.doris.sql.tree.Join;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.NodeRef;
@@ -29,6 +32,7 @@ import org.apache.doris.sql.tree.QuerySpecification;
 import org.apache.doris.sql.tree.Relation;
 import org.apache.doris.sql.tree.SampledRelation;
 import org.apache.doris.sql.tree.Statement;
+import org.apache.doris.sql.tree.SubqueryExpression;
 import org.apache.doris.sql.tree.Table;
 import org.apache.doris.sql.type.Type;
 
@@ -68,6 +72,8 @@ public class Analysis
     private final Map<NodeRef<Node>, List<Expression>> outputExpressions = new LinkedHashMap<>();
 
     private final Map<NodeRef<Join>, Expression> joins = new LinkedHashMap<>();
+
+    private final ListMultimap<NodeRef<Node>, InPredicate> inPredicatesSubqueries = ArrayListMultimap.create();
 
     private final Map<NodeRef<Table>, TableHandle> tables = new LinkedHashMap<>();
 
@@ -286,13 +292,12 @@ public class Analysis
 
     public void recordSubqueries(Node node, ExpressionAnalysis expressionAnalysis)
     {
-        /*
+
         NodeRef<Node> key = NodeRef.of(node);
         this.inPredicatesSubqueries.putAll(key, dereference(expressionAnalysis.getSubqueryInPredicates()));
-        this.scalarSubqueries.putAll(key, dereference(expressionAnalysis.getScalarSubqueries()));
-        this.existsSubqueries.putAll(key, dereference(expressionAnalysis.getExistsSubqueries()));
-        this.quantifiedComparisonSubqueries.putAll(key, dereference(expressionAnalysis.getQuantifiedComparisons()));
-         */
+        //this.scalarSubqueries.putAll(key, dereference(expressionAnalysis.getScalarSubqueries()));
+        //this.existsSubqueries.putAll(key, dereference(expressionAnalysis.getExistsSubqueries()));
+        //this.quantifiedComparisonSubqueries.putAll(key, dereference(expressionAnalysis.getQuantifiedComparisons()));
     }
 
     private <T extends Node> List<T> dereference(Collection<NodeRef<T>> nodeRefs)
@@ -300,6 +305,11 @@ public class Analysis
         return nodeRefs.stream()
                 .map(NodeRef::getNode)
                 .collect(toImmutableList());
+    }
+
+    public List<InPredicate> getInPredicateSubqueries(Node node)
+    {
+        return ImmutableList.copyOf(inPredicatesSubqueries.get(NodeRef.of(node)));
     }
 
     public void addColumnReferences(Map<NodeRef<Expression>, FieldId> columnReferences)

@@ -192,6 +192,11 @@ public abstract class AstVisitor<R, C>
         return visitExpression(node, context);
     }
 
+    protected R visitSubqueryExpression(SubqueryExpression node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitSortItem(SortItem node, C context)
     {
         return visitNode(node, context);

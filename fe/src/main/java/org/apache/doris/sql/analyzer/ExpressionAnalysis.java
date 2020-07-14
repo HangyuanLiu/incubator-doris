@@ -15,6 +15,7 @@ package org.apache.doris.sql.analyzer;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.apache.doris.sql.tree.InPredicate;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.NodeRef;
@@ -30,10 +31,12 @@ public class ExpressionAnalysis
     private final Map<NodeRef<Expression>, Type> expressionCoercions;
     private final Set<NodeRef<Expression>> typeOnlyCoercions;
     private final Map<NodeRef<Expression>, FieldId> columnReferences;
+    private final Set<NodeRef<InPredicate>> subqueryInPredicates;
 
     public ExpressionAnalysis(
             Map<NodeRef<Expression>, Type> expressionTypes,
             Map<NodeRef<Expression>, Type> expressionCoercions,
+            Set<NodeRef<InPredicate>> subqueryInPredicates,
             Map<NodeRef<Expression>, FieldId> columnReferences,
             Set<NodeRef<Expression>> typeOnlyCoercions)
     {
@@ -41,6 +44,7 @@ public class ExpressionAnalysis
         this.expressionCoercions = ImmutableMap.copyOf(requireNonNull(expressionCoercions, "expressionCoercions is null"));
         this.typeOnlyCoercions = ImmutableSet.copyOf(requireNonNull(typeOnlyCoercions, "typeOnlyCoercions is null"));
         this.columnReferences = ImmutableMap.copyOf(requireNonNull(columnReferences, "columnReferences is null"));
+        this.subqueryInPredicates = ImmutableSet.copyOf(requireNonNull(subqueryInPredicates, "subqueryInPredicates is null"));
     }
 
     public Type getType(Expression expression)
@@ -66,5 +70,10 @@ public class ExpressionAnalysis
     public boolean isColumnReference(Expression node)
     {
         return columnReferences.containsKey(NodeRef.of(node));
+    }
+
+    public Set<NodeRef<InPredicate>> getSubqueryInPredicates()
+    {
+        return subqueryInPredicates;
     }
 }

@@ -14,14 +14,13 @@
 package org.apache.doris.sql.analyzer;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Multimap;
 import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.parser.SqlParser;
 import org.apache.doris.sql.tree.*;
 import org.apache.doris.sql.type.Type;
+import org.apache.doris.sql.util.AstUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;

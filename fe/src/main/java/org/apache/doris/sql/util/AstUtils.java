@@ -11,10 +11,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.doris.sql.tree;
+package org.apache.doris.sql.util;
 
 import com.google.common.graph.SuccessorsFunction;
 import com.google.common.graph.Traverser;
+import org.apache.doris.sql.tree.Node;
 
 import java.util.stream.Stream;
 

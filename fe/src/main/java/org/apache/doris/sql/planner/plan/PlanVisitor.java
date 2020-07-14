@@ -67,4 +67,9 @@ public abstract class PlanVisitor<R, C>
     {
         return visitPlan(node, context);
     }
+
+    public R visitApply(ApplyNode node, C context)
+    {
+        return visitPlan(node, context);
+    }
 }

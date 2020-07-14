@@ -47,6 +47,7 @@ public class ExpressionAnalyzer
     private final Map<NodeRef<FunctionCall>, FunctionHandle> resolvedFunctions = new LinkedHashMap<>();
     private final Map<NodeRef<Expression>, Type> expressionCoercions = new LinkedHashMap<>();
     private final Set<NodeRef<Expression>> typeOnlyCoercions = new LinkedHashSet<>();
+    private final Set<NodeRef<InPredicate>> subqueryInPredicates = new LinkedHashSet<>();
     private final Map<NodeRef<Expression>, FieldId> columnReferences = new LinkedHashMap<>();
     private final Map<NodeRef<Expression>, Type> expressionTypes = new LinkedHashMap<>();
     private final Set<NodeRef<QuantifiedComparisonExpression>> quantifiedComparisons = new LinkedHashSet<>();
@@ -468,6 +469,8 @@ public class ExpressionAnalyzer
         return new ExpressionAnalysis(
                 analyzer.getExpressionTypes(),
                 analyzer.getExpressionCoercions(),
+                //analyzer.getSubqueryInPredicates(),
+                null,
                 analyzer.getColumnReferences(),
                 analyzer.getTypeOnlyCoercions());
     }
@@ -500,6 +503,8 @@ public class ExpressionAnalyzer
         return new ExpressionAnalysis(
                 expressionTypes,
                 expressionCoercions,
+                //analyzer.getSubqueryInPredicates(),
+                null,
                 analyzer.getColumnReferences(),
                 analyzer.getTypeOnlyCoercions()
         );

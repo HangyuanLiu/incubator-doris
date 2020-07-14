@@ -120,6 +120,12 @@ public abstract class DefaultTraversalVisitor<R, C>
     }
 
     @Override
+    protected R visitSubqueryExpression(SubqueryExpression node, C context)
+    {
+        return process(node.getQuery(), context);
+    }
+
+    @Override
     protected R visitOrderBy(OrderBy node, C context)
     {
         for (SortItem sortItem : node.getSortItems()) {

@@ -16,7 +16,6 @@ package org.apache.doris.sql.planner.iterative.rule;
 import avro.shaded.com.google.common.collect.Sets;
 import com.google.common.collect.ImmutableSet;
 import org.apache.doris.sql.TypeProvider;
-import org.apache.doris.sql.expressions.DefaultRowExpressionTraversalVisitor;
 import org.apache.doris.sql.metadata.FunctionManager;
 import org.apache.doris.sql.planner.RowExpressionVariableInliner;
 import org.apache.doris.sql.planner.VariablesExtractor;
@@ -26,16 +25,12 @@ import org.apache.doris.sql.planner.iterative.matching.Captures;
 import org.apache.doris.sql.planner.iterative.matching.Pattern;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.ProjectNode;
-import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.ConstantExpression;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.relational.FunctionResolution;
 import org.apache.doris.sql.relational.OriginalExpressionUtils;
-import org.apache.doris.sql.tree.AstUtils;
-import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Literal;
-import org.apache.doris.sql.tree.SymbolReference;
 
 import java.util.List;
 import java.util.Map;
@@ -49,7 +44,6 @@ import static org.apache.doris.sql.planner.plan.AssignmentUtils.isIdentity;
 import static org.apache.doris.sql.planner.plan.Patterns.project;
 import static org.apache.doris.sql.planner.plan.Patterns.source;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
-import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.isExpression;
 
 /**

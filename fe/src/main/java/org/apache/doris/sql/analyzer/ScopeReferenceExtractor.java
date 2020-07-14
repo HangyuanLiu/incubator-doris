@@ -13,7 +13,7 @@
  */
 package org.apache.doris.sql.analyzer;
 
-import org.apache.doris.sql.tree.AstUtils;
+import org.apache.doris.sql.util.AstUtils;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.NodeRef;
