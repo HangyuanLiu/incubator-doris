@@ -81,6 +81,11 @@ public class ExchangeNode
         return partitioningScheme.getOutputLayout();
     }
 
+    public PartitioningScheme getPartitioningScheme()
+    {
+        return partitioningScheme;
+    }
+
     public List<List<VariableReferenceExpression>> getInputs()
     {
         return inputs;

@@ -98,6 +98,41 @@ public class HashJoinNode extends PlanNode {
         }
     }
 
+    public HashJoinNode(PlanNodeId id, PlanNode outer, PlanNode inner, JoinOperator joinOp,
+                        List<Expr> eqJoinConjuncts, List<Expr> otherJoinConjuncts) {
+        super(id, "HASH JOIN");
+        Preconditions.checkArgument(eqJoinConjuncts != null && !eqJoinConjuncts.isEmpty());
+        Preconditions.checkArgument(otherJoinConjuncts != null);
+        tupleIds.addAll(outer.getTupleIds());
+        tupleIds.addAll(inner.getTupleIds());
+
+        innerRef = null;
+        this.joinOp = joinOp;
+        for (Expr eqJoinPredicate : eqJoinConjuncts) {
+            Preconditions.checkArgument(eqJoinPredicate instanceof BinaryPredicate);
+            this.eqJoinConjuncts.add((BinaryPredicate) eqJoinPredicate);
+        }
+        this.distrMode = DistributionMode.NONE;
+        this.otherJoinConjuncts = otherJoinConjuncts;
+        children.add(outer);
+        children.add(inner);
+        this.isPushDown = false;
+
+
+        // Inherits all the nullable tuple from the children
+        // Mark tuples that form the "nullable" side of the outer join as nullable.
+        nullableTupleIds.addAll(inner.getNullableTupleIds());
+        nullableTupleIds.addAll(outer.getNullableTupleIds());
+        if (joinOp.equals(JoinOperator.FULL_OUTER_JOIN)) {
+            nullableTupleIds.addAll(outer.getTupleIds());
+            nullableTupleIds.addAll(inner.getTupleIds());
+        } else if (joinOp.equals(JoinOperator.LEFT_OUTER_JOIN)) {
+            nullableTupleIds.addAll(inner.getTupleIds());
+        } else if (joinOp.equals(JoinOperator.RIGHT_OUTER_JOIN)) {
+            nullableTupleIds.addAll(outer.getTupleIds());
+        }
+    }
+
     public List<BinaryPredicate> getEqJoinConjuncts() {
         return eqJoinConjuncts;
     }
@@ -299,7 +334,7 @@ public class HashJoinNode extends PlanNode {
         return distrMode == DistributionMode.PARTITIONED;
     }
 
-    enum DistributionMode {
+    public enum DistributionMode {
         NONE("NONE"),
         BROADCAST("BROADCAST"),
         PARTITIONED("PARTITIONED");

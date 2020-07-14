@@ -16,6 +16,7 @@ import org.apache.doris.sql.planner.SimplePlanRewriter;
 import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.ExchangeNode;
+import org.apache.doris.sql.planner.plan.JoinNode;
 import org.apache.doris.sql.planner.plan.LimitNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.PlanVisitor;
@@ -29,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
@@ -75,6 +77,42 @@ public class AddExchanges implements PlanOptimizer {
         @Override
         public LogicalPlanNode visitPlan(LogicalPlanNode node, RewriteContext<ExchangeContext> context) {
             return context.defaultRewrite(node, context.get());
+        }
+
+        @Override
+        public LogicalPlanNode visitJoin(JoinNode node, RewriteContext<ExchangeContext> context) {
+
+            List<VariableReferenceExpression> leftHashVar =
+                node.getCriteria().stream().map(JoinNode.EquiJoinClause::getLeft).collect(Collectors.toList());
+            List<VariableReferenceExpression> rigthHashVar =
+                    node.getCriteria().stream().map(JoinNode.EquiJoinClause::getRight).collect(Collectors.toList());
+
+
+            List<VariableReferenceExpression> outputVar = new ArrayList<>();
+            outputVar.addAll(node.getLeft().getOutputVariables());
+            outputVar.addAll(node.getRight().getOutputVariables());
+
+            ExchangeNode left = new ExchangeNode(
+                    idAllocator.getNextId(),
+                    ExchangeNode.Type.GATHER,
+                    ExchangeNode.Scope.REMOTE_STREAMING,
+                    new PartitioningScheme(node.getLeft().getOutputVariables(), Optional.of(leftHashVar)),
+                    Lists.newArrayList(node.getLeft()),
+                    ImmutableList.of(node.getLeft().getOutputVariables()));
+
+            ExchangeNode right = new ExchangeNode(
+                    idAllocator.getNextId(),
+                    org.apache.doris.sql.planner.plan.ExchangeNode.Type.GATHER,
+                    ExchangeNode.Scope.REMOTE_STREAMING,
+                    new PartitioningScheme(node.getRight().getOutputVariables(), Optional.of(rigthHashVar)),
+                    Lists.newArrayList(node.getRight()),
+                    ImmutableList.of(node.getRight().getOutputVariables()));
+
+            return new JoinNode(
+                    node.getId(),
+                    node.getType(), left, right, node.getCriteria(), node.getOutputVariables(),
+                    node.getFilter(),
+                    node.getLeftHashVariable(), node.getRightHashVariable(), Optional.of(JoinNode.DistributionType.PARTITIONED));
         }
 
         @Override

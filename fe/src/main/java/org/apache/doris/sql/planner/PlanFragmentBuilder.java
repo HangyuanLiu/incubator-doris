@@ -3,10 +3,13 @@ package org.apache.doris.sql.planner;
 import com.google.common.collect.Lists;
 import javafx.util.Pair;
 import jersey.repackaged.com.google.common.collect.Maps;
+import org.apache.commons.validator.Var;
 import org.apache.doris.analysis.AggregateInfo;
+import org.apache.doris.analysis.BinaryPredicate;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.FunctionCallExpr;
+import org.apache.doris.analysis.JoinOperator;
 import org.apache.doris.analysis.SlotDescriptor;
 import org.apache.doris.analysis.SlotId;
 import org.apache.doris.analysis.SlotRef;
@@ -19,15 +22,19 @@ import org.apache.doris.catalog.Table;
 import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.DataPartition;
+import org.apache.doris.planner.HashJoinNode;
 import org.apache.doris.planner.PlanFragment;
 import org.apache.doris.planner.PlanFragmentId;
 import org.apache.doris.planner.PlanNode;
 import org.apache.doris.planner.PlannerContext;
+import org.apache.doris.sql.metadata.ColumnHandle;
+import org.apache.doris.sql.metadata.DorisColumnHandle;
 import org.apache.doris.sql.metadata.DorisTableHandle;
 import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.ExchangeNode;
 import org.apache.doris.sql.planner.plan.FilterNode;
+import org.apache.doris.sql.planner.plan.JoinNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.OrderingScheme;
 import org.apache.doris.sql.planner.plan.OutputNode;
@@ -39,7 +46,6 @@ import org.apache.doris.sql.planner.plan.TopNNode;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.relational.RowExpressionToExpr;
-import org.stringtemplate.v4.misc.Aggregate;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -148,17 +154,26 @@ public class PlanFragmentBuilder {
 
         @Override
         public PlanFragment visitExchange(ExchangeNode node, FragmentProperties context) {
+
             List<PlanFragment> exchanges = new ArrayList<>();
 
             for (LogicalPlanNode source : node.getSources()) {
                 PlanFragment inputFragment = visitPlan(source, context);
 
+                ArrayList<Expr> hashPartition = new ArrayList<>();
+                for (VariableReferenceExpression var : node.getPartitioningScheme().getHashColumn().get()) {
+                    Expr expr = RowExpressionToExpr.formatRowExpression(var, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                    hashPartition.add(expr);
+                }
+                inputFragment.setOutputPartition(DataPartition.hashPartitioned(hashPartition));
+
                 org.apache.doris.planner.ExchangeNode exchangeNode =
                         new org.apache.doris.planner.ExchangeNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), false);
                 exchangeNode.setNumInstances(1);
 
-                PlanFragment exchangeFragment = new PlanFragment(context.plannerContext.getNextFragmentId(), exchangeNode, inputFragment.getOutputPartition());
+                PlanFragment exchangeFragment = new PlanFragment(context.plannerContext.getNextFragmentId(), exchangeNode, DataPartition.hashPartitioned(hashPartition));
                 inputFragment.setDestination(exchangeNode);
+
 
                 for (int i = 0; i < node.getOutputVariables().size(); ++i) {
                     VariableReferenceExpression input = node.getInputs().get(0).get(i);
@@ -173,6 +188,82 @@ public class PlanFragmentBuilder {
 
             //FIXME : support join and union
             return exchanges.get(0);
+
+            /*
+            PlanFragment fragment;
+            if (node.getSources().size() < 2) {
+                PlanFragment inputFragment = visitPlan(node.getSources().get(0), context);
+
+                org.apache.doris.planner.ExchangeNode exchangeNode =
+                        new org.apache.doris.planner.ExchangeNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), false);
+                exchangeNode.setNumInstances(1);
+                inputFragment.setDestination(exchangeNode);
+
+                for (int i = 0; i < node.getOutputVariables().size(); ++i) {
+                    VariableReferenceExpression input = node.getInputs().get(0).get(i);
+                    Expr expr = RowExpressionToExpr.formatRowExpression(input, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+
+                    context.variableToSlotRef.put(node.getOutputVariables().get(i).getName(), ((SlotRef) expr).getSlotId());
+                }
+
+                fragment = new PlanFragment(context.plannerContext.getNextFragmentId(), exchangeNode, inputFragment.getOutputPartition());
+                context.fragments.add(fragment);
+                return fragment;
+            } else {
+                for (LogicalPlanNode source : node.getSources()) {
+                    PlanFragment inputFragment = visitPlan(source, context);
+
+                    org.apache.doris.planner.ExchangeNode exchangeNode =
+                            new org.apache.doris.planner.ExchangeNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), false);
+                    exchangeNode.setNumInstances(1);
+
+                    inputFragment.setDestination(exchangeNode);
+
+                    for (int i = 0; i < node.getOutputVariables().size(); ++i) {
+                        VariableReferenceExpression input = node.getInputs().get(0).get(i);
+                        Expr expr = RowExpressionToExpr.formatRowExpression(input, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+
+                        context.variableToSlotRef.put(node.getOutputVariables().get(i).getName(), ((SlotRef) expr).getSlotId());
+                    }
+                }
+
+                fragment = new PlanFragment(context.plannerContext.getNextFragmentId(), exchangeNode, DataPartition.UNPARTITIONED);
+                context.fragments.add(fragment);
+                return fragment;
+            }
+
+             */
+        }
+
+        @Override
+        public PlanFragment visitJoin(JoinNode node, FragmentProperties context) {
+            PlanFragment leftFragment = visitPlan(node.getLeft(), context);
+            PlanFragment rightFragment = visitPlan(node.getRight(), context);
+
+            List<Expr> eqJoinConjuncts = new ArrayList<>();
+            for (JoinNode.EquiJoinClause equiJoinClause : node.getCriteria()) {
+                Expr left = RowExpressionToExpr.formatRowExpression(equiJoinClause.getLeft(),
+                        new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                Expr right = RowExpressionToExpr.formatRowExpression(equiJoinClause.getRight(),
+                        new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                BinaryPredicate binaryEq = new BinaryPredicate(BinaryPredicate.Operator.EQ, left, right);
+                eqJoinConjuncts.add(binaryEq);
+            }
+
+            org.apache.doris.planner.HashJoinNode hashJoinNode =
+                    new org.apache.doris.planner.HashJoinNode(
+                            context.plannerContext.getNextNodeId(),
+                            leftFragment.getPlanRoot(), rightFragment.getPlanRoot(),
+                            JoinOperator.INNER_JOIN,
+                            eqJoinConjuncts,
+                            new ArrayList<>());
+            hashJoinNode.setDistributionMode(HashJoinNode.DistributionMode.PARTITIONED);
+
+            context.fragments.remove(leftFragment);
+            context.fragments.remove(rightFragment);
+            leftFragment.setPlanRoot(hashJoinNode);
+            context.fragments.add(leftFragment);
+            return leftFragment;
         }
 
         @Override
@@ -353,15 +444,16 @@ public class PlanFragmentBuilder {
                 return null;
             }
 
-            for (VariableReferenceExpression variable : node.getOutputVariables()) {
+            for (Map.Entry<VariableReferenceExpression, ColumnHandle> entry : node.getAssignments().entrySet()) {
+
+                String colName = ((DorisColumnHandle) entry.getValue()).getColumnName();
+
                 SlotDescriptor slotDescriptor =  context.descTbl.addSlotDescriptor(tupleDescriptor);
-                slotDescriptor.setColumn(new Column(variable.getName(), ScalarType.BIGINT));
+                slotDescriptor.setColumn(new Column(colName, ScalarType.BIGINT));
                 slotDescriptor.setIsNullable(true);
                 slotDescriptor.setIsMaterialized(true);
 
-                context.variableToSlotRef.put(variable.getName(), slotDescriptor.getId());
-
-                context.outputRowExpression.put(variable, new SlotRef(slotDescriptor));
+                context.variableToSlotRef.put(entry.getKey().getName(), slotDescriptor.getId());
             }
 
             tupleDescriptor.computeMemLayout();
@@ -377,7 +469,6 @@ public class PlanFragmentBuilder {
         private final Map<String, SlotId> variableToSlotRef;
         private final List<org.apache.doris.planner.ScanNode> scanNodes;
         public List<Expr> outputExprs;
-        private final Map<VariableReferenceExpression, Expr> outputRowExpression = Maps.newHashMap();
 
         private final Map<LogicalPlanNode, TupleDescriptor> tupleDescriptorMap;
 

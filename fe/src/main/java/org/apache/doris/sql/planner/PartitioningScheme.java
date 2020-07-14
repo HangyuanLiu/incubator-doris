@@ -24,9 +24,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 public class PartitioningScheme
 {
     private final List<VariableReferenceExpression> outputLayout;
-    private final Optional<VariableReferenceExpression> hashColumn;
+    private final Optional<List<VariableReferenceExpression>> hashColumn;
 
-    public PartitioningScheme (List<VariableReferenceExpression> outputLayout, Optional<VariableReferenceExpression> hashColumn) {
+    public PartitioningScheme (List<VariableReferenceExpression> outputLayout, Optional<List<VariableReferenceExpression>> hashColumn) {
         this.outputLayout = outputLayout;
         this.hashColumn = hashColumn;
     }
@@ -35,7 +35,7 @@ public class PartitioningScheme
         return outputLayout;
     }
 
-    public Optional<VariableReferenceExpression> getHashColumn() {
+    public Optional<List<VariableReferenceExpression>> getHashColumn() {
         return hashColumn;
     }
 
