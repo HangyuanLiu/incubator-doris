@@ -64,6 +64,11 @@ public class Patterns
         return typeOf(SortNode.class);
     }
 
+    public static Pattern<TopNNode> topN()
+    {
+        return typeOf(TopNNode.class);
+    }
+
     public static Pattern<TableScanNode> tableScan()
     {
         return typeOf(TableScanNode.class);

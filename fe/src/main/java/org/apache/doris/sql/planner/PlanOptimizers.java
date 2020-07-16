@@ -8,8 +8,12 @@ import org.apache.doris.sql.planner.iterative.IterativeOptimizer;
 import org.apache.doris.sql.planner.iterative.Rule;
 import org.apache.doris.sql.planner.iterative.rule.InlineProjections;
 import org.apache.doris.sql.planner.iterative.rule.MergeLimitWithSort;
+import org.apache.doris.sql.planner.iterative.rule.MergeLimitWithTopN;
+import org.apache.doris.sql.planner.iterative.rule.MergeLimits;
 import org.apache.doris.sql.planner.iterative.rule.PruneTableScanColumns;
+import org.apache.doris.sql.planner.iterative.rule.PushLimitThroughProject;
 import org.apache.doris.sql.planner.iterative.rule.RemoveRedundantIdentityProjections;
+import org.apache.doris.sql.planner.iterative.rule.SingleDistinctAggregationToGroupBy;
 import org.apache.doris.sql.planner.iterative.rule.TransformUncorrelatedInPredicateSubqueryToSemiJoin;
 import org.apache.doris.sql.planner.optimizations.AddExchanges;
 import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
@@ -24,9 +28,10 @@ public class PlanOptimizers {
 
     public PlanOptimizers(Metadata metadata, SqlParser sqlParser) {
 
-
+        //列裁剪
         Set<Rule<?>> columnPruningRules = ImmutableSet.of(new PruneTableScanColumns());
 
+        //统一裁剪冗余project
         IterativeOptimizer inlineProjections = new IterativeOptimizer(
                 null, null, null,
                 ImmutableSet.of(
@@ -34,12 +39,19 @@ public class PlanOptimizers {
                         new RemoveRedundantIdentityProjections()));
 
 
-        ImmutableList.Builder<PlanOptimizer> builder = ImmutableList.builder();
 
-        builder.add(new IterativeOptimizer(
-                null, null, null, columnPruningRules),
-                new IterativeOptimizer(null, null, null, ImmutableSet.of(new MergeLimitWithSort()))
-        );
+        ImmutableList.Builder<PlanOptimizer> builder = ImmutableList.builder();
+        builder.add(new IterativeOptimizer(null, null, null,
+                columnPruningRules));
+
+        builder.add(new IterativeOptimizer(null, null, null, ImmutableSet.of(
+                new RemoveRedundantIdentityProjections(),
+                new PushLimitThroughProject(),
+                new MergeLimits(),
+                new MergeLimitWithSort(),
+                new MergeLimitWithTopN(),
+                new MergeLimitWithSort(),
+                new SingleDistinctAggregationToGroupBy())));
 
         builder.add(new IterativeOptimizer(null,null,null, ImmutableSet.of(new TransformUncorrelatedInPredicateSubqueryToSemiJoin())));
 

@@ -65,6 +65,16 @@ public class RowExpressionToExpr {
                 Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
 
                 callExpr.setFn(fn);
+            } else if (((BuiltInFunctionHandle)node.getFunctionHandle()).getFunctionName().equalsIgnoreCase("count")) {
+                Expr left = formatRowExpression(node.getArguments().get(0), context);
+                callExpr = new FunctionCallExpr(new FunctionName("count"), new FunctionParams(false, Lists.newArrayList(left)));
+                callExpr.setType(ScalarType.BIGINT);
+
+                FunctionName fnName = new FunctionName("count");
+                Function searchDesc = new Function(fnName, Lists.newArrayList(ScalarType.BIGINT), Type.INVALID, false);
+                Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
+
+                callExpr.setFn(fn);
             }
             else {
                 Expr left = formatRowExpression(node.getArguments().get(0), context);

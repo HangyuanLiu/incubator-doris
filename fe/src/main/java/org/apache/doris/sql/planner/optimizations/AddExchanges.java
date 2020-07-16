@@ -20,6 +20,7 @@ import org.apache.doris.sql.planner.plan.JoinNode;
 import org.apache.doris.sql.planner.plan.LimitNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.PlanVisitor;
+import org.apache.doris.sql.planner.plan.SemiJoinNode;
 import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.type.BigintType;
@@ -116,6 +117,33 @@ public class AddExchanges implements PlanOptimizer {
         }
 
         @Override
+        public LogicalPlanNode visitSemiJoin(SemiJoinNode node, RewriteContext<ExchangeContext> context) {
+
+            List<VariableReferenceExpression> leftHashVar = Lists.newArrayList(node.getSourceJoinVariable());
+            List<VariableReferenceExpression> rigthHashVar = Lists.newArrayList(node.getFilteringSourceJoinVariable());
+
+            ExchangeNode left = new ExchangeNode(
+                    idAllocator.getNextId(),
+                    ExchangeNode.Type.GATHER,
+                    ExchangeNode.Scope.REMOTE_STREAMING,
+                    new PartitioningScheme(node.getSource().getOutputVariables(), Optional.of(leftHashVar)),
+                    Lists.newArrayList(node.getSource()),
+                    ImmutableList.of(node.getSource().getOutputVariables()));
+
+            ExchangeNode right = new ExchangeNode(
+                    idAllocator.getNextId(),
+                    org.apache.doris.sql.planner.plan.ExchangeNode.Type.GATHER,
+                    ExchangeNode.Scope.REMOTE_STREAMING,
+                    new PartitioningScheme(node.getFilteringSource().getOutputVariables(), Optional.of(rigthHashVar)),
+                    Lists.newArrayList(node.getFilteringSource()),
+                    ImmutableList.of(node.getFilteringSource().getOutputVariables()));
+
+            return new SemiJoinNode(node.getId(), left, right,
+                        node.getSourceJoinVariable(), node.getFilteringSourceJoinVariable(), node.getSemiJoinOutput(), node.getSourceHashVariable(), node.getFilteringSourceHashVariable(),
+                        Optional.of(SemiJoinNode.DistributionType.PARTITIONED));
+        }
+
+        @Override
         public LogicalPlanNode visitAggregation(AggregationNode node, RewriteContext<ExchangeContext> context) {
             Map<VariableReferenceExpression, AggregationNode.Aggregation> intermediateAggregation = new HashMap<>();
             Map<VariableReferenceExpression, AggregationNode.Aggregation> finalAggregation = new HashMap<>();
@@ -152,7 +180,7 @@ public class AddExchanges implements PlanOptimizer {
                                         Lists.newArrayList(exchangeVariable)),
                                 Optional.empty(),
                                 Optional.empty(),
-                                false,
+                                originalAggregation.isDistinct(),
                                 Optional.empty()));
             }
             LogicalPlanNode partial = new AggregationNode(

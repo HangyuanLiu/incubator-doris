@@ -155,9 +155,30 @@ public class PlanFragmentBuilder {
 
         @Override
         public PlanFragment visitExchange(ExchangeNode node, FragmentProperties context) {
+            if (node.getSources().size() < 2) {
+                //FIXME : Add exchange partition hash
+                PlanFragment inputFragment = visitPlan(node.getSources().get(0), context);
+
+                org.apache.doris.planner.ExchangeNode exchangeNode =
+                        new org.apache.doris.planner.ExchangeNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), false);
+                exchangeNode.setNumInstances(1);
+
+                PlanFragment fragment = new PlanFragment(context.plannerContext.getNextFragmentId(), exchangeNode, inputFragment.getOutputPartition());
+                inputFragment.setDestination(exchangeNode);
+
+                for (int i = 0; i < node.getOutputVariables().size(); ++i) {
+                    VariableReferenceExpression input = node.getInputs().get(0).get(i);
+                    Expr expr = RowExpressionToExpr.formatRowExpression(input, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+
+                    context.variableToSlotRef.put(node.getOutputVariables().get(i).getName(), ((SlotRef) expr).getSlotId());
+                }
+
+                context.fragments.add(fragment);
+                return fragment;
+            }
+
 
             List<PlanFragment> exchanges = new ArrayList<>();
-
             for (LogicalPlanNode source : node.getSources()) {
                 PlanFragment inputFragment = visitPlan(source, context);
 
@@ -269,7 +290,33 @@ public class PlanFragmentBuilder {
 
         @Override
         public PlanFragment visitSemiJoin(SemiJoinNode node, FragmentProperties context) {
-            return null;
+
+            PlanFragment leftFragment = visitPlan(node.getSource(), context);
+            PlanFragment rightFragment = visitPlan(node.getFilteringSource(), context);
+
+            List<Expr> eqJoinConjuncts = new ArrayList<>();
+            Expr left = RowExpressionToExpr.formatRowExpression(node.getSourceJoinVariable(),
+                    new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+            Expr right = RowExpressionToExpr.formatRowExpression(node.getFilteringSourceJoinVariable(),
+                    new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+            BinaryPredicate binaryEq = new BinaryPredicate(BinaryPredicate.Operator.EQ, left, right);
+            eqJoinConjuncts.add(binaryEq);
+
+
+            org.apache.doris.planner.HashJoinNode hashJoinNode =
+                    new org.apache.doris.planner.HashJoinNode(
+                            context.plannerContext.getNextNodeId(),
+                            leftFragment.getPlanRoot(), rightFragment.getPlanRoot(),
+                            JoinOperator.LEFT_SEMI_JOIN,
+                            eqJoinConjuncts,
+                            new ArrayList<>());
+            hashJoinNode.setDistributionMode(HashJoinNode.DistributionMode.PARTITIONED);
+
+            context.fragments.remove(leftFragment);
+            context.fragments.remove(rightFragment);
+            leftFragment.setPlanRoot(hashJoinNode);
+            context.fragments.add(leftFragment);
+            return leftFragment;
         }
 
         @Override
@@ -383,6 +430,7 @@ public class PlanFragmentBuilder {
                 AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, tupleDescriptor, AggregateInfo.AggPhase.SECOND_MERGE);
                 PlanNode aggregationNode = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), aggInfo);
                 inputFragment.setPlanRoot(aggregationNode);
+                //inputFragment.setOutputPartition(DataPartition.hashPartitioned(partitionExpr));
                 return inputFragment;
             } else {
                 return null;
@@ -424,6 +472,8 @@ public class PlanFragmentBuilder {
             } else if (inputFragment.getPlanRoot() instanceof  org.apache.doris.planner.AggregationNode) {
                 RowExpression rowExpression = node.getPredicate();
                 inputFragment.getPlanRoot().addConjuncts(Lists.newArrayList(RowExpressionToExpr.formatRowExpression(rowExpression, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef))));
+                return inputFragment;
+            } else if (inputFragment.getPlanRoot() instanceof org.apache.doris.planner.HashJoinNode) {
                 return inputFragment;
             }
             return null;

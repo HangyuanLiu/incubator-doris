@@ -40,10 +40,10 @@ public class SemiJoinNode
                         LogicalPlanNode source,
                         LogicalPlanNode filteringSource,
                         VariableReferenceExpression sourceJoinVariable,
-                       VariableReferenceExpression filteringSourceJoinVariable,
-                       VariableReferenceExpression semiJoinOutput,
-                       Optional<VariableReferenceExpression> sourceHashVariable,
-                       Optional<VariableReferenceExpression> filteringSourceHashVariable,
+                        VariableReferenceExpression filteringSourceJoinVariable,
+                        VariableReferenceExpression semiJoinOutput,
+                        Optional<VariableReferenceExpression> sourceHashVariable,
+                        Optional<VariableReferenceExpression> filteringSourceHashVariable,
                         Optional<DistributionType> distributionType)
     {
         super(id);
