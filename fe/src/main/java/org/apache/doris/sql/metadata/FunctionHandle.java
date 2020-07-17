@@ -1,23 +1,64 @@
-/*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.apache.doris.sql.metadata;
 
-/**
- * FunctionHandle is a unique handle to identify the function implementation from namespaces.
- * However, currently it is still under changes, so please don't assume it is backward compatible.
- */
-public interface FunctionHandle
-{
-    CatalogSchemaName getFunctionNamespace();
+import org.apache.doris.catalog.Function;
+import org.apache.doris.catalog.Type;
+import org.apache.doris.sql.type.TypeSignature;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class FunctionHandle {
+    public enum FunctionKind
+    {
+        SCALAR,
+        AGGREGATE,
+        WINDOW
+    }
+
+    private String functionName;
+    private final TypeSignature returnType;
+    private final TypeSignature interminateTypes;
+    private final List<TypeSignature> argumentTypes;
+    private final FunctionKind functionKind;
+    private final Function fn;
+
+
+    public FunctionHandle(
+            String functionName,
+            TypeSignature returnType,
+            TypeSignature interminateTypes,
+            List<TypeSignature> argumentTypes,
+            FunctionKind functionKind,
+            Function fn) {
+        this.functionName = functionName;
+        this.returnType = returnType;
+        this.interminateTypes = interminateTypes;
+        this.argumentTypes = argumentTypes;
+        this.functionKind = functionKind;
+        this.fn = fn;
+    }
+
+    public String getFunctionName() {
+        return functionName;
+    }
+
+    public List<TypeSignature> getArgumentTypes() {
+        return argumentTypes;
+    }
+
+    public TypeSignature getInterminateTypes() {
+        return interminateTypes;
+    }
+
+    public TypeSignature getReturnType() {
+        return returnType;
+    }
+
+    public Function getResolevedFn() {
+        return fn;
+    }
+
+    public FunctionKind getFunctionKind() {
+        return functionKind;
+    }
 }

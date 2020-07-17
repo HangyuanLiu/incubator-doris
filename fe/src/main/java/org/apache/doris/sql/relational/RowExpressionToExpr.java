@@ -16,7 +16,7 @@ import org.apache.doris.catalog.Function;
 import org.apache.doris.catalog.ScalarFunction;
 import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.catalog.Type;
-import org.apache.doris.sql.metadata.BuiltInFunctionHandle;
+import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.ConstantExpression;
 import org.apache.doris.sql.relation.InputReferenceExpression;
@@ -25,8 +25,11 @@ import org.apache.doris.sql.relation.RowExpressionVisitor;
 import org.apache.doris.sql.relation.SpecialFormExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.type.BigintType;
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class RowExpressionToExpr {
     public static Expr formatRowExpression(RowExpression expression, FormatterContext descTbl)
@@ -50,47 +53,20 @@ public class RowExpressionToExpr {
         @Override
         public Expr visitCall(CallExpression node, FormatterContext context) {
             Expr callExpr;
-            if (((BuiltInFunctionHandle)node.getFunctionHandle()).getFunctionName().equalsIgnoreCase("add")) {
-                Expr left = formatRowExpression(node.getArguments().get(0), context);
-                Expr right = formatRowExpression(node.getArguments().get(1), context);
-                callExpr = new ArithmeticExpr(ArithmeticExpr.Operator.ADD, left, right);
-                callExpr.setType(ScalarType.BIGINT);
-            } else if (((BuiltInFunctionHandle)node.getFunctionHandle()).getFunctionName().equalsIgnoreCase("sum")) {
-                Expr left = formatRowExpression(node.getArguments().get(0), context);
-                callExpr = new FunctionCallExpr(new FunctionName("sum"), new FunctionParams(false, Lists.newArrayList(left)));
-                callExpr.setType(ScalarType.BIGINT);
+            if ((node.getFunctionHandle()).getFunctionName().equalsIgnoreCase("add")) {
+                callExpr = new ArithmeticExpr(
+                        ArithmeticExpr.Operator.ADD,
+                        formatRowExpression(node.getArguments().get(0), context),
+                        formatRowExpression(node.getArguments().get(1), context));
+                callExpr.setType(node.getFunctionHandle().getReturnType().toDorisType());
+            } else {
+                List<Expr> arg =
+                        node.getArguments().stream().map(expr -> formatRowExpression(expr, context)).collect(Collectors.toList());
+                FunctionHandle fnHandle = node.getFunctionHandle();
 
-                FunctionName fnName = new FunctionName("sum");
-                Function searchDesc = new Function(fnName, Lists.newArrayList(ScalarType.BIGINT), Type.INVALID, false);
-                Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
-
-                callExpr.setFn(fn);
-            } else if (((BuiltInFunctionHandle)node.getFunctionHandle()).getFunctionName().equalsIgnoreCase("count")) {
-                Expr left = formatRowExpression(node.getArguments().get(0), context);
-                callExpr = new FunctionCallExpr(new FunctionName("count"), new FunctionParams(false, Lists.newArrayList(left)));
-                callExpr.setType(ScalarType.BIGINT);
-
-                FunctionName fnName = new FunctionName("count");
-                Function searchDesc = new Function(fnName, Lists.newArrayList(ScalarType.BIGINT), Type.INVALID, false);
-                Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
-
-                callExpr.setFn(fn);
-            } else if (((BuiltInFunctionHandle)node.getFunctionHandle()).getFunctionName().equalsIgnoreCase("avg")) {
-                Expr left = formatRowExpression(node.getArguments().get(0), context);
-                callExpr = new FunctionCallExpr(new FunctionName("avg"), new FunctionParams(false, Lists.newArrayList(left)));
-                callExpr.setType(ScalarType.DOUBLE);
-
-                FunctionName fnName = new FunctionName("avg");
-                Function searchDesc = new Function(fnName, Lists.newArrayList(ScalarType.BIGINT), Type.INVALID, false);
-                Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
-
-                callExpr.setFn(fn);
-            }
-            else {
-                Expr left = formatRowExpression(node.getArguments().get(0), context);
-                Expr right = formatRowExpression(node.getArguments().get(1), context);
-                callExpr = new BinaryPredicate(BinaryPredicate.Operator.EQ, left,right);
-                callExpr.setType(ScalarType.BOOLEAN);
+                callExpr = new FunctionCallExpr(fnHandle.getFunctionName(), new FunctionParams(false, arg));
+                callExpr.setType(fnHandle.getReturnType().toDorisType());
+                callExpr.setFn(fnHandle.getResolevedFn());
             }
 
             return callExpr;

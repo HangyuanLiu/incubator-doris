@@ -23,7 +23,6 @@ import org.apache.doris.sql.planner.plan.PlanVisitor;
 import org.apache.doris.sql.planner.plan.SemiJoinNode;
 import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
-import org.apache.doris.sql.type.BigintType;
 import org.apache.doris.sql.type.TypeManager;
 
 import java.util.ArrayList;
@@ -33,9 +32,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
 public class AddExchanges implements PlanOptimizer {
@@ -154,13 +150,15 @@ public class AddExchanges implements PlanOptimizer {
             for (Map.Entry<VariableReferenceExpression, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
                 AggregationNode.Aggregation originalAggregation = entry.getValue();
                 FunctionHandle functionHandle = originalAggregation.getFunctionHandle();
+                //FIXME
                 FunctionMetadata functionMetadata = functionManager.getFunctionMetadata(functionHandle);
 
                 String functionName = functionMetadata.getName().getFunctionName();
 
                 VariableReferenceExpression intermediateVariable =
-                        variableAllocator.newVariable(functionName, BigintType.BIGINT);
-                VariableReferenceExpression exchangeVariable = variableAllocator.newVariable(functionName, BigintType.BIGINT);
+                        variableAllocator.newVariable(functionName, typeManager.getType(functionHandle.getInterminateTypes()));
+                VariableReferenceExpression exchangeVariable =
+                        variableAllocator.newVariable(functionName, typeManager.getType(functionHandle.getInterminateTypes()));
                 exchangeOutput.add(exchangeVariable);
 
                 intermediateAggregation.put(intermediateVariable, new AggregationNode.Aggregation(
@@ -178,8 +176,7 @@ public class AddExchanges implements PlanOptimizer {
                                 new CallExpression(
                                         functionName,
                                         functionHandle,
-                                        //FIXME
-                                        BigintType.BIGINT,
+                                        typeManager.getType(functionHandle.getReturnType()),
                                         Lists.newArrayList(exchangeVariable)),
                                 Optional.empty(),
                                 Optional.empty(),

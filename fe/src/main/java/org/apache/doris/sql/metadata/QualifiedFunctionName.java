@@ -13,9 +13,9 @@ public class QualifiedFunctionName {
     private final CatalogSchemaName functionNamespace;
     private final String functionName;
 
-    private QualifiedFunctionName(CatalogSchemaName functionNamespace, String functionName)
+    public QualifiedFunctionName(CatalogSchemaName functionNamespace, String functionName)
     {
-        this.functionNamespace = requireNonNull(functionNamespace, "functionNamespace is null");
+        this.functionNamespace = functionNamespace;
         this.functionName = requireNonNull(functionName, "name is null").toLowerCase(ENGLISH);
     }
 

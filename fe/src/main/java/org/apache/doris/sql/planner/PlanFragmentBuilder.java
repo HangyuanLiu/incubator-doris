@@ -382,8 +382,8 @@ public class PlanFragmentBuilder {
         public PlanFragment visitAggregation(AggregationNode node, FragmentProperties context) {
             PlanFragment inputFragment = visitPlan(node.getSource(), context);
 
+            /*
             TupleDescriptor tupleDescriptor = context.descTbl.createTupleDescriptor();
-
             // grouping expr
             ArrayList<Expr> groupingExprs = Lists.newArrayList();
             List<Expr> partitionExpr = Lists.newArrayList();
@@ -407,6 +407,12 @@ public class PlanFragmentBuilder {
                 if (node.getStep().equals(AggregationNode.Step.FINAL)) {
                     functionCallExpr.setMergeAggFn();
                 }
+                aggExprs.add((FunctionCallExpr) functionCallExpr.clone());
+                //TODO : trick
+                if(node.getStep().equals(AggregationNode.Step.PARTIAL)) {
+                    functionCallExpr.setType(
+                            aggregation.getValue().getCall().getFunctionHandle().getInterminateTypes().toDorisType());
+                }
 
                 SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(tupleDescriptor);
                 slotDesc.initFromExpr(functionCallExpr);
@@ -414,13 +420,44 @@ public class PlanFragmentBuilder {
                 slotDesc.setIsMaterialized(true);
 
                 context.variableToSlotRef.put(aggregation.getKey().getName(), slotDesc.getId());
-                aggExprs.add(functionCallExpr);
             }
-
             tupleDescriptor.computeMemLayout();
+             */
+            TupleDescriptor outputTupleDesc = context.descTbl.createTupleDescriptor();
+            // grouping expr
+            ArrayList<Expr> groupingExprs = Lists.newArrayList();
+            List<Expr> partitionExpr = Lists.newArrayList();
+            for(VariableReferenceExpression groupKey : node.getGroupingKeys()) {
+                Expr groupExpr = RowExpressionToExpr.formatRowExpression(groupKey, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                groupingExprs.add(groupExpr);
+
+                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(outputTupleDesc);
+                slotDesc.initFromExpr(groupExpr);
+                slotDesc.setIsNullable(true);
+                slotDesc.setIsMaterialized(true);
+                context.variableToSlotRef.put(groupKey.getName(), slotDesc.getId());
+                partitionExpr.add(new SlotRef(slotDesc));
+            }
+            // agg expr
+            ArrayList<FunctionCallExpr> aggExprs = Lists.newArrayList();
+            for (Map.Entry<VariableReferenceExpression, AggregationNode.Aggregation> aggregation : node.getAggregations().entrySet()) {
+                FunctionCallExpr functionCallExpr = (FunctionCallExpr) RowExpressionToExpr.formatRowExpression(aggregation.getValue().getCall(),
+                        new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                if (node.getStep().equals(AggregationNode.Step.FINAL)) {
+                    functionCallExpr.setMergeAggFn();
+                }
+                aggExprs.add((FunctionCallExpr) functionCallExpr.clone());
+
+                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(outputTupleDesc);
+                slotDesc.initFromExpr(functionCallExpr);
+                slotDesc.setIsNullable(true);
+                slotDesc.setIsMaterialized(true);
+                context.variableToSlotRef.put(aggregation.getKey().getName(), slotDesc.getId());
+            }
+            outputTupleDesc.computeMemLayout();
 
             if (node.getStep().equals(AggregationNode.Step.PARTIAL)) {
-                AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, tupleDescriptor, AggregateInfo.AggPhase.FIRST);
+                AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, outputTupleDesc, outputTupleDesc, AggregateInfo.AggPhase.FIRST);
                 org.apache.doris.planner.AggregationNode aggregationNode = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), aggInfo);
                 aggregationNode.unsetNeedsFinalize();
                 aggregationNode.setIsPreagg(context.plannerContext);
@@ -432,7 +469,9 @@ public class PlanFragmentBuilder {
                 }
                 return inputFragment;
             } else if (node.getStep().equals(AggregationNode.Step.FINAL)) {
-                AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, tupleDescriptor, AggregateInfo.AggPhase.SECOND_MERGE);
+
+                AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, outputTupleDesc, outputTupleDesc, AggregateInfo.AggPhase.SECOND_MERGE);
+
                 PlanNode aggregationNode = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), aggInfo);
                 inputFragment.setPlanRoot(aggregationNode);
                 //inputFragment.setOutputPartition(DataPartition.hashPartitioned(partitionExpr));

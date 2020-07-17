@@ -30,7 +30,7 @@ import java.util.function.Predicate;
 import static com.google.common.base.Predicates.alwaysTrue;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
-import static org.apache.doris.sql.metadata.FunctionMetadata.FunctionKind.AGGREGATE;
+import static org.apache.doris.sql.metadata.FunctionHandle.FunctionKind.AGGREGATE;
 
 public final class ExpressionTreeUtils
 {

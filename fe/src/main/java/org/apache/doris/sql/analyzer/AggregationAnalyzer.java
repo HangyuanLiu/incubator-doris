@@ -14,6 +14,7 @@
 package org.apache.doris.sql.analyzer;
 
 
+import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.FunctionMetadata;
 import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.metadata.WarningCollector;
@@ -158,7 +159,7 @@ class AggregationAnalyzer
         @Override
         protected Boolean visitFunctionCall(FunctionCall node, Void context)
         {
-            if (metadata.getFunctionManager().getFunctionMetadata(analysis.getFunctionHandle(node)).getFunctionKind() == FunctionMetadata.FunctionKind.AGGREGATE) {
+            if (metadata.getFunctionManager().getFunctionMetadata(analysis.getFunctionHandle(node)).getFunctionKind() == FunctionHandle.FunctionKind.AGGREGATE) {
                 /*
                 if (functionResolution.isCountFunction(analysis.getFunctionHandle(node)) && node.isDistinct()) {
                     warningCollector.add(new PrestoWarning(

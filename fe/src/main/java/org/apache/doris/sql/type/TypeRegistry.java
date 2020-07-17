@@ -53,6 +53,7 @@ public final class TypeRegistry
 {
     private final ConcurrentMap<TypeSignature, Type> types = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, ParametricType> parametricTypes = new ConcurrentHashMap<>();
+    private final LoadingCache<TypeSignature, Type> parametricTypeCache;
 
     public TypeRegistry()
     {
@@ -69,13 +70,50 @@ public final class TypeRegistry
         addParametricType(VarcharParametricType.VARCHAR);
         addParametricType(CharParametricType.CHAR);
         addParametricType(DecimalParametricType.DECIMAL);
+
+        parametricTypeCache = CacheBuilder.newBuilder()
+                .maximumSize(1000)
+                .build(CacheLoader.from(this::instantiateParametricType));
     }
 
     @Override
     public Type getType(TypeSignature signature)
     {
         Type type = types.get(signature);
+
+        if (type == null) {
+            try {
+                return parametricTypeCache.getUnchecked(signature);
+            }
+            catch (UncheckedExecutionException e) {
+                throwIfUnchecked(e.getCause());
+                throw new RuntimeException(e.getCause());
+            }
+        }
+
+
         return type;
+    }
+
+    private Type instantiateParametricType(TypeSignature signature)
+    {
+        List<TypeParameter> parameters = new ArrayList<>();
+
+        for (TypeSignatureParameter parameter : signature.getParameters()) {
+            TypeParameter typeParameter = TypeParameter.of(parameter, this);
+            parameters.add(typeParameter);
+        }
+
+        ParametricType parametricType = parametricTypes.get(signature.getBase().toLowerCase(Locale.ENGLISH));
+        if (parametricType == null) {
+            throw new IllegalArgumentException("Unknown type " + signature);
+        }
+
+        Type instantiatedType = parametricType.createType(this, parameters);
+
+        // TODO: reimplement this check? Currently "varchar(Integer.MAX_VALUE)" fails with "varchar"
+        //checkState(instantiatedType.equalsSignature(signature), "Instantiated parametric type name (%s) does not match expected name (%s)", instantiatedType, signature);
+        return instantiatedType;
     }
 
 
