@@ -39,24 +39,36 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static java.util.Objects.requireNonNull;
+
+import static org.apache.doris.sql.type.DateType.DATE;
+import static org.apache.doris.sql.type.IntegerType.INTEGER;
+import static org.apache.doris.sql.type.UnknownType.UNKNOWN;
 import static org.apache.doris.sql.type.BigintType.BIGINT;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
+import static org.apache.doris.sql.type.DoubleType.DOUBLE;
 
 @ThreadSafe
 public final class TypeRegistry
         implements TypeManager
 {
     private final ConcurrentMap<TypeSignature, Type> types = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, ParametricType> parametricTypes = new ConcurrentHashMap<>();
 
     public TypeRegistry()
     {
 
         // Manually register UNKNOWN type without a verifyTypeClass call since it is a special type that can not be used by functions
-        //this.types.put(UNKNOWN.getTypeSignature(), UNKNOWN);
+        this.types.put(UNKNOWN.getTypeSignature(), UNKNOWN);
 
         // always add the built-in types; Presto will not function without these
         addType(BOOLEAN);
         addType(BIGINT);
+        addType(INTEGER);
+        addType(DOUBLE);
+        addType(DATE);
+        addParametricType(VarcharParametricType.VARCHAR);
+        addParametricType(CharParametricType.CHAR);
+        addParametricType(DecimalParametricType.DECIMAL);
     }
 
     @Override
@@ -99,7 +111,7 @@ public final class TypeRegistry
     {
         //TypeCompatibility typeCompatibility = compatibility(fromType, toType);
         //return typeCompatibility.isCoercible();
-        return true;
+        return false;
     }
 
     public void addType(Type type)
@@ -107,6 +119,13 @@ public final class TypeRegistry
         requireNonNull(type, "type is null");
         Type existingType = types.putIfAbsent(type.getTypeSignature(), type);
         checkState(existingType == null || existingType.equals(type), "Type %s is already registered", type);
+    }
+
+    public void addParametricType(ParametricType parametricType)
+    {
+        String name = parametricType.getName().toLowerCase(Locale.ENGLISH);
+        checkArgument(!parametricTypes.containsKey(name), "Parametric type already registered: %s", name);
+        parametricTypes.putIfAbsent(name, parametricType);
     }
 
     /**

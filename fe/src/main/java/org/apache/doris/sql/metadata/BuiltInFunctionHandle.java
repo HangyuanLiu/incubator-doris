@@ -17,10 +17,10 @@ public class BuiltInFunctionHandle implements FunctionHandle {
         this.argumentTypes = new ArrayList<>();
 
         for (TypeSignature type : arg) {
-            if ("BIGINT".equals(type.getBase())) {
+            if ("BIGINT".equalsIgnoreCase(type.getBase())) {
                 this.argumentTypes.add(Type.BIGINT);
             } else {
-                throw new UnsupportedOperationException("not yet implemented");
+                throw new UnsupportedOperationException(type.getBase() +" not yet implemented");
             }
         }
     }

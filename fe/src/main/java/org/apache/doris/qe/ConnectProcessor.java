@@ -76,6 +76,8 @@ import org.apache.doris.sql.planner.PlanOptimizers;
 import org.apache.doris.sql.planner.plan.OutputNode;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
+import org.apache.doris.sql.tree.Query;
+import org.apache.doris.sql.tree.QuerySpecification;
 import org.apache.doris.sql.tree.Statement;
 import org.apache.doris.sql.type.TypeRegistry;
 import org.apache.doris.thrift.TExplainLevel;
@@ -85,6 +87,7 @@ import org.apache.doris.thrift.TQueryOptions;
 
 import com.google.common.base.Strings;
 
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -98,6 +101,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Process one mysql connection, receive one pakcet, process, send one packet.
@@ -250,6 +254,8 @@ public class ConnectProcessor {
                 PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
                 HashMap<String, SlotId> variableToSlotRef = new HashMap<>();
 
+                QuerySpecification specification = (QuerySpecification) ((Query) stmt).getQueryBody();
+
             /*
             PhysicalPlanner physicalPlanner = new PhysicalPlanner();
             PhysicalPlanner.PhysicalPlan physicalPlan = physicalPlanner.createPhysicalPlan(plan, descTbl, plannerContext, variableToSlotRef);
@@ -296,7 +302,12 @@ public class ConnectProcessor {
                 ctx.getState().reset();
                 executor = new StmtExecutor(ctx);
 
-                executor.executeV2(fragments, physicalPlan.getScanNodes(), descTbl.toThrift(), outputExprs);
+                executor.executeV2(
+                        fragments,
+                        physicalPlan.getScanNodes(),
+                        descTbl.toThrift(),
+                        outputExprs,
+                        analysis.getOutputExpressions(specification).stream().map(Expression::toString).collect(Collectors.toList()));
                 System.out.println("Query success");
                 return;
             } catch (Exception ex) {

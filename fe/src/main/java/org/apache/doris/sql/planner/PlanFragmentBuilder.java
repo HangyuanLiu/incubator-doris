@@ -35,6 +35,7 @@ import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.ExchangeNode;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.JoinNode;
+import org.apache.doris.sql.planner.plan.LimitNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.OrderingScheme;
 import org.apache.doris.sql.planner.plan.OutputNode;
@@ -424,7 +425,11 @@ public class PlanFragmentBuilder {
                 aggregationNode.unsetNeedsFinalize();
                 aggregationNode.setIsPreagg(context.plannerContext);
                 inputFragment.setPlanRoot(aggregationNode);
-                inputFragment.setOutputPartition(DataPartition.hashPartitioned(partitionExpr));
+                if (partitionExpr.isEmpty()) {
+                    inputFragment.setOutputPartition(DataPartition.UNPARTITIONED);
+                } else {
+                    inputFragment.setOutputPartition(DataPartition.hashPartitioned(partitionExpr));
+                }
                 return inputFragment;
             } else if (node.getStep().equals(AggregationNode.Step.FINAL)) {
                 AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, tupleDescriptor, AggregateInfo.AggPhase.SECOND_MERGE);
@@ -459,6 +464,13 @@ public class PlanFragmentBuilder {
             tupleDescriptor.computeMemLayout();
              */
 
+            return inputFragment;
+        }
+
+        @Override
+        public PlanFragment visitLimit(LimitNode node, FragmentProperties context) {
+            PlanFragment inputFragment = visitPlan(node.getSource(), context);
+            inputFragment.getPlanRoot().setLimit(node.getCount());
             return inputFragment;
         }
 

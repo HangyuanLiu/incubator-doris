@@ -233,7 +233,7 @@ public class StmtExecutor {
     }
 
     public void executeV2(ArrayList<PlanFragment> fragments, List<ScanNode> scanNodes,
-                          TDescriptorTable descTable, List<Expr> outputExprs) throws Exception {
+                          TDescriptorTable descTable, List<Expr> outputExprs, List<String> colNames) throws Exception {
         context.getState().setIsQuery(true);
         int retryTime = Config.max_query_retry_time;
         for (int i = 0; i < retryTime; i ++) {
@@ -267,10 +267,6 @@ public class StmtExecutor {
                 RowBatch batch;
                 MysqlChannel channel = context.getMysqlChannel();
 
-                List<String> colNames = new ArrayList<>();
-                for (Expr slot : outputExprs) {
-                    colNames.add(slot.toSql());
-                }
                 sendFields(colNames, outputExprs);
                 while (true) {
                     batch = coord.getNext();

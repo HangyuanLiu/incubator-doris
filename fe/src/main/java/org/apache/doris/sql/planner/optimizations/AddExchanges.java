@@ -145,6 +145,8 @@ public class AddExchanges implements PlanOptimizer {
 
         @Override
         public LogicalPlanNode visitAggregation(AggregationNode node, RewriteContext<ExchangeContext> context) {
+            LogicalPlanNode source = context.rewrite(node.getSource(), context.get());
+
             Map<VariableReferenceExpression, AggregationNode.Aggregation> intermediateAggregation = new HashMap<>();
             Map<VariableReferenceExpression, AggregationNode.Aggregation> finalAggregation = new HashMap<>();
             List<VariableReferenceExpression> exchangeOutput = new ArrayList<>(node.getGroupingKeys());
@@ -176,6 +178,7 @@ public class AddExchanges implements PlanOptimizer {
                                 new CallExpression(
                                         functionName,
                                         functionHandle,
+                                        //FIXME
                                         BigintType.BIGINT,
                                         Lists.newArrayList(exchangeVariable)),
                                 Optional.empty(),
@@ -185,7 +188,7 @@ public class AddExchanges implements PlanOptimizer {
             }
             LogicalPlanNode partial = new AggregationNode(
                     node.getId(),
-                    node.getSource(),
+                    source,
                     intermediateAggregation,
                     node.getGroupingSets(),
                     // preGroupedSymbols reflect properties of the input. Splitting the aggregation and pushing partial aggregation

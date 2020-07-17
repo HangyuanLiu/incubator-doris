@@ -1,13 +1,26 @@
 package org.apache.doris.sql.type;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.unmodifiableList;
+
 public class TypeSignature {
     private final String base;
+    private final List<TypeSignatureParameter> parameters;
 
-    public TypeSignature(String type) {
-        this.base = type;
+    public TypeSignature(String base, TypeSignatureParameter... parameters)
+    {
+        this(base, asList(parameters));
+    }
+
+    public TypeSignature(String base, List<TypeSignatureParameter> parameters)
+    {
+        this.base = base;
+        this.parameters = unmodifiableList(new ArrayList<>(parameters));
     }
 
     public String getBase() {

@@ -329,7 +329,7 @@ public class ExpressionAnalyzer
 
             Expression subquery = node.getSubquery();
             process(subquery, context);
-            /*
+
             Type comparisonType = coerceToSingleType(context, node, "Value expression and result of subquery must be of the same type for quantified comparison: %s vs %s", value, subquery);
 
             switch (node.getOperator()) {
@@ -350,7 +350,7 @@ public class ExpressionAnalyzer
                 default:
                     throw new IllegalStateException(format("Unexpected comparison type: %s", node.getOperator()));
             }
-            */
+
             return setExpressionType(node, BOOLEAN);
         }
 
