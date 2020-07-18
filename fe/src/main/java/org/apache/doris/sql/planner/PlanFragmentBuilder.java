@@ -456,11 +456,39 @@ public class PlanFragmentBuilder {
             }
             outputTupleDesc.computeMemLayout();
 
+            //TODO
+            TupleDescriptor intermediateTupleDesc = context.descTbl.createTupleDescriptor();
+            // grouping expr
+            for(VariableReferenceExpression groupKey : node.getGroupingKeys()) {
+                Expr groupExpr = RowExpressionToExpr.formatRowExpression(groupKey, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(intermediateTupleDesc);
+                slotDesc.initFromExpr(groupExpr);
+                slotDesc.setIsNullable(true);
+                slotDesc.setIsMaterialized(true);
+            }
+            // agg expr
+            for (Map.Entry<VariableReferenceExpression, AggregationNode.Aggregation> aggregation : node.getAggregations().entrySet()) {
+                FunctionCallExpr functionCallExpr = (FunctionCallExpr) RowExpressionToExpr.formatRowExpression(aggregation.getValue().getCall(),
+                        new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                if (node.getStep().equals(AggregationNode.Step.FINAL)) {
+                    functionCallExpr.setMergeAggFn();
+                }
+                functionCallExpr.setType(
+                        aggregation.getValue().getCall().getFunctionHandle().getInterminateTypes().toDorisType());
+                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(intermediateTupleDesc);
+                slotDesc.initFromExpr(functionCallExpr);
+                slotDesc.setIsNullable(true);
+                slotDesc.setIsMaterialized(true);
+            }
+            intermediateTupleDesc.computeMemLayout();
+
+
             if (node.getStep().equals(AggregationNode.Step.PARTIAL)) {
-                AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, outputTupleDesc, outputTupleDesc, AggregateInfo.AggPhase.FIRST);
+                AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, outputTupleDesc, intermediateTupleDesc, AggregateInfo.AggPhase.FIRST);
                 org.apache.doris.planner.AggregationNode aggregationNode = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), aggInfo);
                 aggregationNode.unsetNeedsFinalize();
                 aggregationNode.setIsPreagg(context.plannerContext);
+                aggregationNode.setIntermediateTuple();
                 inputFragment.setPlanRoot(aggregationNode);
                 if (partitionExpr.isEmpty()) {
                     inputFragment.setOutputPartition(DataPartition.UNPARTITIONED);
@@ -470,9 +498,10 @@ public class PlanFragmentBuilder {
                 return inputFragment;
             } else if (node.getStep().equals(AggregationNode.Step.FINAL)) {
 
-                AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, outputTupleDesc, outputTupleDesc, AggregateInfo.AggPhase.SECOND_MERGE);
+                AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, outputTupleDesc, intermediateTupleDesc, AggregateInfo.AggPhase.SECOND_MERGE);
 
-                PlanNode aggregationNode = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), aggInfo);
+                org.apache.doris.planner.AggregationNode aggregationNode = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), aggInfo);
+                //aggregationNode.setIntermediateTuple();
                 inputFragment.setPlanRoot(aggregationNode);
                 //inputFragment.setOutputPartition(DataPartition.hashPartitioned(partitionExpr));
                 return inputFragment;
