@@ -1,5 +1,6 @@
 package org.apache.doris.sql.planner;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import javafx.util.Pair;
 import jersey.repackaged.com.google.common.collect.Maps;
@@ -30,6 +31,7 @@ import org.apache.doris.planner.PlannerContext;
 import org.apache.doris.sql.metadata.ColumnHandle;
 import org.apache.doris.sql.metadata.DorisColumnHandle;
 import org.apache.doris.sql.metadata.DorisTableHandle;
+import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.ExchangeNode;
@@ -45,9 +47,12 @@ import org.apache.doris.sql.planner.plan.SemiJoinNode;
 import org.apache.doris.sql.planner.plan.SortNode;
 import org.apache.doris.sql.planner.plan.TableScanNode;
 import org.apache.doris.sql.planner.plan.TopNNode;
+import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.relational.RowExpressionToExpr;
+import org.apache.doris.sql.type.Type;
+import org.apache.doris.sql.type.TypeManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -62,11 +67,14 @@ public class PlanFragmentBuilder {
         List<org.apache.doris.planner.ScanNode> scanNodes;
         List<Expr> outputExprs;
         ArrayList<PlanFragment> fragments;
+        VariableAllocator variableAllocator = new VariableAllocator();
+        TypeManager typeManager;
 
-        PhysicalPlan(List<org.apache.doris.planner.ScanNode> scanNodes, List<Expr> outputExprs, ArrayList<PlanFragment> fragments) {
+        PhysicalPlan(List<org.apache.doris.planner.ScanNode> scanNodes, List<Expr> outputExprs, ArrayList<PlanFragment> fragments, TypeManager typeManager) {
             this.scanNodes = scanNodes;
             this.outputExprs = outputExprs;
             this.fragments = fragments;
+            this.typeManager = typeManager;
         }
 
         public List<org.apache.doris.planner.ScanNode> getScanNodes() {
@@ -82,19 +90,27 @@ public class PlanFragmentBuilder {
         }
     }
 
-    public PhysicalPlan createPhysicalPlan(Plan plan, DescriptorTable descTbl, PlannerContext plannerContext, Map<String, SlotId> variableToSlotRef) {
-        PhysicalPlanTranslator physicalPlanTranslator = new PhysicalPlanTranslator();
+    public PhysicalPlan createPhysicalPlan(Plan plan, DescriptorTable descTbl, PlannerContext plannerContext, Map<String, SlotId> variableToSlotRef, TypeManager typeManager) {
+        PhysicalPlanTranslator physicalPlanTranslator = new PhysicalPlanTranslator(new VariableAllocator(), typeManager);
         //PlanNode root = SimplePlanRewriter.rewriteWith(physicalPlanTranslator, plan.getRoot());
         List<org.apache.doris.planner.ScanNode> scanNodes = new ArrayList<>();
         List<Expr> outputExprs = new ArrayList<>();
         Map<LogicalPlanNode, TupleDescriptor> tupleDescriptorMap = new HashMap<>();
         FragmentProperties fraPro = new FragmentProperties(descTbl, plannerContext, variableToSlotRef, scanNodes, outputExprs, tupleDescriptorMap);
         PlanFragment root = physicalPlanTranslator.visitPlan(plan.getRoot(), fraPro);
-        return new PhysicalPlan(scanNodes, outputExprs, fraPro.fragments);
+        return new PhysicalPlan(scanNodes, outputExprs, fraPro.fragments, typeManager);
     }
 
     private static class PhysicalPlanTranslator
             extends PlanVisitor<PlanFragment, FragmentProperties> {
+        VariableAllocator variableAllocator;
+        TypeManager typeManager;
+
+        public PhysicalPlanTranslator(VariableAllocator variableAllocator, TypeManager typeManager) {
+            this.variableAllocator = variableAllocator;
+            this.typeManager = typeManager;
+        }
+
         @Override
         public PlanFragment visitPlan(LogicalPlanNode node, FragmentProperties context) {
             return node.accept(this, context);
@@ -136,6 +152,7 @@ public class PlanFragmentBuilder {
                     Expr expr = RowExpressionToExpr.formatRowExpression(variable, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
                     outputExprs.add(expr);
                 }
+
                 exchangeFragment.setOutputExprs(outputExprs);
                 context.outputExprs.addAll(outputExprs);
 
@@ -382,140 +399,123 @@ public class PlanFragmentBuilder {
         public PlanFragment visitAggregation(AggregationNode node, FragmentProperties context) {
             PlanFragment inputFragment = visitPlan(node.getSource(), context);
 
-            /*
-            TupleDescriptor tupleDescriptor = context.descTbl.createTupleDescriptor();
+
+            ArrayList<Expr> finalGrouping = new ArrayList<>();
+            Map<VariableReferenceExpression, RowExpression> finalAggregation = new HashMap<>();
+
+            //构建intermediateTupleDesc
+            TupleDescriptor intermediateTupleDesc = context.descTbl.createTupleDescriptor();
+            List<Expr> partitionExpr = Lists.newArrayList();
+
             // grouping expr
             ArrayList<Expr> groupingExprs = Lists.newArrayList();
-            List<Expr> partitionExpr = Lists.newArrayList();
             for(VariableReferenceExpression groupKey : node.getGroupingKeys()) {
                 Expr groupExpr = RowExpressionToExpr.formatRowExpression(groupKey, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-
-                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(tupleDescriptor);
-                slotDesc.initFromExpr(groupExpr);
-                slotDesc.setIsNullable(true);
-                slotDesc.setIsMaterialized(true);
-
-                context.variableToSlotRef.put(groupKey.getName(), slotDesc.getId());
+                //构建分区表达式
                 groupingExprs.add(groupExpr);
-                partitionExpr.add(new SlotRef(slotDesc));
-            }
-            // agg expr
-            ArrayList<FunctionCallExpr> aggExprs = Lists.newArrayList();
-            for (Map.Entry<VariableReferenceExpression, AggregationNode.Aggregation> aggregation : node.getAggregations().entrySet()) {
-                FunctionCallExpr functionCallExpr = (FunctionCallExpr) RowExpressionToExpr.formatRowExpression(aggregation.getValue().getCall(),
-                                new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-                if (node.getStep().equals(AggregationNode.Step.FINAL)) {
-                    functionCallExpr.setMergeAggFn();
-                }
-                aggExprs.add((FunctionCallExpr) functionCallExpr.clone());
-                //TODO : trick
-                if(node.getStep().equals(AggregationNode.Step.PARTIAL)) {
-                    functionCallExpr.setType(
-                            aggregation.getValue().getCall().getFunctionHandle().getInterminateTypes().toDorisType());
-                }
-
-                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(tupleDescriptor);
-                slotDesc.initFromExpr(functionCallExpr);
+                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(intermediateTupleDesc);
+                slotDesc.setType(groupExpr.getType());
                 slotDesc.setIsNullable(true);
                 slotDesc.setIsMaterialized(true);
 
-                context.variableToSlotRef.put(aggregation.getKey().getName(), slotDesc.getId());
-            }
-            tupleDescriptor.computeMemLayout();
-             */
-            TupleDescriptor outputTupleDesc = context.descTbl.createTupleDescriptor();
-            // grouping expr
-            ArrayList<Expr> groupingExprs = Lists.newArrayList();
-            List<Expr> partitionExpr = Lists.newArrayList();
-            for(VariableReferenceExpression groupKey : node.getGroupingKeys()) {
-                Expr groupExpr = RowExpressionToExpr.formatRowExpression(groupKey, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-                groupingExprs.add(groupExpr);
-
-                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(outputTupleDesc);
-                slotDesc.initFromExpr(groupExpr);
-                slotDesc.setIsNullable(true);
-                slotDesc.setIsMaterialized(true);
-                context.variableToSlotRef.put(groupKey.getName(), slotDesc.getId());
                 partitionExpr.add(new SlotRef(slotDesc));
+                finalGrouping.add(new SlotRef(slotDesc));
             }
             // agg expr
             ArrayList<FunctionCallExpr> aggExprs = Lists.newArrayList();
             for (Map.Entry<VariableReferenceExpression, AggregationNode.Aggregation> aggregation : node.getAggregations().entrySet()) {
                 FunctionCallExpr functionCallExpr = (FunctionCallExpr) RowExpressionToExpr.formatRowExpression(aggregation.getValue().getCall(),
                         new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-                if (node.getStep().equals(AggregationNode.Step.FINAL)) {
-                    functionCallExpr.setMergeAggFn();
-                }
-                aggExprs.add((FunctionCallExpr) functionCallExpr.clone());
+                aggExprs.add(functionCallExpr);
+
+                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(intermediateTupleDesc);
+                slotDesc.setType(aggregation.getValue().getCall().getFunctionHandle().getInterminateTypes().toDorisType());
+                slotDesc.setIsNullable(true);
+                slotDesc.setIsMaterialized(true);
+
+                VariableReferenceExpression var = variableAllocator.newVariable(aggregation.toString(), aggregation.getKey().getType());
+                context.variableToSlotRef.put(var.getName(), slotDesc.getId());
+                finalAggregation.put(aggregation.getKey(),var);
+            }
+            intermediateTupleDesc.computeMemLayout();
+
+            //构建outputTupleDesc
+            TupleDescriptor outputTupleDesc = context.descTbl.createTupleDescriptor();
+            // grouping expr
+            for(VariableReferenceExpression groupKey : node.getGroupingKeys()) {
+                Expr groupExpr = RowExpressionToExpr.formatRowExpression(groupKey, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
 
                 SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(outputTupleDesc);
-                slotDesc.initFromExpr(functionCallExpr);
+                slotDesc.setType(groupExpr.getType());
+                slotDesc.setIsNullable(true);
+                slotDesc.setIsMaterialized(true);
+                context.variableToSlotRef.put(groupKey.getName(), slotDesc.getId());
+            }
+            for (Map.Entry<VariableReferenceExpression, AggregationNode.Aggregation> aggregation : node.getAggregations().entrySet()) {
+                FunctionCallExpr functionCallExpr = (FunctionCallExpr) RowExpressionToExpr.formatRowExpression(aggregation.getValue().getCall(),
+                        new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+
+                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(outputTupleDesc);
+                slotDesc.setType(functionCallExpr.getType());
                 slotDesc.setIsNullable(true);
                 slotDesc.setIsMaterialized(true);
                 context.variableToSlotRef.put(aggregation.getKey().getName(), slotDesc.getId());
             }
             outputTupleDesc.computeMemLayout();
 
-            //TODO
-            TupleDescriptor intermediateTupleDesc = context.descTbl.createTupleDescriptor();
-            // grouping expr
-            for(VariableReferenceExpression groupKey : node.getGroupingKeys()) {
-                Expr groupExpr = RowExpressionToExpr.formatRowExpression(groupKey, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(intermediateTupleDesc);
-                slotDesc.initFromExpr(groupExpr);
-                slotDesc.setIsNullable(true);
-                slotDesc.setIsMaterialized(true);
-            }
-            // agg expr
-            for (Map.Entry<VariableReferenceExpression, AggregationNode.Aggregation> aggregation : node.getAggregations().entrySet()) {
-                FunctionCallExpr functionCallExpr = (FunctionCallExpr) RowExpressionToExpr.formatRowExpression(aggregation.getValue().getCall(),
-                        new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-                if (node.getStep().equals(AggregationNode.Step.FINAL)) {
-                    functionCallExpr.setMergeAggFn();
-                }
-                functionCallExpr.setType(
-                        aggregation.getValue().getCall().getFunctionHandle().getInterminateTypes().toDorisType());
-                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(intermediateTupleDesc);
-                slotDesc.initFromExpr(functionCallExpr);
-                slotDesc.setIsNullable(true);
-                slotDesc.setIsMaterialized(true);
-            }
-            intermediateTupleDesc.computeMemLayout();
-
-
-            if (node.getStep().equals(AggregationNode.Step.PARTIAL)) {
-                AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, outputTupleDesc, intermediateTupleDesc, AggregateInfo.AggPhase.FIRST);
-                org.apache.doris.planner.AggregationNode aggregationNode = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), aggInfo);
-                aggregationNode.unsetNeedsFinalize();
-                aggregationNode.setIsPreagg(context.plannerContext);
-                aggregationNode.setIntermediateTuple();
-                inputFragment.setPlanRoot(aggregationNode);
-                if (partitionExpr.isEmpty()) {
-                    inputFragment.setOutputPartition(DataPartition.UNPARTITIONED);
-                } else {
-                    inputFragment.setOutputPartition(DataPartition.hashPartitioned(partitionExpr));
-                }
-                return inputFragment;
-            } else if (node.getStep().equals(AggregationNode.Step.FINAL)) {
-
-                AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, outputTupleDesc, intermediateTupleDesc, AggregateInfo.AggPhase.SECOND_MERGE);
-
-                org.apache.doris.planner.AggregationNode aggregationNode = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), aggInfo);
-                //aggregationNode.setIntermediateTuple();
-                inputFragment.setPlanRoot(aggregationNode);
-                //inputFragment.setOutputPartition(DataPartition.hashPartitioned(partitionExpr));
-                return inputFragment;
+            //构建Partial Aggregation Node
+            AggregateInfo aggInfo = AggregateInfo.create(groupingExprs, aggExprs, outputTupleDesc, intermediateTupleDesc, AggregateInfo.AggPhase.FIRST);
+            org.apache.doris.planner.AggregationNode aggregationNode = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), aggInfo);
+            aggregationNode.unsetNeedsFinalize();
+            aggregationNode.setIsPreagg(context.plannerContext);
+            aggregationNode.setIntermediateTuple();
+            inputFragment.setPlanRoot(aggregationNode);
+            if (partitionExpr.isEmpty()) {
+                inputFragment.setOutputPartition(DataPartition.UNPARTITIONED);
             } else {
-                return null;
+                inputFragment.setOutputPartition(DataPartition.hashPartitioned(partitionExpr));
             }
+
+            //构建Exchange Node
+            org.apache.doris.planner.ExchangeNode exchangeNode =
+                    new org.apache.doris.planner.ExchangeNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), false);
+            exchangeNode.setNumInstances(1);
+            PlanFragment fragment = new PlanFragment(context.plannerContext.getNextFragmentId(), exchangeNode, inputFragment.getOutputPartition());
+            inputFragment.setDestination(exchangeNode);
+            context.fragments.add(fragment);
+
+
+            // agg expr
+            ArrayList<FunctionCallExpr> aggExprs2 = Lists.newArrayList();
+            for (Map.Entry<VariableReferenceExpression, AggregationNode.Aggregation> aggregation : node.getAggregations().entrySet()) {
+                FunctionHandle functionHandle = aggregation.getValue().getFunctionHandle();
+                CallExpression call = new CallExpression(
+                            functionHandle.getFunctionName(),
+                            functionHandle,
+                            typeManager.getType(functionHandle.getReturnType()),
+                            Lists.newArrayList(finalAggregation.get(aggregation.getKey())));
+
+                FunctionCallExpr expr = (FunctionCallExpr) RowExpressionToExpr.formatRowExpression(call, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                expr.setMergeAggFn();
+                aggExprs2.add(expr);
+            }
+
+            AggregateInfo aggInfo2 = AggregateInfo.create(finalGrouping, aggExprs2, outputTupleDesc, intermediateTupleDesc, AggregateInfo.AggPhase.SECOND_MERGE);
+            org.apache.doris.planner.AggregationNode aggregationNode2 = new org.apache.doris.planner.AggregationNode(context.plannerContext.getNextNodeId(), exchangeNode, aggInfo2);
+            //aggregationNode.setIntermediateTuple();
+            fragment.setPlanRoot(aggregationNode2);
+            //inputFragment.setOutputPartition(DataPartition.hashPartitioned(partitionExpr));
+
+            return fragment;
         }
 
         @Override
         public PlanFragment visitProject(ProjectNode node, FragmentProperties context) {
             PlanFragment inputFragment = visitPlan(node.getSource(), context);
             /*
-            TupleDescriptor tupleDescriptor = context.descTbl.createTupleDescriptor();
+            ArrayList<TupleId> tupleIds = inputFragment.getPlanRoot().getTupleIds();
 
+            TupleDescriptor tupleDescriptor = context.descTbl.getTupleDesc(tupleIds.get(0));
             ArrayList<Expr> outputExpr = new ArrayList<>();
             for (Map.Entry<VariableReferenceExpression, RowExpression> entry : node.getAssignments().getMap().entrySet()) {
                 Expr expr = RowExpressionToExpr.formatRowExpression(entry.getValue(), new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
@@ -530,8 +530,8 @@ public class PlanFragmentBuilder {
             }
             inputFragment.setOutputExprs(outputExpr);
             tupleDescriptor.computeMemLayout();
-             */
 
+             */
             return inputFragment;
         }
 
@@ -544,6 +544,7 @@ public class PlanFragmentBuilder {
 
         @Override
         public PlanFragment visitFilter(FilterNode node, FragmentProperties context) {
+            System.out.println("visitFilter");
             PlanFragment inputFragment = visitPlan(node.getSource(), context);
             if (inputFragment.getPlanRoot() instanceof org.apache.doris.planner.OlapScanNode) {
                 RowExpression rowExpression = node.getPredicate();
@@ -581,11 +582,12 @@ public class PlanFragmentBuilder {
             }
 
             for (Map.Entry<VariableReferenceExpression, ColumnHandle> entry : node.getAssignments().entrySet()) {
-
-                String colName = ((DorisColumnHandle) entry.getValue()).getColumnName();
+                DorisColumnHandle columnHandle = (DorisColumnHandle) entry.getValue();
+                String colName = columnHandle.getColumnName();
+                Type colType = columnHandle.getColumnType();
 
                 SlotDescriptor slotDescriptor =  context.descTbl.addSlotDescriptor(tupleDescriptor);
-                slotDescriptor.setColumn(new Column(colName, ScalarType.BIGINT));
+                slotDescriptor.setColumn(new Column(colName, colType.getTypeSignature().toDorisType()));
                 slotDescriptor.setIsNullable(true);
                 slotDescriptor.setIsMaterialized(true);
 

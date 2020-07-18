@@ -23,11 +23,15 @@ import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.parser.SqlParser;
 import org.apache.doris.sql.type.BigintType;
 import org.apache.doris.sql.type.BooleanType;
+import org.apache.doris.sql.type.CharType;
+import org.apache.doris.sql.type.DecimalParseResult;
+import org.apache.doris.sql.type.Decimals;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.tree.*;
 import org.apache.doris.sql.type.TypeManager;
 import org.apache.doris.sql.type.UnknownType;
+import org.apache.doris.sql.type.VarcharType;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -41,7 +45,11 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.SemanticErrorCode.MULTIPLE_FIELDS_FROM_SUBQUERY;
 import static org.apache.doris.sql.analyzer.SemanticErrorCode.TYPE_MISMATCH;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
+import static org.apache.doris.sql.type.BigintType.BIGINT;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
+import static org.apache.doris.sql.type.IntegerType.INTEGER;
+import static org.apache.doris.sql.type.VarcharType.VARCHAR;
+import static org.apache.doris.sql.type.DoubleType.DOUBLE;
 
 public class ExpressionAnalyzer
 {
@@ -248,6 +256,70 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitLikePredicate(LikePredicate node, StackableAstVisitorContext<Context> context)
+        {
+            Type valueType = process(node.getValue(), context);
+            if (!(valueType instanceof CharType) && !(valueType instanceof VarcharType)) {
+                coerceType(context, node.getValue(), VARCHAR, "Left side of LIKE expression");
+            }
+
+            Type patternType = getVarcharType(node.getPattern(), context);
+            coerceType(context, node.getPattern(), patternType, "Pattern for LIKE expression");
+            if (node.getEscape().isPresent()) {
+                Expression escape = node.getEscape().get();
+                Type escapeType = getVarcharType(escape, context);
+                coerceType(context, escape, escapeType, "Escape for LIKE expression");
+            }
+
+            return setExpressionType(node, BOOLEAN);
+        }
+
+        private Type getVarcharType(Expression value, StackableAstVisitorContext<Context> context)
+        {
+            Type type = process(value, context);
+            if (!(type instanceof VarcharType)) {
+                return VARCHAR;
+            }
+            return type;
+        }
+
+        @Override
+        protected Type visitStringLiteral(StringLiteral node, StackableAstVisitorContext<Context> context)
+        {
+            VarcharType type = VarcharType.createVarcharType(node.getValue().length());
+            return setExpressionType(node, type);
+        }
+
+        @Override
+        protected Type visitLongLiteral(LongLiteral node, StackableAstVisitorContext<Context> context)
+        {
+            if (node.getValue() >= Integer.MIN_VALUE && node.getValue() <= Integer.MAX_VALUE) {
+                return setExpressionType(node, INTEGER);
+            }
+
+            return setExpressionType(node, BIGINT);
+        }
+
+        @Override
+        protected Type visitDoubleLiteral(DoubleLiteral node, StackableAstVisitorContext<Context> context)
+        {
+            return setExpressionType(node, DOUBLE);
+        }
+
+        @Override
+        protected Type visitDecimalLiteral(DecimalLiteral node, StackableAstVisitorContext<Context> context)
+        {
+            DecimalParseResult parseResult = Decimals.parse(node.getValue());
+            return setExpressionType(node, parseResult.getType());
+        }
+
+        @Override
+        protected Type visitBooleanLiteral(BooleanLiteral node, StackableAstVisitorContext<Context> context)
+        {
+            return setExpressionType(node, BOOLEAN);
+        }
+
+        @Override
         protected Type visitComparisonExpression(ComparisonExpression node, StackableAstVisitorContext<Context> context)
         {
             OperatorType operatorType = OperatorType.valueOf(node.getOperator().name());
@@ -358,16 +430,6 @@ public class ExpressionAnalyzer
         public Type visitFieldReference(FieldReference node, StackableAstVisitorContext<Context> context) {
             Field field = baseScope.getRelationType().getFieldByIndex(node.getFieldIndex());
             return handleResolvedField(node, new FieldId(baseScope.getRelationId(), node.getFieldIndex()), field, context);
-        }
-
-        @Override
-        protected Type visitLongLiteral(LongLiteral node, StackableAstVisitorContext<Context> context)
-        {
-            //if (node.getValue() >= Integer.MIN_VALUE && node.getValue() <= Integer.MAX_VALUE) {
-            //    return setExpressionType(node, INTEGER);
-           // }
-
-            return setExpressionType(node, BigintType.BIGINT);
         }
 
         @Override

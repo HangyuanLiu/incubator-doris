@@ -23,7 +23,6 @@ public final class FunctionResolution {
         this.functionManager = requireNonNull(functionManager, "functionManager is null");
     }
 
-
     public FunctionHandle arithmeticFunction(OperatorType operator, Type leftType, Type rightType)
     {
         checkArgument(operator.isArithmeticOperator(), format("unexpected arithmetic type %s", operator));

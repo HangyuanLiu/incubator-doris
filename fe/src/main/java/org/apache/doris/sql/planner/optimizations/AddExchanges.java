@@ -58,7 +58,6 @@ public class AddExchanges implements PlanOptimizer {
 
     private static class Rewriter
             extends SimplePlanRewriter<ExchangeContext> {
-
         private final VariableAllocator variableAllocator;
         private final IdGenerator<PlanNodeId> idAllocator;
         private final FunctionManager functionManager;
@@ -139,13 +138,17 @@ public class AddExchanges implements PlanOptimizer {
                         Optional.of(SemiJoinNode.DistributionType.PARTITIONED));
         }
 
+        /*
         @Override
         public LogicalPlanNode visitAggregation(AggregationNode node, RewriteContext<ExchangeContext> context) {
             LogicalPlanNode source = context.rewrite(node.getSource(), context.get());
 
             Map<VariableReferenceExpression, AggregationNode.Aggregation> intermediateAggregation = new HashMap<>();
             Map<VariableReferenceExpression, AggregationNode.Aggregation> finalAggregation = new HashMap<>();
-            List<VariableReferenceExpression> exchangeOutput = new ArrayList<>(node.getGroupingKeys());
+            List<VariableReferenceExpression> exchangeOutput = new ArrayList<>();
+            for (VariableReferenceExpression groupingKey : node.getGroupingKeys()) {
+                exchangeOutput.add(variableAllocator.newVariable(groupingKey));
+            }
 
             for (Map.Entry<VariableReferenceExpression, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
                 AggregationNode.Aggregation originalAggregation = entry.getValue();
@@ -215,5 +218,6 @@ public class AddExchanges implements PlanOptimizer {
                     node.getHashVariable(),
                     node.getGroupIdVariable());
         }
+         */
     }
 }

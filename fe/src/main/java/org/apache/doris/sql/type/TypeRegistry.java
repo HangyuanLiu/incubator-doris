@@ -41,6 +41,7 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 import static java.util.Objects.requireNonNull;
 
 import static org.apache.doris.sql.type.DateType.DATE;
+import static org.apache.doris.sql.type.DecimalType.createDecimalType;
 import static org.apache.doris.sql.type.IntegerType.INTEGER;
 import static org.apache.doris.sql.type.UnknownType.UNKNOWN;
 import static org.apache.doris.sql.type.BigintType.BIGINT;
@@ -140,16 +141,76 @@ public final class TypeRegistry
     @Override
     public Optional<Type> getCommonSuperType(Type firstType, Type secondType)
     {
-        //FIXME
-        return Optional.of(BIGINT);
+        TypeCompatibility compatibility = compatibility(firstType, secondType);
+        if (!compatibility.isCompatible()) {
+            return Optional.empty();
+        }
+        return Optional.of(compatibility.getCommonSuperType());
     }
 
     @Override
     public boolean canCoerce(Type fromType, Type toType)
     {
-        //TypeCompatibility typeCompatibility = compatibility(fromType, toType);
-        //return typeCompatibility.isCoercible();
-        return false;
+        TypeCompatibility typeCompatibility = compatibility(fromType, toType);
+        return typeCompatibility.isCoercible();
+    }
+
+    private TypeCompatibility compatibility(Type fromType, Type toType)
+    {
+        if (fromType.equals(toType)) {
+            return TypeCompatibility.compatible(toType, true);
+        }
+
+        if (fromType.equals(UnknownType.UNKNOWN)) {
+            return TypeCompatibility.compatible(toType, true);
+        }
+
+        if (toType.equals(UnknownType.UNKNOWN)) {
+            return TypeCompatibility.compatible(fromType, false);
+        }
+
+        String fromTypeBaseName = fromType.getTypeSignature().getBase();
+        String toTypeBaseName = toType.getTypeSignature().getBase();
+        /*
+        if (fromTypeBaseName.equals(toTypeBaseName)) {
+            if (fromTypeBaseName.equals(StandardTypes.DECIMAL)) {
+                Type commonSuperType = getCommonSuperTypeForDecimal((DecimalType) fromType, (DecimalType) toType);
+                return TypeCompatibility.compatible(commonSuperType, commonSuperType.equals(toType));
+            }
+            if (fromTypeBaseName.equals(StandardTypes.VARCHAR)) {
+                Type commonSuperType = getCommonSuperTypeForVarchar((VarcharType) fromType, (VarcharType) toType);
+                return TypeCompatibility.compatible(commonSuperType, commonSuperType.equals(toType));
+            }
+            if (fromTypeBaseName.equals(StandardTypes.CHAR) && !featuresConfig.isLegacyCharToVarcharCoercion()) {
+                Type commonSuperType = getCommonSuperTypeForChar((CharType) fromType, (CharType) toType);
+                return TypeCompatibility.compatible(commonSuperType, commonSuperType.equals(toType));
+            }
+            if (fromTypeBaseName.equals(StandardTypes.ROW)) {
+                return typeCompatibilityForRow((RowType) fromType, (RowType) toType);
+            }
+
+            if (isCovariantParametrizedType(fromType)) {
+                return typeCompatibilityForCovariantParametrizedType(fromType, toType);
+            }
+            return TypeCompatibility.incompatible();
+        }
+         */
+
+        Optional<Type> coercedType = coerceTypeBase(fromType, toType.getTypeSignature().getBase());
+        if (coercedType.isPresent()) {
+            return compatibility(coercedType.get(), toType);
+        }
+
+        coercedType = coerceTypeBase(toType, fromType.getTypeSignature().getBase());
+        if (coercedType.isPresent()) {
+            TypeCompatibility typeCompatibility = compatibility(fromType, coercedType.get());
+            if (!typeCompatibility.isCompatible()) {
+                return TypeCompatibility.incompatible();
+            }
+            return TypeCompatibility.compatible(typeCompatibility.getCommonSuperType(), false);
+        }
+
+        return TypeCompatibility.incompatible();
     }
 
     public void addType(Type type)
@@ -173,7 +234,37 @@ public final class TypeRegistry
     @Override
     public Optional<Type> coerceTypeBase(Type sourceType, String resultTypeBase)
     {
-        return Optional.empty();
+        String sourceTypeName = sourceType.getTypeSignature().getBase();
+        if (sourceTypeName.equals(resultTypeBase)) {
+            return Optional.of(sourceType);
+        }
+
+        switch (sourceTypeName) {
+            case StandardTypes.INTEGER: {
+                switch (resultTypeBase) {
+                    case StandardTypes.BIGINT:
+                        return Optional.of(BIGINT);
+                    case StandardTypes.DOUBLE:
+                        return Optional.of(DOUBLE);
+                    case StandardTypes.DECIMAL:
+                        return Optional.of(createDecimalType(10, 0));
+                    default:
+                        return Optional.empty();
+                }
+            }
+            case StandardTypes.BIGINT: {
+                switch (resultTypeBase) {
+                    case StandardTypes.DOUBLE:
+                        return Optional.of(DOUBLE);
+                    case StandardTypes.DECIMAL:
+                        return Optional.of(createDecimalType(19, 0));
+                    default:
+                        return Optional.empty();
+                }
+            }
+            default:
+                return Optional.empty();
+        }
     }
 
     @Override

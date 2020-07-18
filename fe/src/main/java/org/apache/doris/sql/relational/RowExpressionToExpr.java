@@ -9,8 +9,10 @@ import org.apache.doris.analysis.FunctionCallExpr;
 import org.apache.doris.analysis.FunctionName;
 import org.apache.doris.analysis.FunctionParams;
 import org.apache.doris.analysis.IntLiteral;
+import org.apache.doris.analysis.LikePredicate;
 import org.apache.doris.analysis.SlotId;
 import org.apache.doris.analysis.SlotRef;
+import org.apache.doris.analysis.StringLiteral;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Function;
 import org.apache.doris.catalog.ScalarFunction;
@@ -52,23 +54,27 @@ public class RowExpressionToExpr {
     {
         @Override
         public Expr visitCall(CallExpression node, FormatterContext context) {
+            String fnName = node.getFunctionHandle().getFunctionName().toLowerCase();
             Expr callExpr;
-            if ((node.getFunctionHandle()).getFunctionName().equalsIgnoreCase("add")) {
-                callExpr = new ArithmeticExpr(
-                        ArithmeticExpr.Operator.ADD,
-                        formatRowExpression(node.getArguments().get(0), context),
-                        formatRowExpression(node.getArguments().get(1), context));
-                callExpr.setType(node.getFunctionHandle().getReturnType().toDorisType());
-            } else {
-                List<Expr> arg =
-                        node.getArguments().stream().map(expr -> formatRowExpression(expr, context)).collect(Collectors.toList());
-                FunctionHandle fnHandle = node.getFunctionHandle();
-
-                callExpr = new FunctionCallExpr(fnHandle.getFunctionName(), new FunctionParams(false, arg));
-                callExpr.setType(fnHandle.getReturnType().toDorisType());
-                callExpr.setFn(fnHandle.getResolevedFn());
+            switch (fnName) {
+                case "add":
+                    callExpr = new ArithmeticExpr(
+                            ArithmeticExpr.Operator.ADD,
+                            formatRowExpression(node.getArguments().get(0), context),
+                            formatRowExpression(node.getArguments().get(1), context));
+                    break;
+                case "eq":
+                    callExpr = new BinaryPredicate(BinaryPredicate.Operator.EQ,
+                            formatRowExpression(node.getArguments().get(0), context),
+                            formatRowExpression(node.getArguments().get(1), context));
+                    break;
+                default:
+                    List<Expr> arg = node.getArguments().stream().map(expr -> formatRowExpression(expr, context)).collect(Collectors.toList());
+                    FunctionHandle fnHandle = node.getFunctionHandle();
+                    callExpr = new FunctionCallExpr(fnHandle.getFunctionName(), new FunctionParams(false, arg));
+                    callExpr.setFn(fnHandle.getResolevedFn());
             }
-
+            callExpr.setType(node.getFunctionHandle().getReturnType().toDorisType());
             return callExpr;
         }
 
@@ -80,10 +86,13 @@ public class RowExpressionToExpr {
         @Override
         public Expr visitConstant(ConstantExpression node, FormatterContext context) {
             try {
-                if (node.getType().equals(BigintType.BIGINT)) {
-                    return new IntLiteral((Long) node.getValue(), Type.BIGINT);
-                } else {
-                    throw new UnsupportedOperationException("not yet implemented");
+                switch (node.getType().getTypeSignature().getBase().toLowerCase()) {
+                    case "bigint":
+                        return new IntLiteral((Long) node.getValue(), Type.BIGINT);
+                    case "varchar":
+                        return new StringLiteral((String) node.getValue());
+                    default:
+                        throw new UnsupportedOperationException("not yet implemented");
                 }
             } catch (Exception ex) {
                 throw new UnsupportedOperationException("not yet implemented");

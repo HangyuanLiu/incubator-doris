@@ -5,6 +5,8 @@ import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.Database;
 import org.apache.doris.catalog.Table;
 import org.apache.doris.sql.type.BigintType;
+import org.apache.doris.sql.type.TypeManager;
+import org.apache.doris.sql.type.TypeSignature;
 import org.apache.doris.sql.type.UnknownType;
 
 import java.util.*;
@@ -14,10 +16,12 @@ import static java.util.Objects.requireNonNull;
 public class DorisMetadata implements ConnectorMetadata{
 
     private final Catalog dorisCatalog;
+    private final TypeManager typeManager;
 
-    public DorisMetadata(Catalog dorisCatalog)
+    public DorisMetadata(Catalog dorisCatalog, TypeManager typeManager)
     {
         this.dorisCatalog = requireNonNull(dorisCatalog, "client is null");
+        this.typeManager = typeManager;
     }
 
     @Override
@@ -42,8 +46,9 @@ public class DorisMetadata implements ConnectorMetadata{
 
         HashMap<String, ColumnHandle> columnHandles = new HashMap<>();
         for(Column column : columnList) {
-            //FIXME
-            columnHandles.put(column.getName(), new DorisColumnHandle(column.getName(), BigintType.BIGINT, 0));
+
+            columnHandles.put(column.getName(), new DorisColumnHandle(column.getName(),
+                    typeManager.getType(TypeSignature.create(column.getType())), 0));
         }
 
         System.out.println("getColumnHandles : " + columnHandles);

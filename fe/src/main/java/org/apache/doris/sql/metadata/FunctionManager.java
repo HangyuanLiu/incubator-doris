@@ -10,6 +10,7 @@ import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.sql.analyzer.TypeSignatureProvider;
 import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.tree.QualifiedName;
+import org.apache.doris.sql.type.BooleanType;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.type.TypeManager;
@@ -54,15 +55,24 @@ public class FunctionManager
         }
 
         String functionName = "";
+        boolean isPredicate = false;
         switch (operatorType) {
             case ADD:
                 functionName = "add";
                 break;
             case EQUAL:
                 functionName = "eq";
+                isPredicate = true;
+                break;
+            case GREATER_THAN:
+                functionName = "GT";
                 break;
             default:
                 throw new UnsupportedOperationException("not yet implemented");
+        }
+
+        if (isPredicate) {
+            retType = Optional.of(BooleanType.BOOLEAN);
         }
 
         return new FunctionHandle(functionName,
@@ -98,5 +108,11 @@ public class FunctionManager
                 TypeSignature.create(fn.getReturnType()),
                 intermediateType,
                 arguments, functionKind, fn);
+    }
+
+    public FunctionHandle likeFunction(List<TypeSignatureProvider> parameterTypes) {
+        List<TypeSignature> arguments = parameterTypes.stream().map(TypeSignatureProvider::getTypeSignature).collect(Collectors.toList());
+        return new FunctionHandle("LIKE", BooleanType.BOOLEAN.getTypeSignature(),
+                null, arguments, FunctionHandle.FunctionKind.SCALAR, null);
     }
 }

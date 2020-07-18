@@ -279,7 +279,7 @@ public class ConnectProcessor {
 
                 PlanFragmentBuilder fragmentBuilder = new PlanFragmentBuilder();
                 PlanFragmentBuilder.PhysicalPlan physicalPlan =
-                        fragmentBuilder.createPhysicalPlan(plan, descTbl, plannerContext, variableToSlotRef);
+                        fragmentBuilder.createPhysicalPlan(plan, descTbl, plannerContext, variableToSlotRef, new TypeRegistry());
                 ArrayList<PlanFragment> fragments = physicalPlan.getFragments();
 
                 for (PlanFragment fragment : fragments) {

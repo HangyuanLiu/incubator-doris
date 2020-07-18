@@ -337,6 +337,22 @@ public class AstBuilder
     }
 
     @Override
+    public Node visitLike(SqlBaseParser.LikeContext context)
+    {
+        Expression result = new LikePredicate(
+                getLocation(context),
+                (Expression) visit(context.value),
+                (Expression) visit(context.pattern),
+                visitIfPresent(context.escape, Expression.class));
+
+        if (context.NOT() != null) {
+            result = new NotExpression(getLocation(context), result);
+        }
+
+        return result;
+    }
+
+    @Override
     public Node visitInList(SqlBaseParser.InListContext context)
     {
         Expression result = new InPredicate(

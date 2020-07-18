@@ -1,5 +1,6 @@
 package org.apache.doris.sql.metadata;
 
+import org.apache.doris.analysis.BinaryPredicate;
 import org.apache.doris.catalog.Function;
 import org.apache.doris.catalog.Type;
 import org.apache.doris.sql.type.TypeSignature;
@@ -21,7 +22,6 @@ public class FunctionHandle {
     private final List<TypeSignature> argumentTypes;
     private final FunctionKind functionKind;
     private final Function fn;
-
 
     public FunctionHandle(
             String functionName,

@@ -57,6 +57,10 @@ public class TypeSignature {
                 return ScalarType.DOUBLE;
             case "varchar":
                 return ScalarType.VARCHAR;
+            case "date":
+                return ScalarType.DATE;
+            case "boolean":
+                return ScalarType.BOOLEAN;
             default:
                 throw new UnsupportedOperationException(this.getBase() +" not yet implemented");
         }
@@ -64,12 +68,18 @@ public class TypeSignature {
 
     public static TypeSignature create(org.apache.doris.catalog.Type dorisType) {
         switch (dorisType.getPrimitiveType()) {
+            case INT:
+                return new TypeSignature(StandardTypes.INTEGER);
             case BIGINT:
                 return new TypeSignature(StandardTypes.BIGINT);
             case DOUBLE:
                 return new TypeSignature(StandardTypes.DOUBLE);
             case VARCHAR:
                 return new TypeSignature(StandardTypes.VARCHAR);
+            case DATE:
+                return new TypeSignature(StandardTypes.DATE);
+            case BOOLEAN:
+                return new TypeSignature(StandardTypes.BOOLEAN);
             default:
                 throw new UnsupportedOperationException(dorisType.toString() + " not yet implemented");
         }

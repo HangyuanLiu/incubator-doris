@@ -23,7 +23,7 @@ public class MetadataManager implements Metadata {
             Catalog catalog) {
         this.typeManager = typeManager;
         this.functions = functionManager;
-        this.metadata = new DorisMetadata(catalog);
+        this.metadata = new DorisMetadata(catalog, typeManager);
     }
 
     @Override

@@ -39,18 +39,12 @@ public class StringLiteral
         super(location);
         requireNonNull(value, "value is null");
         this.value = value;
-        //this.slice = utf8Slice(value);
     }
 
     public String getValue()
     {
         return value;
     }
-
-    //public Slice getSlice()
-    //{
-    //    return slice;
-    //}
 
     @Override
     public <R, C> R accept(AstVisitor<R, C> visitor, C context)

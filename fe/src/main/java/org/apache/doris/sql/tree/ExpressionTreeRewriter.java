@@ -252,6 +252,28 @@ public class ExpressionTreeRewriter<C> {
         }
 
         @Override
+        public Expression visitLikePredicate(LikePredicate node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteLikePredicate(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression value = rewrite(node.getValue(), context.get());
+            Expression pattern = rewrite(node.getPattern(), context.get());
+            Optional<Expression> rewrittenEscape = node.getEscape()
+                    .map(escape -> rewrite(escape, context.get()));
+
+            if (value != node.getValue() || pattern != node.getPattern() || !sameElements(node.getEscape(), rewrittenEscape)) {
+                return new LikePredicate(value, pattern, rewrittenEscape);
+            }
+
+            return node;
+        }
+
+        @Override
         public Expression visitInPredicate(InPredicate node, Context<C> context)
         {
             if (!context.isDefaultRewrite()) {
