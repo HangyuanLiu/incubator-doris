@@ -17,6 +17,8 @@ package org.apache.doris.sql.relational;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import org.apache.doris.sql.analyzer.SemanticErrorCode;
+import org.apache.doris.sql.analyzer.SemanticException;
 import org.apache.doris.sql.analyzer.TypeSignatureProvider;
 import org.apache.doris.sql.metadata.FunctionManager;
 import org.apache.doris.sql.metadata.QualifiedFunctionName;
@@ -35,6 +37,7 @@ import org.apache.doris.sql.tree.DoubleLiteral;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.FieldReference;
 import org.apache.doris.sql.tree.FunctionCall;
+import org.apache.doris.sql.tree.GenericLiteral;
 import org.apache.doris.sql.tree.Identifier;
 import org.apache.doris.sql.tree.InListExpression;
 import org.apache.doris.sql.tree.InPredicate;
@@ -54,6 +57,7 @@ import org.apache.doris.sql.type.Decimals;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.type.TypeManager;
+import org.apache.doris.sql.type.TypeSignature;
 import org.apache.doris.sql.type.UnknownType;
 import org.apache.doris.sql.type.VarcharType;
 
@@ -63,6 +67,7 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.AND;
@@ -79,6 +84,9 @@ import static org.apache.doris.sql.type.DoubleType.DOUBLE;
 import static org.apache.doris.sql.type.IntegerType.INTEGER;
 import static org.apache.doris.sql.type.OperatorType.EQUAL;
 import static org.apache.doris.sql.type.OperatorType.NEGATION;
+import static org.apache.doris.sql.type.SmallintType.SMALLINT;
+import static org.apache.doris.sql.type.TinyintType.TINYINT;
+import static org.apache.doris.sql.type.VarcharType.VARCHAR;
 import static org.apache.doris.sql.type.VarcharType.createVarcharType;
 
 public final class SqlToRowExpressionTranslator
@@ -188,6 +196,39 @@ public final class SqlToRowExpressionTranslator
         protected RowExpression visitStringLiteral(StringLiteral node, Void context)
         {
             return constant(node.getValue(), createVarcharType(node.getValue().length()));
+        }
+
+        @Override
+        protected RowExpression visitGenericLiteral(GenericLiteral node, Void context)
+        {
+            Type type;
+            try {
+                type = typeManager.getType(new TypeSignature(node.getType()));
+            }
+            catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Unsupported type: " + node.getType());
+            }
+
+            try {
+                if (TINYINT.equals(type)) {
+                    return constant((long) Byte.parseByte(node.getValue()), TINYINT);
+                }
+                else if (SMALLINT.equals(type)) {
+                    return constant((long) Short.parseShort(node.getValue()), SMALLINT);
+                }
+                else if (BIGINT.equals(type)) {
+                    return constant(Long.parseLong(node.getValue()), BIGINT);
+                }
+            }
+            catch (NumberFormatException e) {
+                throw new SemanticException(SemanticErrorCode.INVALID_LITERAL, node, format("Invalid formatted generic %s literal: %s", type, node));
+            }
+
+            return call(
+                    "CAST",
+                    functionManager.lookupCast(VARCHAR.getTypeSignature(), getType(node).getTypeSignature()),
+                    getType(node),
+                    constant(node.getValue(), VARCHAR));
         }
 
         @Override

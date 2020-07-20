@@ -1,5 +1,6 @@
 package org.apache.doris.sql.metadata;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.doris.analysis.FunctionName;
 import org.apache.doris.catalog.AggregateFunction;
@@ -24,6 +25,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 
 @ThreadSafe
 public class FunctionManager
@@ -114,5 +117,19 @@ public class FunctionManager
         List<TypeSignature> arguments = parameterTypes.stream().map(TypeSignatureProvider::getTypeSignature).collect(Collectors.toList());
         return new FunctionHandle("LIKE", BooleanType.BOOLEAN.getTypeSignature(),
                 null, arguments, FunctionHandle.FunctionKind.SCALAR, null);
+    }
+
+    public FunctionHandle lookupCast(TypeSignature fromType, TypeSignature toType)
+    {
+        Function searchDesc = new Function(new FunctionName("castTo" + toType.toDorisType().toString()),
+                Lists.newArrayList(fromType.toDorisType()),
+                org.apache.doris.catalog.Type.INVALID, false);
+
+        Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
+
+        return new FunctionHandle("castTo" + toType.toDorisType().toString(),
+                TypeSignature.create(fn.getReturnType()),
+                null,
+                Lists.newArrayList(fromType), FunctionHandle.FunctionKind.SCALAR, fn);
     }
 }

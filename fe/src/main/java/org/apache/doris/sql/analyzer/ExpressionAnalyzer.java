@@ -30,6 +30,7 @@ import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.tree.*;
 import org.apache.doris.sql.type.TypeManager;
+import org.apache.doris.sql.type.TypeSignature;
 import org.apache.doris.sql.type.UnknownType;
 import org.apache.doris.sql.type.VarcharType;
 
@@ -48,6 +49,8 @@ import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
 import static org.apache.doris.sql.type.BigintType.BIGINT;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 import static org.apache.doris.sql.type.IntegerType.INTEGER;
+import static org.apache.doris.sql.type.IntervalDayTimeType.INTERVAL_DAY_TIME;
+import static org.apache.doris.sql.type.IntervalYearMonthType.INTERVAL_YEAR_MONTH;
 import static org.apache.doris.sql.type.VarcharType.VARCHAR;
 import static org.apache.doris.sql.type.DoubleType.DOUBLE;
 
@@ -320,6 +323,30 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitGenericLiteral(GenericLiteral node, StackableAstVisitorContext<Context> context)
+        {
+            Type type;
+            try {
+                //type = typeManager.getType(parseTypeSignature(node.getType()));
+                type = typeManager.getType(new TypeSignature(node.getType()));
+            }
+            catch (IllegalArgumentException e) {
+                throw new SemanticException(TYPE_MISMATCH, node, "Unknown type: " + node.getType());
+            }
+            /*
+            if (!JSON.equals(type)) {
+                try {
+                    functionManager.lookupCast(CAST, VARCHAR.getTypeSignature(), type.getTypeSignature());
+                }
+                catch (IllegalArgumentException e) {
+                    throw new SemanticException(TYPE_MISMATCH, node, "No literal form for type %s", type);
+                }
+            }
+            */
+            return setExpressionType(node, type);
+        }
+
+        @Override
         protected Type visitComparisonExpression(ComparisonExpression node, StackableAstVisitorContext<Context> context)
         {
             OperatorType operatorType = OperatorType.valueOf(node.getOperator().name());
@@ -430,6 +457,25 @@ public class ExpressionAnalyzer
         public Type visitFieldReference(FieldReference node, StackableAstVisitorContext<Context> context) {
             Field field = baseScope.getRelationType().getFieldByIndex(node.getFieldIndex());
             return handleResolvedField(node, new FieldId(baseScope.getRelationId(), node.getFieldIndex()), field, context);
+        }
+
+        @Override
+        protected Type visitIntervalLiteral(IntervalLiteral node, StackableAstVisitorContext<Context> context)
+        {
+            Type type;
+            if (node.isYearToMonth()) {
+                type = INTERVAL_YEAR_MONTH;
+            }
+            else {
+                type = INTERVAL_DAY_TIME;
+            }
+            return setExpressionType(node, type);
+        }
+
+        @Override
+        protected Type visitNullLiteral(NullLiteral node, StackableAstVisitorContext<Context> context)
+        {
+            return setExpressionType(node, UnknownType.UNKNOWN);
         }
 
         @Override

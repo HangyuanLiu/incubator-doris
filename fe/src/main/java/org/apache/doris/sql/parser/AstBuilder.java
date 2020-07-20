@@ -517,6 +517,35 @@ public class AstBuilder
     }
 
     @Override
+    public Node visitTypeConstructor(SqlBaseParser.TypeConstructorContext context)
+    {
+        String value = ((StringLiteral) visit(context.string())).getValue();
+
+        if (context.DOUBLE_PRECISION() != null) {
+            // TODO: Temporary hack that should be removed with new planner.
+            return new GenericLiteral(getLocation(context), "DOUBLE", value);
+        }
+
+        String type = context.identifier().getText();
+        /*
+        if (type.equalsIgnoreCase("time")) {
+            return new TimeLiteral(getLocation(context), value);
+        }
+        if (type.equalsIgnoreCase("timestamp")) {
+            return new TimestampLiteral(getLocation(context), value);
+        }
+         */
+        if (type.equalsIgnoreCase("decimal")) {
+            return new DecimalLiteral(getLocation(context), value);
+        }
+        if (type.equalsIgnoreCase("char")) {
+            return new CharLiteral(getLocation(context), value);
+        }
+
+        return new GenericLiteral(getLocation(context), type, value);
+    }
+
+    @Override
     public Node visitIntegerLiteral(SqlBaseParser.IntegerLiteralContext context)
     {
         return new LongLiteral(getLocation(context), context.getText());

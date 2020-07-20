@@ -43,6 +43,8 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.type.DateType.DATE;
 import static org.apache.doris.sql.type.DecimalType.createDecimalType;
 import static org.apache.doris.sql.type.IntegerType.INTEGER;
+import static org.apache.doris.sql.type.IntervalDayTimeType.INTERVAL_DAY_TIME;
+import static org.apache.doris.sql.type.IntervalYearMonthType.INTERVAL_YEAR_MONTH;
 import static org.apache.doris.sql.type.UnknownType.UNKNOWN;
 import static org.apache.doris.sql.type.BigintType.BIGINT;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
@@ -68,6 +70,8 @@ public final class TypeRegistry
         addType(INTEGER);
         addType(DOUBLE);
         addType(DATE);
+        addType(INTERVAL_YEAR_MONTH);
+        addType(INTERVAL_DAY_TIME);
         addParametricType(VarcharParametricType.VARCHAR);
         addParametricType(CharParametricType.CHAR);
         addParametricType(DecimalParametricType.DECIMAL);
