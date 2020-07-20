@@ -22,9 +22,6 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.KillStmt;
-import org.apache.doris.analysis.SlotDescriptor;
-import org.apache.doris.analysis.SlotId;
-import org.apache.doris.analysis.SlotRef;
 import org.apache.doris.analysis.SqlParser;
 import org.apache.doris.analysis.SqlScanner;
 import org.apache.doris.analysis.StatementBase;
@@ -48,14 +45,11 @@ import org.apache.doris.mysql.MysqlPacket;
 import org.apache.doris.mysql.MysqlProto;
 import org.apache.doris.mysql.MysqlSerializer;
 import org.apache.doris.mysql.MysqlServerStatusFlag;
-import org.apache.doris.planner.DistributedPlanner;
 import org.apache.doris.planner.PlanFragment;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.planner.PlannerContext;
 import org.apache.doris.plugin.AuditEvent.EventType;
 import org.apache.doris.proto.PQueryStatistics;
-import org.apache.doris.qe.QueryDetail;
-import org.apache.doris.qe.QueryDetailQueue;
 import org.apache.doris.service.FrontendOptions;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.StatementAnalyzer;
@@ -69,11 +63,10 @@ import org.apache.doris.sql.parser.ParsingOptions;
 import org.apache.doris.sql.parser.SqlBaseLexer;
 import org.apache.doris.sql.parser.SqlBaseParser;
 import org.apache.doris.sql.planner.LogicalPlanner;
-import org.apache.doris.sql.planner.PhysicalPlanner;
 import org.apache.doris.sql.planner.Plan;
 import org.apache.doris.sql.planner.PlanFragmentBuilder;
 import org.apache.doris.sql.planner.PlanOptimizers;
-import org.apache.doris.sql.planner.plan.OutputNode;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.Query;
@@ -87,7 +80,6 @@ import org.apache.doris.thrift.TQueryOptions;
 
 import com.google.common.base.Strings;
 
-import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -100,6 +92,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -252,30 +245,9 @@ public class ConnectProcessor {
 
                 DescriptorTable descTbl = new DescriptorTable();
                 PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
-                HashMap<String, SlotId> variableToSlotRef = new HashMap<>();
+                Map<VariableReferenceExpression, Expr> variableToSlotRef = new HashMap<>();
 
                 QuerySpecification specification = (QuerySpecification) ((Query) stmt).getQueryBody();
-
-            /*
-            PhysicalPlanner physicalPlanner = new PhysicalPlanner();
-            PhysicalPlanner.PhysicalPlan physicalPlan = physicalPlanner.createPhysicalPlan(plan, descTbl, plannerContext, variableToSlotRef);
-            System.out.println("DescriptorTable : " + descTbl.getTupleDescs());
-
-            //execute plan
-            DistributedPlanner distributedPlanner = new DistributedPlanner(plannerContext);
-            ArrayList<PlanFragment> fragments = distributedPlanner.createPlanFragments(physicalPlan.getRoot());
-
-            for (PlanFragment fragment : fragments) {
-                System.out.println("fragments : " + fragment.toThrift());
-                fragment.finalize(null, false);
-            }
-
-            PlanFragment rootFragment = fragments.get(fragments.size() - 1);
-            List<Expr> outputExprs = physicalPlan.getOutputExprs();
-
-            rootFragment.setOutputExprs(outputExprs);
-            Collections.reverse(fragments);
-             */
 
                 PlanFragmentBuilder fragmentBuilder = new PlanFragmentBuilder();
                 PlanFragmentBuilder.PhysicalPlan physicalPlan =

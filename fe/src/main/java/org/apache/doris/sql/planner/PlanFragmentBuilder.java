@@ -90,7 +90,7 @@ public class PlanFragmentBuilder {
         }
     }
 
-    public PhysicalPlan createPhysicalPlan(Plan plan, DescriptorTable descTbl, PlannerContext plannerContext, Map<String, SlotId> variableToSlotRef, TypeManager typeManager) {
+    public PhysicalPlan createPhysicalPlan(Plan plan, DescriptorTable descTbl, PlannerContext plannerContext, Map<VariableReferenceExpression, Expr> variableToSlotRef, TypeManager typeManager) {
         PhysicalPlanTranslator physicalPlanTranslator = new PhysicalPlanTranslator(new VariableAllocator(), typeManager);
         //PlanNode root = SimplePlanRewriter.rewriteWith(physicalPlanTranslator, plan.getRoot());
         List<org.apache.doris.planner.ScanNode> scanNodes = new ArrayList<>();
@@ -162,13 +162,6 @@ public class PlanFragmentBuilder {
 
                 return exchangeFragment;
             }
-            /*
-            for (VariableReferenceExpression variable : node.getOutputVariables()) {
-                context.outputExprs.add(context.outputRowExpression.get(variable));
-            }
-            root.setOutputExprs(context.outputExprs);
-             */
-            //return root;
         }
 
         @Override
@@ -188,13 +181,12 @@ public class PlanFragmentBuilder {
                     VariableReferenceExpression input = node.getInputs().get(0).get(i);
                     Expr expr = RowExpressionToExpr.formatRowExpression(input, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
 
-                    context.variableToSlotRef.put(node.getOutputVariables().get(i).getName(), ((SlotRef) expr).getSlotId());
+                    context.variableToSlotRef.put(node.getOutputVariables().get(i), expr);
                 }
 
                 context.fragments.add(fragment);
                 return fragment;
             }
-
 
             List<PlanFragment> exchanges = new ArrayList<>();
             for (LogicalPlanNode source : node.getSources()) {
@@ -219,7 +211,7 @@ public class PlanFragmentBuilder {
                     VariableReferenceExpression input = node.getInputs().get(0).get(i);
                     Expr expr = RowExpressionToExpr.formatRowExpression(input, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
 
-                    context.variableToSlotRef.put(node.getOutputVariables().get(i).getName(), ((SlotRef) expr).getSlotId());
+                    context.variableToSlotRef.put(node.getOutputVariables().get(i), expr);
                 }
 
                 exchanges.add(exchangeFragment);
@@ -358,7 +350,7 @@ public class PlanFragmentBuilder {
                 slotDesc.setIsNullable(true);
                 slotDesc.setIsMaterialized(true);
 
-                context.variableToSlotRef.put(orderByVar.getName(), slotDesc.getId());
+                context.variableToSlotRef.put(orderByVar, new SlotRef(slotDesc));
                 resolvedTupleExprs.add(sortExpr);
                 sortExprs.add(new SlotRef(slotDesc));
             }
@@ -370,7 +362,7 @@ public class PlanFragmentBuilder {
                     slotDesc.setIsNullable(true);
                     slotDesc.setIsMaterialized(true);
 
-                    context.variableToSlotRef.put(var.getName(), slotDesc.getId());
+                    context.variableToSlotRef.put(var, new SlotRef(slotDesc));
                     resolvedTupleExprs.add(sortExpr);
                 }
             }
@@ -392,13 +384,60 @@ public class PlanFragmentBuilder {
 
         @Override
         public PlanFragment visitSort(SortNode node, FragmentProperties context) {
-            return null;
+            PlanFragment inputFragment = visitPlan(node.getSource(), context);
+            //Get order ascending and is null first
+            OrderingScheme orderingScheme = node.getOrderingScheme();
+            List<Boolean> isAscOrder = orderingScheme.getOrderByVariables().stream().
+                    map(rowExpression -> orderingScheme.getOrdering(rowExpression).isAscending()).collect(Collectors.toList());
+            List<Boolean> isNullsFirst = orderingScheme.getOrderByVariables().
+                    stream().map(rowExpression -> orderingScheme.getOrdering(rowExpression).isNullsFirst()).collect(Collectors.toList());
+
+
+            List<Expr> resolvedTupleExprs = new ArrayList<>();
+            List<Expr> sortExprs = new ArrayList<>();
+            TupleDescriptor tupleDescriptor = context.descTbl.createTupleDescriptor();
+            for (VariableReferenceExpression orderByVar : orderingScheme.getOrderByVariables()) {
+                Expr sortExpr = RowExpressionToExpr.formatRowExpression(orderByVar, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(tupleDescriptor);
+                slotDesc.initFromExpr(sortExpr);
+                slotDesc.setIsNullable(true);
+                slotDesc.setIsMaterialized(true);
+
+                context.variableToSlotRef.put(orderByVar, new SlotRef(slotDesc));
+                resolvedTupleExprs.add(sortExpr);
+                sortExprs.add(new SlotRef(slotDesc));
+            }
+            for (VariableReferenceExpression var : node.getOutputVariables()) {
+                if (!orderingScheme.getOrderByVariables().contains(var)) {
+                    Expr sortExpr = RowExpressionToExpr.formatRowExpression(var, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                    SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(tupleDescriptor);
+                    slotDesc.initFromExpr(sortExpr);
+                    slotDesc.setIsNullable(true);
+                    slotDesc.setIsMaterialized(true);
+
+                    context.variableToSlotRef.put(var, new SlotRef(slotDesc));
+                    resolvedTupleExprs.add(sortExpr);
+                }
+            }
+
+            tupleDescriptor.computeMemLayout();
+
+            SortInfo sortInfo = new SortInfo(sortExprs, isAscOrder, isNullsFirst);
+            sortInfo.setMaterializedTupleInfo(tupleDescriptor, resolvedTupleExprs);
+
+            org.apache.doris.planner.SortNode sortNode =
+                    new org.apache.doris.planner.SortNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(), sortInfo, true, false, 0);
+            sortNode.setLimit(65535);
+            sortNode.resolvedTupleExprs = resolvedTupleExprs;
+
+            inputFragment.setPlanRoot(sortNode);
+
+            return inputFragment;
         }
 
         @Override
         public PlanFragment visitAggregation(AggregationNode node, FragmentProperties context) {
             PlanFragment inputFragment = visitPlan(node.getSource(), context);
-
 
             ArrayList<Expr> finalGrouping = new ArrayList<>();
             Map<VariableReferenceExpression, RowExpression> finalAggregation = new HashMap<>();
@@ -434,7 +473,7 @@ public class PlanFragmentBuilder {
                 slotDesc.setIsMaterialized(true);
 
                 VariableReferenceExpression var = variableAllocator.newVariable(aggregation.toString(), aggregation.getKey().getType());
-                context.variableToSlotRef.put(var.getName(), slotDesc.getId());
+                context.variableToSlotRef.put(var, new SlotRef(slotDesc));
                 finalAggregation.put(aggregation.getKey(),var);
             }
             intermediateTupleDesc.computeMemLayout();
@@ -449,7 +488,7 @@ public class PlanFragmentBuilder {
                 slotDesc.setType(groupExpr.getType());
                 slotDesc.setIsNullable(true);
                 slotDesc.setIsMaterialized(true);
-                context.variableToSlotRef.put(groupKey.getName(), slotDesc.getId());
+                context.variableToSlotRef.put(groupKey, new SlotRef(slotDesc));
             }
             for (Map.Entry<VariableReferenceExpression, AggregationNode.Aggregation> aggregation : node.getAggregations().entrySet()) {
                 FunctionCallExpr functionCallExpr = (FunctionCallExpr) RowExpressionToExpr.formatRowExpression(aggregation.getValue().getCall(),
@@ -459,7 +498,7 @@ public class PlanFragmentBuilder {
                 slotDesc.setType(functionCallExpr.getType());
                 slotDesc.setIsNullable(true);
                 slotDesc.setIsMaterialized(true);
-                context.variableToSlotRef.put(aggregation.getKey().getName(), slotDesc.getId());
+                context.variableToSlotRef.put(aggregation.getKey(), new SlotRef(slotDesc));
             }
             outputTupleDesc.computeMemLayout();
 
@@ -514,7 +553,6 @@ public class PlanFragmentBuilder {
             PlanFragment inputFragment = visitPlan(node.getSource(), context);
             /*
             ArrayList<TupleId> tupleIds = inputFragment.getPlanRoot().getTupleIds();
-
             TupleDescriptor tupleDescriptor = context.descTbl.getTupleDesc(tupleIds.get(0));
             ArrayList<Expr> outputExpr = new ArrayList<>();
             for (Map.Entry<VariableReferenceExpression, RowExpression> entry : node.getAssignments().getMap().entrySet()) {
@@ -523,15 +561,19 @@ public class PlanFragmentBuilder {
                 SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(tupleDescriptor);
                 slotDesc.initFromExpr(expr);
                 slotDesc.setIsNullable(true);
-                slotDesc.setIsMaterialized(true);
+                //slotDesc.setIsMaterialized(true);
 
-                context.variableToSlotRef.put(entry.getKey().getName(), slotDesc.getId());
+                context.variableToSlotRef.put(entry.getKey(), new SlotRef(slotDesc));
                 outputExpr.add(expr);
             }
             inputFragment.setOutputExprs(outputExpr);
             tupleDescriptor.computeMemLayout();
-
              */
+
+            for (Map.Entry<VariableReferenceExpression, RowExpression> entry : node.getAssignments().getMap().entrySet()) {
+                Expr expr = RowExpressionToExpr.formatRowExpression(entry.getValue(), new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                context.variableToSlotRef.put(entry.getKey(), expr);
+            }
             return inputFragment;
         }
 
@@ -591,7 +633,7 @@ public class PlanFragmentBuilder {
                 slotDescriptor.setIsNullable(true);
                 slotDescriptor.setIsMaterialized(true);
 
-                context.variableToSlotRef.put(entry.getKey().getName(), slotDescriptor.getId());
+                context.variableToSlotRef.put(entry.getKey(), new SlotRef(slotDescriptor));
             }
 
             tupleDescriptor.computeMemLayout();
@@ -604,7 +646,7 @@ public class PlanFragmentBuilder {
     private static class FragmentProperties {
         private final DescriptorTable descTbl;
         private final PlannerContext plannerContext;
-        private final Map<String, SlotId> variableToSlotRef;
+        private final Map<VariableReferenceExpression, Expr> variableToSlotRef;
         private final List<org.apache.doris.planner.ScanNode> scanNodes;
         public List<Expr> outputExprs;
 
@@ -612,7 +654,7 @@ public class PlanFragmentBuilder {
 
         private final ArrayList<PlanFragment> fragments = new ArrayList<>();
 
-        FragmentProperties (DescriptorTable descTbl, PlannerContext plannerContext, Map<String, SlotId> variableToSlotRef,
+        FragmentProperties (DescriptorTable descTbl, PlannerContext plannerContext, Map<VariableReferenceExpression, Expr> variableToSlotRef,
                             List<org.apache.doris.planner.ScanNode> scanNodes, List<Expr> outputExprs, Map<LogicalPlanNode, TupleDescriptor> tupleDescriptorMap ) {
             this.descTbl = descTbl;
             this.plannerContext = plannerContext;

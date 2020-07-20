@@ -41,9 +41,9 @@ public class RowExpressionToExpr {
 
     public static class FormatterContext {
         private DescriptorTable descTbl;
-        private Map<String, SlotId> variableToSlotRef;
+        private Map<VariableReferenceExpression, Expr> variableToSlotRef;
 
-        public FormatterContext(DescriptorTable descTbl, Map<String, SlotId> variableToSlotRef) {
+        public FormatterContext(DescriptorTable descTbl, Map<VariableReferenceExpression, Expr> variableToSlotRef) {
             this.descTbl = descTbl;
             this.variableToSlotRef = variableToSlotRef;
         }
@@ -101,7 +101,8 @@ public class RowExpressionToExpr {
 
         @Override
         public Expr visitVariableReference(VariableReferenceExpression node, FormatterContext context) {
-            return new SlotRef(context.descTbl.getSlotDesc(context.variableToSlotRef.get(node.getName())));
+            //return new SlotRef(context.descTbl.getSlotDesc(context.variableToSlotRef.get(node.getName())));
+            return context.variableToSlotRef.get(node);
         }
 
         @Override
