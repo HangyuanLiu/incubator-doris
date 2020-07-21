@@ -205,7 +205,7 @@ class TranslationMap
                 if (coercion != null) {
                     rewritten = new Cast(
                             rewritten,
-                            coercion.getTypeSignature().toString(),
+                            coercion.getTypeSignature().getBase(),
                             false,
                             analysis.isTypeOnlyCoercion(original));
                 }

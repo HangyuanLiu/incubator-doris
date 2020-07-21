@@ -15,9 +15,11 @@ import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.QualifiedName;
 import org.apache.doris.sql.type.BooleanType;
 import org.apache.doris.sql.type.OperatorType;
+import org.apache.doris.sql.type.StandardTypes;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.type.TypeManager;
 import org.apache.doris.sql.type.TypeSignature;
+import org.apache.doris.sql.type.TypeSignatureParameter;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -54,11 +56,6 @@ public class FunctionManager
     public FunctionHandle resolveOperator(OperatorType operatorType,  List<TypeSignatureProvider> argumentTypes) {
         List<TypeSignature> arguments = argumentTypes.stream().map(TypeSignatureProvider::getTypeSignature).collect(Collectors.toList());
 
-        Optional<Type> retType = Optional.of(typeManager.getType(argumentTypes.get(0).getTypeSignature()));
-        for (TypeSignatureProvider type : argumentTypes) {
-            retType = typeManager.getCommonSuperType(typeManager.getType(type.getTypeSignature()), retType.get());
-        }
-
         String functionName = "";
         boolean isPredicate = false;
         switch (operatorType) {
@@ -75,6 +72,19 @@ public class FunctionManager
             default:
                 throw new UnsupportedOperationException("not yet implemented");
         }
+        if (arguments.stream().map(TypeSignature::getBase).anyMatch(type -> type.equals(StandardTypes.INTERVAL_DAY_TO_SECOND))) {
+            return resolveTimeUnitOperator(operatorType, argumentTypes, "DAY");
+        }
+
+        Optional<Type> retType = Optional.of(typeManager.getType(argumentTypes.get(0).getTypeSignature()));
+        for (TypeSignatureProvider type : argumentTypes) {
+            retType = typeManager.getCommonSuperType(typeManager.getType(type.getTypeSignature()), retType.get());
+        }
+
+        List<TypeSignature> coerceTypes = new ArrayList<>();
+        for (TypeSignature argType : arguments) {
+            coerceTypes.add(typeManager.coerceTypeBase(typeManager.getType(argType), retType.get().getTypeSignature().getBase()).get().getTypeSignature());
+        }
 
         if (isPredicate) {
             retType = Optional.of(BooleanType.BOOLEAN);
@@ -83,7 +93,7 @@ public class FunctionManager
         return new FunctionHandle(functionName,
                 retType.get().getTypeSignature(),
                 null,
-                arguments,
+                coerceTypes,
                 FunctionHandle.FunctionKind.SCALAR, null);
     }
 

@@ -26,6 +26,7 @@ import org.apache.doris.sql.type.BooleanType;
 import org.apache.doris.sql.type.CharType;
 import org.apache.doris.sql.type.DecimalParseResult;
 import org.apache.doris.sql.type.Decimals;
+import org.apache.doris.sql.type.IntegerType;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.tree.*;
@@ -53,6 +54,7 @@ import static org.apache.doris.sql.type.IntervalDayTimeType.INTERVAL_DAY_TIME;
 import static org.apache.doris.sql.type.IntervalYearMonthType.INTERVAL_YEAR_MONTH;
 import static org.apache.doris.sql.type.VarcharType.VARCHAR;
 import static org.apache.doris.sql.type.DoubleType.DOUBLE;
+import static org.apache.doris.sql.type.UnknownType.UNKNOWN;
 
 public class ExpressionAnalyzer
 {
@@ -354,6 +356,34 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        public Type visitCast(Cast node, StackableAstVisitorContext<Context> context)
+        {
+            Type type;
+            try {
+                type = typeManager.getType(new TypeSignature(node.getType()));
+            }
+            catch (IllegalArgumentException e) {
+                throw new SemanticException(TYPE_MISMATCH, node, "Unknown type: " + node.getType());
+            }
+
+            if (type.equals(UNKNOWN)) {
+                throw new SemanticException(TYPE_MISMATCH, node, "UNKNOWN is not a valid type");
+            }
+
+            Type value = process(node.getExpression(), context);
+            if (!value.equals(UNKNOWN) && !node.isTypeOnly()) {
+                try {
+                    functionManager.lookupCast(value.getTypeSignature(), type.getTypeSignature());
+                }
+                catch (Exception e) {
+                    throw new SemanticException(TYPE_MISMATCH, node, "Cannot cast %s to %s", value, type);
+                }
+            }
+
+            return setExpressionType(node, type);
+        }
+
+        @Override
         protected Type visitInPredicate(InPredicate node, StackableAstVisitorContext<Context> context)
         {
             Expression value = node.getValue();
@@ -462,6 +492,7 @@ public class ExpressionAnalyzer
         @Override
         protected Type visitIntervalLiteral(IntervalLiteral node, StackableAstVisitorContext<Context> context)
         {
+
             Type type;
             if (node.isYearToMonth()) {
                 type = INTERVAL_YEAR_MONTH;

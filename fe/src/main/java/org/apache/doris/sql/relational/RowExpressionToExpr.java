@@ -3,6 +3,7 @@ package org.apache.doris.sql.relational;
 import com.google.common.collect.Lists;
 import org.apache.doris.analysis.ArithmeticExpr;
 import org.apache.doris.analysis.BinaryPredicate;
+import org.apache.doris.analysis.DateLiteral;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.FunctionCallExpr;
@@ -27,11 +28,16 @@ import org.apache.doris.sql.relation.RowExpressionVisitor;
 import org.apache.doris.sql.relation.SpecialFormExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.type.BigintType;
+import org.apache.doris.sql.type.StandardTypes;
 import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.apache.doris.sql.type.StandardTypes.DATE;
+import static org.apache.doris.sql.type.StandardTypes.INTERVAL_DAY_TO_SECOND;
+import static org.apache.doris.sql.type.StandardTypes.TIMESTAMP;
 
 public class RowExpressionToExpr {
     public static Expr formatRowExpression(RowExpression expression, FormatterContext descTbl)
@@ -87,15 +93,25 @@ public class RowExpressionToExpr {
         public Expr visitConstant(ConstantExpression node, FormatterContext context) {
             try {
                 switch (node.getType().getTypeSignature().getBase().toLowerCase()) {
-                    case "bigint":
-                        return new IntLiteral((Long) node.getValue(), Type.BIGINT);
+                    case StandardTypes.INTEGER:
+                    case INTERVAL_DAY_TO_SECOND:
+                        return new IntLiteral((long) node.getValue(), Type.INT);
+                    case StandardTypes.BIGINT:
+                        return new IntLiteral((long) node.getValue(), Type.BIGINT);
                     case "varchar":
                         return new StringLiteral((String) node.getValue());
+                        /*
+                    case DATE:
+                        return new DateLiteral(Type.DATE,)
+                    case TIMESTAMP:
+                        return new DateLiteral(Type.DATETIME, )
+
+                         */
                     default:
-                        throw new UnsupportedOperationException("not yet implemented");
+                        throw new UnsupportedOperationException("not yet implemented type : " + node.getType().getTypeSignature().getBase() + "," + node.getValue());
                 }
             } catch (Exception ex) {
-                throw new UnsupportedOperationException("not yet implemented");
+                throw new UnsupportedOperationException(ex.getMessage());
             }
         }
 

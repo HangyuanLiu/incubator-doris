@@ -171,6 +171,25 @@ public class ExpressionTreeRewriter<C> {
         }
 
         @Override
+        public Expression visitCast(Cast node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteCast(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression expression = rewrite(node.getExpression(), context.get());
+
+            if (node.getExpression() != expression) {
+                return new Cast(expression, node.getType(), node.isSafe(), node.isTypeOnly());
+            }
+
+            return node;
+        }
+
+        @Override
         protected Expression visitFieldReference(FieldReference node, Context<C> context)
         {
             if (!context.isDefaultRewrite()) {

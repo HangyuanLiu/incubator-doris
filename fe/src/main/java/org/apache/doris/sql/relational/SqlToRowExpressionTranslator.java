@@ -176,10 +176,9 @@ public final class SqlToRowExpressionTranslator
         @Override
         protected RowExpression visitLongLiteral(LongLiteral node, Void context)
         {
-            /*
             if (node.getValue() >= Integer.MIN_VALUE && node.getValue() <= Integer.MAX_VALUE) {
                 return constant(node.getValue(), INTEGER);
-            }*/
+            }
             return constant(node.getValue(), BIGINT);
         }
 
@@ -238,7 +237,7 @@ public final class SqlToRowExpressionTranslator
         @Override
         protected RowExpression visitIntervalLiteral(IntervalLiteral node, Void context)
         {
-            long value = 0;
+            long value = Long.parseLong(node.getValue());
             /*
             if (node.isYearToMonth()) {
                 value = node.getSign().multiplier() * parseYearMonthInterval(node.getValue(), node.getStartField(), node.getEndField());
@@ -298,7 +297,7 @@ public final class SqlToRowExpressionTranslator
         {
             RowExpression left = process(node.getLeft(), context);
             RowExpression right = process(node.getRight(), context);
-
+            /*
             if (node.getRight() instanceof IntervalLiteral && left.getType().equals(DateType.DATE)) {
 
                 String timeUnit = ((IntervalLiteral) node.getRight()).getValue();
@@ -311,7 +310,7 @@ public final class SqlToRowExpressionTranslator
                         functionHandle,
                         getType(node), left, right);
             }
-
+            */
             return call(
                     node.getOperator().name(),
                     functionResolution.arithmeticFunction(node.getOperator(), left.getType(), right.getType()),
@@ -354,6 +353,19 @@ public final class SqlToRowExpressionTranslator
                     throw new IllegalStateException("Unknown logical operator: " + node.getOperator());
             }
             return specialForm(form, BOOLEAN, process(node.getLeft(), context), process(node.getRight(), context));
+        }
+
+        @Override
+        protected RowExpression visitCast(Cast node, Void context)
+        {
+            RowExpression value = process(node.getExpression(), context);
+
+            //if (node.isSafe()) {
+            //    return call(TRY_CAST.name(), functionManager.lookupCast(TRY_CAST, value.getType().getTypeSignature(), getType(node).getTypeSignature()), getType(node), value);
+            //}
+
+            FunctionHandle functionHandle = functionManager.lookupCast(value.getType().getTypeSignature(), getType(node).getTypeSignature());
+            return call(functionHandle.getFunctionName(), functionHandle, getType(node), value);
         }
 
         private RowExpression buildEquals(RowExpression lhs, RowExpression rhs)

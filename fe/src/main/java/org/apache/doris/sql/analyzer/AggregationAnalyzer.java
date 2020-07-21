@@ -22,6 +22,7 @@ import org.apache.doris.sql.relational.FunctionResolution;
 import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.ArithmeticUnaryExpression;
 import org.apache.doris.sql.tree.AstVisitor;
+import org.apache.doris.sql.tree.Cast;
 import org.apache.doris.sql.tree.ComparisonExpression;
 import org.apache.doris.sql.tree.DereferenceExpression;
 import org.apache.doris.sql.tree.Expression;
@@ -34,6 +35,7 @@ import org.apache.doris.sql.tree.LogicalBinaryExpression;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.NodeRef;
 import org.apache.doris.sql.tree.SortItem;
+import org.apache.doris.sql.tree.SubqueryExpression;
 
 import java.util.List;
 import java.util.Map;
@@ -50,6 +52,7 @@ import static org.apache.doris.sql.analyzer.ExpressionTreeUtils.extractWindowFun
 import static org.apache.doris.sql.analyzer.ScopeReferenceExtractor.getReferencesToScope;
 import static org.apache.doris.sql.analyzer.ScopeReferenceExtractor.hasReferencesToScope;
 import static org.apache.doris.sql.analyzer.ScopeReferenceExtractor.isFieldFromScope;
+import static org.apache.doris.sql.analyzer.SemanticErrorCode.MUST_BE_AGGREGATE_OR_GROUP_BY;
 
 /**
  * Checks whether an expression is constant with respect to the group
@@ -122,7 +125,7 @@ class AggregationAnalyzer
     {
         Visitor visitor = new Visitor();
         if (!visitor.process(expression, null)) {
-            throw new SemanticException(SemanticErrorCode.MUST_BE_AGGREGATE_OR_GROUP_BY, expression, "'%s' must be an aggregate expression or appear in GROUP BY clause", expression);
+            throw new SemanticException(MUST_BE_AGGREGATE_OR_GROUP_BY, expression, "'%s' must be an aggregate expression or appear in GROUP BY clause", expression);
         }
     }
 
@@ -136,6 +139,31 @@ class AggregationAnalyzer
         protected Boolean visitExpression(Expression node, Void context)
         {
             throw new UnsupportedOperationException("aggregation analysis not yet implemented for: " + node.getClass().getName());
+        }
+
+        @Override
+        protected Boolean visitSubqueryExpression(SubqueryExpression node, Void context)
+        {
+            /*
+             * Column reference can resolve to (a) some subquery's scope, (b) a projection (ORDER BY scope),
+             * (c) source scope or (d) outer query scope (effectively a constant).
+             * From AggregationAnalyzer's perspective, only case (c) needs verification.
+             */
+            getReferencesToScope(node, analysis, sourceScope)
+                    .filter(expression -> !isGroupingKey(expression))
+                    .findFirst()
+                    .ifPresent(expression -> {
+                        throw new SemanticException(MUST_BE_AGGREGATE_OR_GROUP_BY, expression,
+                                "Subquery uses '%s' which must appear in GROUP BY clause", expression);
+                    });
+
+            return true;
+        }
+
+        @Override
+        protected Boolean visitCast(Cast node, Void context)
+        {
+            return process(node.getExpression(), context);
         }
 
         @Override
@@ -300,7 +328,7 @@ class AggregationAnalyzer
                     column = "'" + field.getName().get() + "'";
                 }
 
-                throw new SemanticException(SemanticErrorCode.MUST_BE_AGGREGATE_OR_GROUP_BY, node, "Column %s not in GROUP BY clause", column);
+                throw new SemanticException(MUST_BE_AGGREGATE_OR_GROUP_BY, node, "Column %s not in GROUP BY clause", column);
             }
             return inGroup;
         }

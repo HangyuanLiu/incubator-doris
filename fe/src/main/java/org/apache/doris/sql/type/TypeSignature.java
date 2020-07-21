@@ -51,7 +51,8 @@ public class TypeSignature {
         switch (this.getBase().toLowerCase()) {
             case "bigint":
                 return ScalarType.BIGINT;
-            case "int":
+            case StandardTypes.INTEGER:
+            case StandardTypes.INTERVAL_DAY_TO_SECOND:
                 return ScalarType.INT;
             case "double":
                 return ScalarType.DOUBLE;
@@ -61,6 +62,8 @@ public class TypeSignature {
                 return ScalarType.DATE;
             case "boolean":
                 return ScalarType.BOOLEAN;
+            case "timestamp":
+                return ScalarType.DATETIME;
             default:
                 throw new UnsupportedOperationException(this.getBase() +" not yet implemented");
         }
@@ -78,6 +81,8 @@ public class TypeSignature {
                 return new TypeSignature(StandardTypes.VARCHAR);
             case DATE:
                 return new TypeSignature(StandardTypes.DATE);
+            case DATETIME:
+                return new TypeSignature(StandardTypes.TIMESTAMP);
             case BOOLEAN:
                 return new TypeSignature(StandardTypes.BOOLEAN);
             default:

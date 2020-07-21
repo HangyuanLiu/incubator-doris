@@ -45,6 +45,7 @@ import static org.apache.doris.sql.type.DecimalType.createDecimalType;
 import static org.apache.doris.sql.type.IntegerType.INTEGER;
 import static org.apache.doris.sql.type.IntervalDayTimeType.INTERVAL_DAY_TIME;
 import static org.apache.doris.sql.type.IntervalYearMonthType.INTERVAL_YEAR_MONTH;
+import static org.apache.doris.sql.type.TimestampType.TIMESTAMP;
 import static org.apache.doris.sql.type.UnknownType.UNKNOWN;
 import static org.apache.doris.sql.type.BigintType.BIGINT;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
@@ -70,6 +71,7 @@ public final class TypeRegistry
         addType(INTEGER);
         addType(DOUBLE);
         addType(DATE);
+        addType(TIMESTAMP);
         addType(INTERVAL_YEAR_MONTH);
         addType(INTERVAL_DAY_TIME);
         addParametricType(VarcharParametricType.VARCHAR);
@@ -262,6 +264,14 @@ public final class TypeRegistry
                         return Optional.of(DOUBLE);
                     case StandardTypes.DECIMAL:
                         return Optional.of(createDecimalType(19, 0));
+                    default:
+                        return Optional.empty();
+                }
+            }
+            case StandardTypes.DATE: {
+                switch (resultTypeBase) {
+                    case StandardTypes.TIMESTAMP:
+                        return Optional.of(TIMESTAMP);
                     default:
                         return Optional.empty();
                 }
