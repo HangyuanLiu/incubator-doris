@@ -2,6 +2,7 @@ package org.apache.doris.sql.metadata;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.apache.doris.analysis.ArithmeticExpr;
 import org.apache.doris.analysis.FunctionName;
 import org.apache.doris.catalog.AggregateFunction;
 import org.apache.doris.catalog.Catalog;
@@ -10,6 +11,7 @@ import org.apache.doris.catalog.ScalarFunction;
 import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.sql.analyzer.TypeSignatureProvider;
 import org.apache.doris.sql.planner.plan.AggregationNode;
+import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.QualifiedName;
 import org.apache.doris.sql.type.BooleanType;
 import org.apache.doris.sql.type.OperatorType;
@@ -83,6 +85,31 @@ public class FunctionManager
                 null,
                 arguments,
                 FunctionHandle.FunctionKind.SCALAR, null);
+    }
+
+    public FunctionHandle resolveTimeUnitOperator(OperatorType operatorType, List<TypeSignatureProvider> argumentTypes, String timeUnit) {
+        List<TypeSignature> arguments = argumentTypes.stream().map(TypeSignatureProvider::getTypeSignature).collect(Collectors.toList());
+        String funcOpName = "";
+
+        switch (operatorType) {
+            case ADD:
+                funcOpName = String.format("%sS_%s", timeUnit, "ADD");
+                break;
+            case SUBTRACT:
+                funcOpName = String.format("%sS_%s", timeUnit, "SUB");
+                break;
+        }
+
+        Function searchDesc = new Function(
+                new FunctionName(funcOpName),
+                arguments.stream().map(TypeSignature::toDorisType).collect(Collectors.toList()),
+                org.apache.doris.catalog.Type.INVALID, false);
+        Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
+
+        return new FunctionHandle(funcOpName,
+                TypeSignature.create(fn.getReturnType()),
+                null,
+                arguments, FunctionHandle.FunctionKind.SCALAR, fn);
     }
 
     public FunctionHandle resolveFunction(QualifiedName functionName, List<TypeSignatureProvider> parameterTypes)

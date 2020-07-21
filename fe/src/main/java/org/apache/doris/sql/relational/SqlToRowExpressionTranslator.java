@@ -20,6 +20,7 @@ import com.google.common.collect.Lists;
 import org.apache.doris.sql.analyzer.SemanticErrorCode;
 import org.apache.doris.sql.analyzer.SemanticException;
 import org.apache.doris.sql.analyzer.TypeSignatureProvider;
+import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.FunctionManager;
 import org.apache.doris.sql.metadata.QualifiedFunctionName;
 import org.apache.doris.sql.metadata.Session;
@@ -41,6 +42,7 @@ import org.apache.doris.sql.tree.GenericLiteral;
 import org.apache.doris.sql.tree.Identifier;
 import org.apache.doris.sql.tree.InListExpression;
 import org.apache.doris.sql.tree.InPredicate;
+import org.apache.doris.sql.tree.IntervalLiteral;
 import org.apache.doris.sql.tree.LikePredicate;
 import org.apache.doris.sql.tree.LogicalBinaryExpression;
 import org.apache.doris.sql.tree.LongLiteral;
@@ -52,8 +54,10 @@ import org.apache.doris.sql.tree.SymbolReference;
 import org.apache.doris.sql.type.BigintType;
 import org.apache.doris.sql.type.BooleanType;
 import org.apache.doris.sql.type.CharType;
+import org.apache.doris.sql.type.DateType;
 import org.apache.doris.sql.type.DecimalParseResult;
 import org.apache.doris.sql.type.Decimals;
+import org.apache.doris.sql.type.IntegerType;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.type.TypeManager;
@@ -232,6 +236,22 @@ public final class SqlToRowExpressionTranslator
         }
 
         @Override
+        protected RowExpression visitIntervalLiteral(IntervalLiteral node, Void context)
+        {
+            long value = 0;
+            /*
+            if (node.isYearToMonth()) {
+                value = node.getSign().multiplier() * parseYearMonthInterval(node.getValue(), node.getStartField(), node.getEndField());
+            }
+            else {
+                value = node.getSign().multiplier() * parseDayTimeInterval(node.getValue(), node.getStartField(), node.getEndField());
+            }
+
+             */
+            return constant(value, getType(node));
+        }
+
+        @Override
         protected RowExpression visitComparisonExpression(ComparisonExpression node, Void context)
         {
             RowExpression left = process(node.getLeft(), context);
@@ -276,9 +296,21 @@ public final class SqlToRowExpressionTranslator
         @Override
         protected RowExpression visitArithmeticBinary(ArithmeticBinaryExpression node, Void context)
         {
-
             RowExpression left = process(node.getLeft(), context);
             RowExpression right = process(node.getRight(), context);
+
+            if (node.getRight() instanceof IntervalLiteral && left.getType().equals(DateType.DATE)) {
+
+                String timeUnit = ((IntervalLiteral) node.getRight()).getValue();
+
+                FunctionHandle functionHandle = functionResolution.timeUnitArichemeticFunction(
+                        node.getOperator(),
+                        Lists.newArrayList(left.getType(), INTEGER),
+                        timeUnit);
+                return call(functionHandle.getFunctionName(),
+                        functionHandle,
+                        getType(node), left, right);
+            }
 
             return call(
                     node.getOperator().name(),

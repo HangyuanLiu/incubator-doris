@@ -9,6 +9,8 @@ import org.apache.doris.sql.tree.ComparisonExpression;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 
+import java.util.List;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -54,7 +56,30 @@ public final class FunctionResolution {
         return arithmeticFunction(operatorType, leftType, rightType);
     }
 
+    public FunctionHandle timeUnitArichemeticFunction(ArithmeticBinaryExpression.Operator operator, List<Type> argumentType, String timeUnit) {
 
+        OperatorType operatorType;
+        switch (operator) {
+            case ADD:
+                operatorType = ADD;
+                break;
+            case SUBTRACT:
+                operatorType = SUBTRACT;
+                break;
+            case MULTIPLY:
+                operatorType = MULTIPLY;
+                break;
+            case DIVIDE:
+                operatorType = DIVIDE;
+                break;
+            case MODULUS:
+                operatorType = MODULUS;
+                break;
+            default:
+                throw new IllegalStateException("Unknown arithmetic operator: " + operator);
+        }
+        return functionManager.resolveTimeUnitOperator(operatorType, fromTypes(argumentType), timeUnit);
+    }
 
     public FunctionHandle comparisonFunction(OperatorType operator, Type leftType, Type rightType)
     {
