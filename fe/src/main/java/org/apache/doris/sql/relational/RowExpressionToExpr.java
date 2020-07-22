@@ -3,6 +3,7 @@ package org.apache.doris.sql.relational;
 import com.google.common.collect.Lists;
 import org.apache.doris.analysis.ArithmeticExpr;
 import org.apache.doris.analysis.BinaryPredicate;
+import org.apache.doris.analysis.CompoundPredicate;
 import org.apache.doris.analysis.DateLiteral;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
@@ -172,7 +173,20 @@ public class RowExpressionToExpr {
 
         @Override
         public Expr visitSpecialForm(SpecialFormExpression node, FormatterContext context) {
-            return null;
+            Expr callExpr;
+            if (node.getForm().equals(SpecialFormExpression.Form.AND)) {
+                callExpr = new CompoundPredicate(CompoundPredicate.Operator.AND,
+                        formatRowExpression(node.getArguments().get(0), context),
+                        formatRowExpression(node.getArguments().get(1), context));
+            } else if (node.getForm().equals(SpecialFormExpression.Form.OR)) {
+                callExpr = new CompoundPredicate(CompoundPredicate.Operator.OR,
+                        formatRowExpression(node.getArguments().get(0), context),
+                        formatRowExpression(node.getArguments().get(1), context));
+            } else {
+                return null;
+            }
+            callExpr.setType(node.getType().getTypeSignature().toDorisType());
+            return callExpr;
         }
     }
 }

@@ -27,6 +27,7 @@ import org.apache.doris.sql.tree.SymbolReference;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -59,10 +60,10 @@ public class PlannerUtils
                         .map(item -> {
                             checkArgument(item instanceof SymbolReference, "must be symbol reference");
                             return variable(((SymbolReference) item).getName(), types.get(item));
-                        }).collect(toImmutableList()),
+                        }).collect(Collectors.toList()),
                 orderBy.getSortItems().stream()
                         .map(PlannerUtils::toSortOrder)
-                        .collect(toImmutableList()));
+                        .collect(Collectors.toList()));
     }
 
     public static OrderingScheme toOrderingScheme(List<VariableReferenceExpression> orderingSymbols, List<SortOrder> sortOrders)

@@ -921,7 +921,7 @@ public class AstBuilder
     {
         return types.type().stream()
                 .map(this::getType)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 
     private String getType(SqlBaseParser.TypeContext type)

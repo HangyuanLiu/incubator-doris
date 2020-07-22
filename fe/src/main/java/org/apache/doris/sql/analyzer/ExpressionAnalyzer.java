@@ -65,6 +65,8 @@ public class ExpressionAnalyzer
     private final boolean isDescribe;
 
     private final Map<NodeRef<FunctionCall>, FunctionHandle> resolvedFunctions = new LinkedHashMap<>();
+    private final Set<NodeRef<SubqueryExpression>> scalarSubqueries = new LinkedHashSet<>();
+    private final Set<NodeRef<ExistsPredicate>> existsSubqueries = new LinkedHashSet<>();
     private final Map<NodeRef<Expression>, Type> expressionCoercions = new LinkedHashMap<>();
     private final Set<NodeRef<Expression>> typeOnlyCoercions = new LinkedHashSet<>();
     private final Set<NodeRef<InPredicate>> subqueryInPredicates = new LinkedHashSet<>();
@@ -154,6 +156,16 @@ public class ExpressionAnalyzer
     {
         Visitor visitor = new Visitor(baseScope, warningCollector);
         return visitor.process(expression, new StackableAstVisitor.StackableAstVisitorContext<>(context));
+    }
+
+    public Set<NodeRef<SubqueryExpression>> getScalarSubqueries()
+    {
+        return unmodifiableSet(scalarSubqueries);
+    }
+
+    public Set<NodeRef<ExistsPredicate>> getExistsSubqueries()
+    {
+        return unmodifiableSet(existsSubqueries);
     }
 
     public Set<NodeRef<QuantifiedComparisonExpression>> getQuantifiedComparisons()
@@ -411,6 +423,12 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitBetweenPredicate(BetweenPredicate node, StackableAstVisitorContext<Context> context)
+        {
+            return getOperator(context, node, OperatorType.BETWEEN, node.getValue(), node.getMin(), node.getMax());
+        }
+
+        @Override
         public Type visitCast(Cast node, StackableAstVisitorContext<Context> context)
         {
             Type type;
@@ -490,20 +508,28 @@ public class ExpressionAnalyzer
             Node previousNode = context.getPreviousNode().orElse(null);
             if (previousNode instanceof InPredicate && ((InPredicate) previousNode).getValue() != node) {
                 subqueryInPredicates.add(NodeRef.of((InPredicate) previousNode));
-            } else {
-                return null;
             }
-            /*
             else if (previousNode instanceof QuantifiedComparisonExpression) {
                 quantifiedComparisons.add(NodeRef.of((QuantifiedComparisonExpression) previousNode));
             }
             else {
                 scalarSubqueries.add(NodeRef.of(node));
             }
-             */
 
             Type type = getOnlyElement(queryScope.getRelationType().getVisibleFields()).getType();
             return setExpressionType(node, type);
+        }
+
+        @Override
+        protected Type visitExists(ExistsPredicate node, StackableAstVisitorContext<Context> context)
+        {
+            StatementAnalyzer analyzer = statementAnalyzerFactory.apply(node);
+            Scope subqueryScope = Scope.builder().withParent(context.getContext().getScope()).build();
+            analyzer.analyze(node.getSubquery(), subqueryScope);
+
+            existsSubqueries.add(NodeRef.of(node));
+
+            return setExpressionType(node, BOOLEAN);
         }
 
         @Override
@@ -800,8 +826,11 @@ public class ExpressionAnalyzer
                 analyzer.getExpressionTypes(),
                 analyzer.getExpressionCoercions(),
                 analyzer.getSubqueryInPredicates(),
+                analyzer.getScalarSubqueries(),
+                analyzer.getExistsSubqueries(),
                 analyzer.getColumnReferences(),
-                analyzer.getTypeOnlyCoercions());
+                analyzer.getTypeOnlyCoercions(),
+                analyzer.getQuantifiedComparisons());
     }
 
     public static ExpressionAnalysis analyzeExpression(
@@ -833,9 +862,11 @@ public class ExpressionAnalyzer
                 expressionTypes,
                 expressionCoercions,
                 analyzer.getSubqueryInPredicates(),
+                analyzer.getScalarSubqueries(),
+                analyzer.getExistsSubqueries(),
                 analyzer.getColumnReferences(),
-                analyzer.getTypeOnlyCoercions()
-        );
+                analyzer.getTypeOnlyCoercions(),
+                analyzer.getQuantifiedComparisons());
     }
 
     private static ExpressionAnalyzer create(

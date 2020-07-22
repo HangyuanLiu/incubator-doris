@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
@@ -349,7 +350,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
             }
 
             ImmutableMap<VariableReferenceExpression, SortOrder> orderingsMap = orderings.build();
-            return new OrderingScheme(variables.build().stream().map(variable -> new Ordering(variable, orderingsMap.get(variable))).collect(toImmutableList()));
+            return new OrderingScheme(variables.build().stream().map(variable -> new Ordering(variable, orderingsMap.get(variable))).collect(Collectors.toList()));
         }
     }
 }

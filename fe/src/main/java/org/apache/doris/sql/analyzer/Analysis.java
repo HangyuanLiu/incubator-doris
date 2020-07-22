@@ -18,6 +18,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ListMultimap;
 import org.apache.doris.sql.metadata.*;
+import org.apache.doris.sql.tree.ExistsPredicate;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.FunctionCall;
 import org.apache.doris.sql.tree.GroupingOperation;
@@ -27,6 +28,7 @@ import org.apache.doris.sql.tree.Join;
 import org.apache.doris.sql.tree.Node;
 import org.apache.doris.sql.tree.NodeRef;
 import org.apache.doris.sql.tree.OrderBy;
+import org.apache.doris.sql.tree.QuantifiedComparisonExpression;
 import org.apache.doris.sql.tree.Query;
 import org.apache.doris.sql.tree.QuerySpecification;
 import org.apache.doris.sql.tree.Relation;
@@ -38,6 +40,7 @@ import org.apache.doris.sql.type.Type;
 
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -45,6 +48,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableCollection;
+import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
@@ -74,6 +78,9 @@ public class Analysis
     private final Map<NodeRef<Join>, Expression> joins = new LinkedHashMap<>();
 
     private final ListMultimap<NodeRef<Node>, InPredicate> inPredicatesSubqueries = ArrayListMultimap.create();
+    private final ListMultimap<NodeRef<Node>, SubqueryExpression> scalarSubqueries = ArrayListMultimap.create();
+    private final ListMultimap<NodeRef<Node>, ExistsPredicate> existsSubqueries = ArrayListMultimap.create();
+    private final ListMultimap<NodeRef<Node>, QuantifiedComparisonExpression> quantifiedComparisonSubqueries = ArrayListMultimap.create();
 
     private final Map<NodeRef<Table>, TableHandle> tables = new LinkedHashMap<>();
 
@@ -295,21 +302,36 @@ public class Analysis
 
         NodeRef<Node> key = NodeRef.of(node);
         this.inPredicatesSubqueries.putAll(key, dereference(expressionAnalysis.getSubqueryInPredicates()));
-        //this.scalarSubqueries.putAll(key, dereference(expressionAnalysis.getScalarSubqueries()));
-        //this.existsSubqueries.putAll(key, dereference(expressionAnalysis.getExistsSubqueries()));
-        //this.quantifiedComparisonSubqueries.putAll(key, dereference(expressionAnalysis.getQuantifiedComparisons()));
+        this.scalarSubqueries.putAll(key, dereference(expressionAnalysis.getScalarSubqueries()));
+        this.existsSubqueries.putAll(key, dereference(expressionAnalysis.getExistsSubqueries()));
+        this.quantifiedComparisonSubqueries.putAll(key, dereference(expressionAnalysis.getQuantifiedComparisons()));
     }
 
     private <T extends Node> List<T> dereference(Collection<NodeRef<T>> nodeRefs)
     {
         return nodeRefs.stream()
                 .map(NodeRef::getNode)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 
     public List<InPredicate> getInPredicateSubqueries(Node node)
     {
         return ImmutableList.copyOf(inPredicatesSubqueries.get(NodeRef.of(node)));
+    }
+
+    public List<SubqueryExpression> getScalarSubqueries(Node node)
+    {
+        return ImmutableList.copyOf(scalarSubqueries.get(NodeRef.of(node)));
+    }
+
+    public List<ExistsPredicate> getExistsSubqueries(Node node)
+    {
+        return ImmutableList.copyOf(existsSubqueries.get(NodeRef.of(node)));
+    }
+
+    public List<QuantifiedComparisonExpression> getQuantifiedComparisonSubqueries(Node node)
+    {
+        return unmodifiableList(quantifiedComparisonSubqueries.get(NodeRef.of(node)));
     }
 
     public void addColumnReferences(Map<NodeRef<Expression>, FieldId> columnReferences)

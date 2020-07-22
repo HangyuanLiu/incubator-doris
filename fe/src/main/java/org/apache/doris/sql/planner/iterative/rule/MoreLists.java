@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -31,7 +32,7 @@ public class MoreLists
     {
         return requireNonNull(lists, "lists is null").stream()
                 .map(ImmutableList::copyOf)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 
     public static <T> List<T> filteredCopy(List<T> elements, Predicate<T> predicate)
@@ -40,7 +41,7 @@ public class MoreLists
         requireNonNull(predicate, "predicate is null");
         return elements.stream()
                 .filter(predicate)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 
     public static <T, R> List<R> mappedCopy(List<T> elements, Function<T, R> mapper)
@@ -49,7 +50,7 @@ public class MoreLists
         requireNonNull(mapper, "mapper is null");
         return elements.stream()
                 .map(mapper)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 
     public static <T> List<T> nElements(int n, IntFunction<T> function)
@@ -58,7 +59,7 @@ public class MoreLists
         requireNonNull(function, "function is null");
         return IntStream.range(0, n)
                 .mapToObj(function)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 
     private MoreLists() {}

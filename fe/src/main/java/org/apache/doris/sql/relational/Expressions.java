@@ -72,7 +72,7 @@ public final class Expressions
 
     public static CallExpression call(FunctionManager functionManager, String name, Type returnType, List<RowExpression> arguments)
     {
-        FunctionHandle functionHandle = functionManager.lookupFunction(name, TypeSignatureProvider.fromTypes(arguments.stream().map(RowExpression::getType).collect(toImmutableList())));
+        FunctionHandle functionHandle = functionManager.lookupFunction(name, TypeSignatureProvider.fromTypes(arguments.stream().map(RowExpression::getType).collect(Collectors.toList())));
         return call(name, functionHandle, returnType, arguments);
     }
 

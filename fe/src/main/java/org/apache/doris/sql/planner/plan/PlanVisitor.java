@@ -34,6 +34,11 @@ public abstract class PlanVisitor<R, C>
         return visitPlan(node, context);
     }
 
+    public R visitValues(ValuesNode node, C context)
+    {
+        return visitPlan(node, context);
+    }
+
     public R visitLimit(LimitNode node, C context) {
         return visitPlan(node, context);
     }
@@ -73,7 +78,17 @@ public abstract class PlanVisitor<R, C>
         return visitPlan(node, context);
     }
 
+    public R visitEnforceSingleRow(EnforceSingleRowNode node, C context)
+    {
+        return visitPlan(node, context);
+    }
+
     public R visitApply(ApplyNode node, C context)
+    {
+        return visitPlan(node, context);
+    }
+
+    public R visitLateralJoin(LateralJoinNode node, C context)
     {
         return visitPlan(node, context);
     }

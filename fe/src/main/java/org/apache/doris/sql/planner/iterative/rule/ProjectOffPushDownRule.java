@@ -27,6 +27,7 @@ import org.apache.doris.sql.relation.VariableReferenceExpression;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.doris.sql.planner.iterative.matching.Capture.newCapture;
@@ -65,7 +66,7 @@ public abstract class ProjectOffPushDownRule<N extends LogicalPlanNode>
 
         return pruneInputs(
                 targetNode.getOutputVariables(),
-                parent.getAssignments().getExpressions().stream().collect(toImmutableList()),
+                parent.getAssignments().getExpressions().stream().collect(Collectors.toList()),
                 context.getVariableAllocator().getTypes())
                 .flatMap(prunedOutputs -> this.pushDownProjectOff(context.getIdAllocator(), context.getVariableAllocator(), targetNode, prunedOutputs))
                 .map(newChild -> parent.replaceChildren(ImmutableList.of(newChild)))

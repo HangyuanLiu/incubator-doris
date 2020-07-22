@@ -200,7 +200,7 @@ public class StatementAnalyzer
                                         field.getOriginTable(),
                                         field.getOriginColumnName(),
                                         field.isAliased()))
-                                .collect(toImmutableList());
+                                .collect(Collectors.toList());
                     }
 
                     return createAndAssignScope(table, scope, fields);
@@ -468,7 +468,7 @@ public class StatementAnalyzer
                             List<FieldId> rollup = groupingElement.getExpressions().stream()
                                     .map(NodeRef::of)
                                     .map(analysis.getColumnReferenceFields()::get)
-                                    .collect(toImmutableList());
+                                    .collect(Collectors.toList());
 
                             rollups.add(rollup);
                         }
@@ -478,7 +478,7 @@ public class StatementAnalyzer
                                             .map(NodeRef::of)
                                             .map(analysis.getColumnReferenceFields()::get)
                                             .collect(toImmutableSet()))
-                                    .collect(toImmutableList());
+                                    .collect(Collectors.toList());
 
                             sets.add(groupingSets);
                         }
@@ -581,10 +581,10 @@ public class StatementAnalyzer
                     .filter(Expression.class::isInstance)
                     .map(Expression.class::cast)
                     .filter(expression -> hasReferencesToScope(expression, analysis, outputScope))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
             List<Expression> orderByAggregationExpressions = orderByAggregationExpressionsBuilder.build().stream()
                     .filter(expression -> !orderByExpressionsReferencingOutputScope.contains(expression) || analysis.isColumnReference(expression))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             // generate placeholder fields
             Set<Field> seen = new HashSet<>();
@@ -597,7 +597,7 @@ public class StatementAnalyzer
                         return sourceField
                                 .orElse(Field.newUnqualified(Optional.empty(), analysis.getType(expression)));
                     })
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             Scope orderByAggregationScope = Scope.builder()
                     .withRelationType(RelationId.anonymous(), new RelationType(orderByAggregationSourceFields))
@@ -740,7 +740,7 @@ public class StatementAnalyzer
                 //     SELECT a + sum(b) GROUP BY a
                 List<Expression> distinctGroupingColumns = groupByExpressions.stream()
                         .distinct()
-                        .collect(toImmutableList());
+                        .collect(Collectors.toList());
 
                 for (Expression expression : outputExpressions) {
                     verifySourceAggregations(distinctGroupingColumns, sourceScope, expression, metadata, analysis, warningCollector);

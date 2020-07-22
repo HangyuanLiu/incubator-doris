@@ -26,6 +26,7 @@ import org.apache.doris.sql.tree.NodeRef;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.alwaysTrue;
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -79,7 +80,7 @@ public final class ExpressionTreeUtils
                 .filter(clazz::isInstance)
                 .map(clazz::cast)
                 .filter(predicate)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 
     private static List<Node> linearizeNodes(Node node)

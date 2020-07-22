@@ -61,7 +61,7 @@ public class GroupIdNode
         //this.groupingSets = listOfListsCopy(requireNonNull(groupingSets, "groupingSets is null"));
         this.groupingSets = groupingSets.stream()
                 .map(ImmutableList::copyOf)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
         this.groupingColumns = ImmutableMap.copyOf(requireNonNull(groupingColumns));
         this.aggregationArguments = ImmutableList.copyOf(aggregationArguments);
         this.groupIdVariable = requireNonNull(groupIdVariable);

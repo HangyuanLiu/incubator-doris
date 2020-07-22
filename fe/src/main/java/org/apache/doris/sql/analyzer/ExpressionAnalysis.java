@@ -15,7 +15,10 @@ package org.apache.doris.sql.analyzer;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.apache.doris.sql.tree.ExistsPredicate;
 import org.apache.doris.sql.tree.InPredicate;
+import org.apache.doris.sql.tree.QuantifiedComparisonExpression;
+import org.apache.doris.sql.tree.SubqueryExpression;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.NodeRef;
@@ -32,19 +35,28 @@ public class ExpressionAnalysis
     private final Set<NodeRef<Expression>> typeOnlyCoercions;
     private final Map<NodeRef<Expression>, FieldId> columnReferences;
     private final Set<NodeRef<InPredicate>> subqueryInPredicates;
+    private final Set<NodeRef<SubqueryExpression>> scalarSubqueries;
+    private final Set<NodeRef<ExistsPredicate>> existsSubqueries;
+    private final Set<NodeRef<QuantifiedComparisonExpression>> quantifiedComparisons;
 
     public ExpressionAnalysis(
             Map<NodeRef<Expression>, Type> expressionTypes,
             Map<NodeRef<Expression>, Type> expressionCoercions,
             Set<NodeRef<InPredicate>> subqueryInPredicates,
+            Set<NodeRef<SubqueryExpression>> scalarSubqueries,
+            Set<NodeRef<ExistsPredicate>> existsSubqueries,
             Map<NodeRef<Expression>, FieldId> columnReferences,
-            Set<NodeRef<Expression>> typeOnlyCoercions)
+            Set<NodeRef<Expression>> typeOnlyCoercions,
+            Set<NodeRef<QuantifiedComparisonExpression>> quantifiedComparisons)
     {
         this.expressionTypes = ImmutableMap.copyOf(requireNonNull(expressionTypes, "expressionTypes is null"));
         this.expressionCoercions = ImmutableMap.copyOf(requireNonNull(expressionCoercions, "expressionCoercions is null"));
         this.typeOnlyCoercions = ImmutableSet.copyOf(requireNonNull(typeOnlyCoercions, "typeOnlyCoercions is null"));
         this.columnReferences = ImmutableMap.copyOf(requireNonNull(columnReferences, "columnReferences is null"));
         this.subqueryInPredicates = ImmutableSet.copyOf(requireNonNull(subqueryInPredicates, "subqueryInPredicates is null"));
+        this.scalarSubqueries = ImmutableSet.copyOf(requireNonNull(scalarSubqueries, "subqueryInPredicates is null"));
+        this.existsSubqueries = ImmutableSet.copyOf(requireNonNull(existsSubqueries, "existsSubqueries is null"));
+        this.quantifiedComparisons = ImmutableSet.copyOf(requireNonNull(quantifiedComparisons, "quantifiedComparisons is null"));
     }
 
     public Type getType(Expression expression)
@@ -75,5 +87,20 @@ public class ExpressionAnalysis
     public Set<NodeRef<InPredicate>> getSubqueryInPredicates()
     {
         return subqueryInPredicates;
+    }
+
+    public Set<NodeRef<SubqueryExpression>> getScalarSubqueries()
+    {
+        return scalarSubqueries;
+    }
+
+    public Set<NodeRef<ExistsPredicate>> getExistsSubqueries()
+    {
+        return existsSubqueries;
+    }
+
+    public Set<NodeRef<QuantifiedComparisonExpression>> getQuantifiedComparisons()
+    {
+        return quantifiedComparisons;
     }
 }

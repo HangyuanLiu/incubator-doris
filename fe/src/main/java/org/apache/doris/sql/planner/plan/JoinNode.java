@@ -135,7 +135,7 @@ public class JoinNode
     {
         return joinCriteria.stream()
                 .map(EquiJoinClause::flip)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 
     private static List<VariableReferenceExpression> flipOutputVariables(List<VariableReferenceExpression> outputVariables, LogicalPlanNode left, LogicalPlanNode right)

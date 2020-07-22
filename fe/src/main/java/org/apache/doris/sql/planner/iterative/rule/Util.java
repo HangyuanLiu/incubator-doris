@@ -30,9 +30,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.String.format;
 import static org.apache.doris.sql.planner.plan.AssignmentUtils.identityAssignments;
 import static org.apache.doris.sql.planner.plan.AssignmentUtils.identityAssignmentsAsSymbolReferences;
@@ -58,7 +58,7 @@ class Util
         if (expressions.stream().allMatch(OriginalExpressionUtils::isExpression)) {
             // TODO remove once all pruneInputs rules are below translateExpressions.
             referencedInputs = VariablesExtractor.extractUnique(
-                    expressions.stream().map(OriginalExpressionUtils::castToExpression).collect(toImmutableList()),
+                    expressions.stream().map(OriginalExpressionUtils::castToExpression).collect(Collectors.toList()),
                     types);
         }
         else if (expressions.stream().noneMatch(OriginalExpressionUtils::isExpression)) {
@@ -94,7 +94,7 @@ class Util
     {
         List<VariableReferenceExpression> restrictedOutputs = node.getOutputVariables().stream()
                 .filter(permittedOutputs::contains)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
 
         if (restrictedOutputs.size() == node.getOutputVariables().size()) {
             return Optional.empty();

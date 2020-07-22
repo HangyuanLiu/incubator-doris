@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.base.MoreObjects.firstNonNull;
@@ -126,7 +127,7 @@ public class QueryPlanner {
                 outputs = toSymbolReferences(computeOutputs(builder, outputs));
                 List<Expression> complexOrderByAggregatesToRemap = orderByAggregates.stream()
                         .filter(expression -> !analysis.isColumnReference(expression))
-                        .collect(toImmutableList());
+                        .collect(Collectors.toList());
                 builder = planBuilderFor(builder, analysis.getScope(node.getOrderBy().get()), complexOrderByAggregatesToRemap);
             }
 
@@ -398,7 +399,7 @@ public class QueryPlanner {
             if (node.getGroupBy().get().isDistinct()) {
                 columnOnlyGroupingSets = columnOnlyGroupingSets.stream()
                         .distinct()
-                        .collect(toImmutableList());
+                        .collect(Collectors.toList());
             }
 
             // add in the complex expressions an turn materialize the grouping sets in terms of plan columns
@@ -460,7 +461,7 @@ public class QueryPlanner {
                                     aggregate.getName().getSuffix(),
                                     analysis.getFunctionHandle(aggregate),
                                     analysis.getType(aggregate),
-                                    rewrittenFunction.getArguments().stream().map(OriginalExpressionUtils::castToRowExpression).collect(toImmutableList())),
+                                    rewrittenFunction.getArguments().stream().map(OriginalExpressionUtils::castToRowExpression).collect(Collectors.toList())),
                             rewrittenFunction.getFilter().map(OriginalExpressionUtils::castToRowExpression),
                             rewrittenFunction.getOrderBy().map(orderBy -> toOrderingScheme(orderBy, variableAllocator.getTypes())),
                             rewrittenFunction.isDistinct(),
@@ -523,7 +524,7 @@ public class QueryPlanner {
         for (List<FieldId> rollup : groupingSetAnalysis.getRollups()) {
             List<Set<FieldId>> sets = IntStream.rangeClosed(0, rollup.size())
                     .mapToObj(i -> ImmutableSet.copyOf(rollup.subList(0, i)))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             partialSets.add(sets);
         }
@@ -574,7 +575,7 @@ public class QueryPlanner {
                 .map(set -> set.stream()
                         .map(FieldId::getFieldIndex)
                         .collect(toImmutableSet()))
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
 
         for (GroupingOperation groupingOperation : analysis.getGroupingOperations(node)) {
             Expression rewritten = GroupingOperationRewriter.rewriteGroupingOperation(groupingOperation, descriptor, analysis.getColumnReferenceFields(), groupIdVariable);
@@ -639,8 +640,8 @@ public class QueryPlanner {
 
         LogicalPlanNode planNode;
         OrderingScheme orderingScheme = toOrderingScheme(
-                orderByExpressions.stream().map(subPlan::translate).collect(toImmutableList()),
-                orderBy.get().getSortItems().stream().map(PlannerUtils::toSortOrder).collect(toImmutableList()));
+                orderByExpressions.stream().map(subPlan::translate).collect(Collectors.toList()),
+                orderBy.get().getSortItems().stream().map(PlannerUtils::toSortOrder).collect(Collectors.toList()));
         planNode = new SortNode(idAllocator.getNextId(), subPlan.getRoot(), orderingScheme, false);
 
         return subPlan.withNewRoot(planNode);
@@ -674,6 +675,6 @@ public class QueryPlanner {
     {
         return variables.stream()
                 .map(variable -> new SymbolReference(variable.getName()))
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 }

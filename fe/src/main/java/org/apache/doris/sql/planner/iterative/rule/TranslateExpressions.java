@@ -29,6 +29,7 @@ import org.apache.doris.sql.tree.NodeRef;
 import org.apache.doris.sql.type.Type;
 
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Collections.emptyList;
@@ -67,7 +68,7 @@ public class TranslateExpressions
                         callExpression.getType(),
                         callExpression.getArguments().stream()
                                 .map(expression -> removeOriginalExpression(expression, session, types))
-                                .collect(toImmutableList()));
+                                .collect(Collectors.toList()));
             }
 
             private Map<NodeRef<Expression>, Type> analyzeCallExpressionTypes(CallExpression callExpression, Session session, TypeProvider typeProvider)

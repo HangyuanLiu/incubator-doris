@@ -16,6 +16,8 @@ import java.util.stream.Collectors;
 
 import com.google.common.base.Preconditions;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
+
 public class RelationType
 {
     private final List<Field> visibleFields;
@@ -103,8 +105,7 @@ public class RelationType
     public List<Field> resolveFieldsWithPrefix(Optional<QualifiedName> prefix)
     {
         return visibleFields.stream()
-                .filter(input -> input.matchesPrefix(prefix))
-                .collect(ImmutableList.toImmutableList());
+                .filter(input -> input.matchesPrefix(prefix)).collect(Collectors.toList());
     }
 
     /**

@@ -61,12 +61,12 @@ public final class GroupingOperationRewriter
                     .peek(groupingColumn -> checkState(columnReferenceFields.containsKey(groupingColumn), "the grouping column is not in the columnReferencesField map"))
                     .map(columnReferenceFields::get)
                     .map(fieldId -> translateFieldToInteger(fieldId, relationId))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             List<Expression> groupingResults = groupingSets.stream()
                     .map(groupingSet -> String.valueOf(calculateGrouping(groupingSet, columns)))
                     .map(LongLiteral::new)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             // It is necessary to add a 1 to the groupId because the underlying array is indexed starting at 1
             return new SubscriptExpression(

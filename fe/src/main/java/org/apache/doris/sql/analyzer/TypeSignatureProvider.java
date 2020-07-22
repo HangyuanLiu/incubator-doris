@@ -19,6 +19,7 @@ import org.apache.doris.sql.type.TypeSignature;
 
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -70,7 +71,7 @@ public class TypeSignatureProvider
         return types.stream()
                 .map(Type::getTypeSignature)
                 .map(TypeSignatureProvider::new)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 
     public static List<TypeSignatureProvider> fromTypeSignatures(TypeSignature... typeSignatures)
@@ -82,7 +83,7 @@ public class TypeSignatureProvider
     {
         return typeSignatures.stream()
                 .map(TypeSignatureProvider::new)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 
     @Override

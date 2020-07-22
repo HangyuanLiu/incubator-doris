@@ -56,6 +56,8 @@ public class TypeSignature {
                 return ScalarType.INT;
             case "double":
                 return ScalarType.DOUBLE;
+            case "char":
+                return ScalarType.CHAR;
             case "varchar":
                 return ScalarType.VARCHAR;
             case "date":
@@ -64,6 +66,8 @@ public class TypeSignature {
                 return ScalarType.BOOLEAN;
             case "timestamp":
                 return ScalarType.DATETIME;
+            case "decimal":
+                return ScalarType.DECIMALV2;
             default:
                 throw new UnsupportedOperationException(this.getBase() +" not yet implemented");
         }
@@ -77,6 +81,8 @@ public class TypeSignature {
                 return new TypeSignature(StandardTypes.BIGINT);
             case DOUBLE:
                 return new TypeSignature(StandardTypes.DOUBLE);
+            case CHAR:
+                return new TypeSignature(StandardTypes.CHAR);
             case VARCHAR:
                 return new TypeSignature(StandardTypes.VARCHAR);
             case DATE:
@@ -85,6 +91,8 @@ public class TypeSignature {
                 return new TypeSignature(StandardTypes.TIMESTAMP);
             case BOOLEAN:
                 return new TypeSignature(StandardTypes.BOOLEAN);
+            case DECIMALV2:
+                return new TypeSignature(StandardTypes.DECIMAL);
             default:
                 throw new UnsupportedOperationException(dorisType.toString() + " not yet implemented");
         }

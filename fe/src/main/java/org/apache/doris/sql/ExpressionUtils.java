@@ -22,6 +22,7 @@ import org.apache.doris.sql.tree.*;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.not;
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -243,7 +244,7 @@ public final class ExpressionUtils
             for (Predicate<VariableReferenceExpression> nullVariableScope : nullVariableScopes) {
                 List<VariableReferenceExpression> variables = VariablesExtractor.extractUnique(expression, types).stream()
                         .filter(nullVariableScope)
-                        .collect(toImmutableList());
+                        .collect(Collectors.toList());
 
                 if (Iterables.isEmpty(variables)) {
                     continue;

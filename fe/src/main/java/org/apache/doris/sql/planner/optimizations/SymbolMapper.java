@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
@@ -136,7 +137,7 @@ public class SymbolMapper
         }
 
         ImmutableMap<VariableReferenceExpression, SortOrder> orderingMap = ordering.build();
-        return new OrderingScheme(orderBy.build().stream().map(variable -> new Ordering(variable, orderingMap.get(variable))).collect(toImmutableList()));
+        return new OrderingScheme(orderBy.build().stream().map(variable -> new Ordering(variable, orderingMap.get(variable))).collect(Collectors.toList()));
     }
 
     public AggregationNode map(AggregationNode node, LogicalPlanNode source)
@@ -177,7 +178,7 @@ public class SymbolMapper
                         aggregation.getCall().getDisplayName(),
                         aggregation.getCall().getFunctionHandle(),
                         aggregation.getCall().getType(),
-                        aggregation.getArguments().stream().map(this::map).collect(toImmutableList())),
+                        aggregation.getArguments().stream().map(this::map).collect(Collectors.toList())),
                 aggregation.getFilter().map(this::map),
                 aggregation.getOrderBy().map(this::map),
                 aggregation.isDistinct(),
@@ -203,7 +204,7 @@ public class SymbolMapper
                 newNodeId,
                 source,
                 node.getCount(),
-                new OrderingScheme(variables.build().stream().map(variable -> new Ordering(variable, orderingMap.get(variable))).collect(toImmutableList())),
+                new OrderingScheme(variables.build().stream().map(variable -> new Ordering(variable, orderingMap.get(variable))).collect(Collectors.toList())),
                 node.getStep());
     }
 

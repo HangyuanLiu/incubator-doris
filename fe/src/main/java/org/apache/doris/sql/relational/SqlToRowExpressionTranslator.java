@@ -68,6 +68,7 @@ import org.apache.doris.sql.type.VarcharType;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -269,13 +270,13 @@ public final class SqlToRowExpressionTranslator
         {
             List<RowExpression> arguments = node.getArguments().stream()
                     .map(value -> process(value, context))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             List<TypeSignatureProvider> argumentTypes = arguments.stream()
                     .map(RowExpression::getType)
                     .map(Type::getTypeSignature)
                     .map(TypeSignatureProvider::new)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             return call(node.getName().toString(), functionManager.resolveFunction(node.getName(), argumentTypes), getType(node), arguments);
         }

@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -218,13 +219,13 @@ class AggregationAnalyzer
                     if (node.getOrderBy().isPresent()) {
                         List<Expression> sortKeys = node.getOrderBy().get().getSortItems().stream()
                                 .map(SortItem::getSortKey)
-                                .collect(toImmutableList());
+                                .collect(Collectors.toList());
                         if (node.isDistinct()) {
                             List<FieldId> fieldIds = node.getArguments().stream()
                                     .map(NodeRef::of)
                                     .map(columnReferences::get)
                                     .filter(Objects::nonNull)
-                                    .collect(toImmutableList());
+                                    .collect(Collectors.toList());
                             for (Expression sortKey : sortKeys) {
                                 if (!node.getArguments().contains(sortKey) && !fieldIds.contains(columnReferences.get(NodeRef.of(sortKey)))) {
                                     throw new SemanticException(

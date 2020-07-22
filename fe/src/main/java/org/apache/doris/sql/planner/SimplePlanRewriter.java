@@ -17,6 +17,7 @@ import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.PlanVisitor;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Verify.verify;
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -74,7 +75,7 @@ public abstract class SimplePlanRewriter<C>
         {
             List<LogicalPlanNode> children = node.getSources().stream()
                     .map(child -> rewrite(child, context))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             return replaceChildren(node, children);
         }

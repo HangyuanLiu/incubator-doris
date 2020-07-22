@@ -26,6 +26,7 @@ import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.relation.RowExpression;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
@@ -111,7 +112,7 @@ public class ExpressionExtractor
         @Override
         public Void visitProject(ProjectNode node, ImmutableList.Builder<RowExpression> context)
         {
-            context.addAll(node.getAssignments().getExpressions().stream().collect(toImmutableList()));
+            context.addAll(node.getAssignments().getExpressions().stream().collect(Collectors.toList()));
             return super.visitProject(node, context);
         }
 
@@ -128,7 +129,7 @@ public class ExpressionExtractor
             context.addAll(node.getSubqueryAssignments()
                     .getExpressions()
                     .stream()
-                    .collect(toImmutableList()));
+                    .collect(Collectors.toList()));
             return super.visitApply(node, context);
         }
     }

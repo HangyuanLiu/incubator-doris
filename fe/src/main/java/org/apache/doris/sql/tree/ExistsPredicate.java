@@ -18,42 +18,46 @@ import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
-public class GroupingOperation
+public class ExistsPredicate
         extends Expression
 {
-    private final List<Expression> groupingColumns;
+    private final Expression subquery;
 
-    public GroupingOperation(Optional<NodeLocation> location, List<QualifiedName> groupingColumns)
+    public ExistsPredicate(Expression subquery)
+    {
+        this(Optional.empty(), subquery);
+    }
+
+    public ExistsPredicate(NodeLocation location, Expression subquery)
+    {
+        this(Optional.of(location), subquery);
+    }
+
+    private ExistsPredicate(Optional<NodeLocation> location, Expression subquery)
     {
         super(location);
-        requireNonNull(groupingColumns);
-        checkArgument(!groupingColumns.isEmpty(), "grouping operation columns cannot be empty");
-        this.groupingColumns = groupingColumns.stream()
-                .map(DereferenceExpression::from)
-                .collect(Collectors.toList());
+        requireNonNull(subquery, "subquery is null");
+        this.subquery = subquery;
     }
 
-    public List<Expression> getGroupingColumns()
+    public Expression getSubquery()
     {
-        return groupingColumns;
+        return subquery;
     }
 
     @Override
-    protected <R, C> R accept(AstVisitor<R, C> visitor, C context)
+    public <R, C> R accept(AstVisitor<R, C> visitor, C context)
     {
-        return visitor.visitGroupingOperation(this, context);
+        return visitor.visitExists(this, context);
     }
 
     @Override
-    public List<? extends Node> getChildren()
+    public List<Node> getChildren()
     {
-        return ImmutableList.of();
+        return ImmutableList.of(subquery);
     }
 
     @Override
@@ -65,13 +69,14 @@ public class GroupingOperation
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        GroupingOperation other = (GroupingOperation) o;
-        return Objects.equals(groupingColumns, other.groupingColumns);
+
+        ExistsPredicate that = (ExistsPredicate) o;
+        return Objects.equals(subquery, that.subquery);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(groupingColumns);
+        return subquery.hashCode();
     }
 }
