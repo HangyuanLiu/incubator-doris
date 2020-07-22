@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toList;
 import static org.apache.commons.collections.ListUtils.unmodifiableList;
 
 public class SpecialFormExpression
@@ -65,8 +66,7 @@ public class SpecialFormExpression
     @Override
     public String toString()
     {
-        //return form.name() + "(" + String.join(", ", arguments.stream().map(RowExpression::toString).collect(toList())) + ")";
-        return "";
+        return form.name() + "(" + String.join(", ", arguments.stream().map(RowExpression::toString).collect(toList())) + ")";
     }
 
     @Override

@@ -349,6 +349,23 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitNotExpression(NotExpression node, StackableAstVisitorContext<Context> context)
+        {
+            coerceType(context, node.getValue(), BOOLEAN, "Value of logical NOT expression");
+
+            return setExpressionType(node, BOOLEAN);
+        }
+
+        @Override
+        protected Type visitLogicalBinaryExpression(LogicalBinaryExpression node, StackableAstVisitorContext<Context> context)
+        {
+            coerceType(context, node.getLeft(), BOOLEAN, "Left side of logical expression");
+            coerceType(context, node.getRight(), BOOLEAN, "Right side of logical expression");
+
+            return setExpressionType(node, BOOLEAN);
+        }
+
+        @Override
         protected Type visitComparisonExpression(ComparisonExpression node, StackableAstVisitorContext<Context> context)
         {
             OperatorType operatorType = OperatorType.valueOf(node.getOperator().name());

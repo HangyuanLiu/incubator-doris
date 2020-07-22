@@ -213,7 +213,23 @@ public class AstBuilder
         return new TableSubquery(getLocation(context), (Query) visit(context.queryNoWith()));
     }
 
+    // ***************** boolean expressions ******************
 
+    @Override
+    public Node visitLogicalNot(SqlBaseParser.LogicalNotContext context)
+    {
+        return new NotExpression(getLocation(context), (Expression) visit(context.booleanExpression()));
+    }
+
+    @Override
+    public Node visitLogicalBinary(SqlBaseParser.LogicalBinaryContext context)
+    {
+        return new LogicalBinaryExpression(
+                getLocation(context.operator),
+                getLogicalBinaryOperator(context.operator),
+                (Expression) visit(context.left),
+                (Expression) visit(context.right));
+    }
 
     // *************** from clause *****************
 

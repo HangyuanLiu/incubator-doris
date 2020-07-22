@@ -215,12 +215,18 @@ public class ConnectProcessor {
             try {
                 System.out.println("Query :" + originStmt);
                 //parser
+                /*
                 CaseInsensitiveStream stream = new CaseInsensitiveStream(CharStreams.fromString(originStmt));
                 SqlBaseLexer lexer = new SqlBaseLexer(stream);
                 CommonTokenStream tokens = new CommonTokenStream(lexer);
                 SqlBaseParser parser = new SqlBaseParser(tokens);
                 AstBuilder visitor = new AstBuilder(new ParsingOptions());
                 Node stmt = visitor.visit(parser.singleStatement());
+
+                 */
+
+                org.apache.doris.sql.parser.SqlParser parser = new org.apache.doris.sql.parser.SqlParser();
+                Node stmt = parser.createStatement(originStmt, new ParsingOptions());
 
                 //Session
                 Session session = new Session(ctx.getCatalog(), ctx);
@@ -284,7 +290,7 @@ public class ConnectProcessor {
                 return;
             } catch (Exception ex) {
                 ex.printStackTrace();
-                System.out.println("Query fail");
+                System.out.println("Query fail " + ex.getMessage());
             }
         }
 

@@ -171,6 +171,104 @@ public class ExpressionTreeRewriter<C> {
         }
 
         @Override
+        protected Expression visitBetweenPredicate(BetweenPredicate node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteBetweenPredicate(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression value = rewrite(node.getValue(), context.get());
+            Expression min = rewrite(node.getMin(), context.get());
+            Expression max = rewrite(node.getMax(), context.get());
+
+            if (value != node.getValue() || min != node.getMin() || max != node.getMax()) {
+                return new BetweenPredicate(value, min, max);
+            }
+
+            return node;
+        }
+
+        @Override
+        public Expression visitLogicalBinaryExpression(LogicalBinaryExpression node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteLogicalBinaryExpression(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression left = rewrite(node.getLeft(), context.get());
+            Expression right = rewrite(node.getRight(), context.get());
+
+            if (left != node.getLeft() || right != node.getRight()) {
+                return new LogicalBinaryExpression(node.getOperator(), left, right);
+            }
+
+            return node;
+        }
+
+        @Override
+        public Expression visitNotExpression(NotExpression node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteNotExpression(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression value = rewrite(node.getValue(), context.get());
+
+            if (value != node.getValue()) {
+                return new NotExpression(value);
+            }
+
+            return node;
+        }
+
+        @Override
+        protected Expression visitIsNullPredicate(IsNullPredicate node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteIsNullPredicate(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression value = rewrite(node.getValue(), context.get());
+
+            if (value != node.getValue()) {
+                return new IsNullPredicate(value);
+            }
+
+            return node;
+        }
+
+        @Override
+        protected Expression visitIsNotNullPredicate(IsNotNullPredicate node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteIsNotNullPredicate(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression value = rewrite(node.getValue(), context.get());
+
+            if (value != node.getValue()) {
+                return new IsNotNullPredicate(value);
+            }
+
+            return node;
+        }
+
+        @Override
         public Expression visitCast(Cast node, Context<C> context)
         {
             if (!context.isDefaultRewrite()) {

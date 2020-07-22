@@ -60,14 +60,39 @@ public class FunctionManager
         boolean isPredicate = false;
         switch (operatorType) {
             case ADD:
-                functionName = "add";
-                break;
+                functionName = "add"; break;
+            case SUBTRACT:
+                functionName = "subtract"; break;
+            case MULTIPLY:
+                functionName = "multiply"; break;
+            case DIVIDE:
+                functionName = "divide"; break;
+            case MODULUS:
+                functionName = "mod"; break;
+
             case EQUAL:
                 functionName = "eq";
                 isPredicate = true;
                 break;
             case GREATER_THAN:
-                functionName = "GT";
+                functionName = "gt";
+                isPredicate = true;
+                break;
+            case GREATER_THAN_OR_EQUAL:
+                functionName = "ge";
+                isPredicate = true;
+                break;
+            case LESS_THAN:
+                functionName = "lt";
+                isPredicate = true;
+                break;
+            case LESS_THAN_OR_EQUAL:
+                functionName = "le";
+                isPredicate = true;
+                break;
+            case NOT_EQUAL:
+                functionName = "ne";
+                isPredicate = true;
                 break;
             default:
                 throw new UnsupportedOperationException("not yet implemented");

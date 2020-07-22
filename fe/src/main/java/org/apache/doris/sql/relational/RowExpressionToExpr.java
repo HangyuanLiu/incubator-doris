@@ -69,8 +69,58 @@ public class RowExpressionToExpr {
                             formatRowExpression(node.getArguments().get(0), context),
                             formatRowExpression(node.getArguments().get(1), context));
                     break;
+                case "subtract":
+                    callExpr = new ArithmeticExpr(
+                            ArithmeticExpr.Operator.SUBTRACT,
+                            formatRowExpression(node.getArguments().get(0), context),
+                            formatRowExpression(node.getArguments().get(1), context));
+                    break;
+                case "multiply":
+                    callExpr = new ArithmeticExpr(
+                            ArithmeticExpr.Operator.MULTIPLY,
+                            formatRowExpression(node.getArguments().get(0), context),
+                            formatRowExpression(node.getArguments().get(1), context));
+                    break;
+                case "divide":
+                    callExpr = new ArithmeticExpr(
+                            ArithmeticExpr.Operator.DIVIDE,
+                            formatRowExpression(node.getArguments().get(0), context),
+                            formatRowExpression(node.getArguments().get(1), context));
+                    break;
+                case "mod":
+                    callExpr = new ArithmeticExpr(
+                            ArithmeticExpr.Operator.MOD,
+                            formatRowExpression(node.getArguments().get(0), context),
+                            formatRowExpression(node.getArguments().get(1), context));
+                    break;
+
                 case "eq":
                     callExpr = new BinaryPredicate(BinaryPredicate.Operator.EQ,
+                            formatRowExpression(node.getArguments().get(0), context),
+                            formatRowExpression(node.getArguments().get(1), context));
+                    break;
+                case "gt":
+                    callExpr = new BinaryPredicate(BinaryPredicate.Operator.GT,
+                            formatRowExpression(node.getArguments().get(0), context),
+                            formatRowExpression(node.getArguments().get(1), context));
+                    break;
+                case "ge":
+                    callExpr = new BinaryPredicate(BinaryPredicate.Operator.GE,
+                            formatRowExpression(node.getArguments().get(0), context),
+                            formatRowExpression(node.getArguments().get(1), context));
+                    break;
+                case "lt":
+                    callExpr = new BinaryPredicate(BinaryPredicate.Operator.LT,
+                            formatRowExpression(node.getArguments().get(0), context),
+                            formatRowExpression(node.getArguments().get(1), context));
+                    break;
+                case "le":
+                    callExpr = new BinaryPredicate(BinaryPredicate.Operator.LE,
+                            formatRowExpression(node.getArguments().get(0), context),
+                            formatRowExpression(node.getArguments().get(1), context));
+                    break;
+                case "ne":
+                    callExpr = new BinaryPredicate(BinaryPredicate.Operator.NE,
                             formatRowExpression(node.getArguments().get(0), context),
                             formatRowExpression(node.getArguments().get(1), context));
                     break;
@@ -117,7 +167,6 @@ public class RowExpressionToExpr {
 
         @Override
         public Expr visitVariableReference(VariableReferenceExpression node, FormatterContext context) {
-            //return new SlotRef(context.descTbl.getSlotDesc(context.variableToSlotRef.get(node.getName())));
             return context.variableToSlotRef.get(node);
         }
 
