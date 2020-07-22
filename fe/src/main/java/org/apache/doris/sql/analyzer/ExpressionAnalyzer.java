@@ -234,6 +234,44 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitSimpleCaseExpression(SimpleCaseExpression node, StackableAstVisitorContext<Context> context)
+        {
+            for (WhenClause whenClause : node.getWhenClauses()) {
+                coerceToSingleType(context, whenClause, "CASE operand type does not match WHEN clause operand type: %s vs %s", node.getOperand(), whenClause.getOperand());
+            }
+
+            Type type = coerceToSingleType(context,
+                    "All CASE results must be the same type: %s",
+                    getCaseResultExpressions(node.getWhenClauses(), node.getDefaultValue()));
+            setExpressionType(node, type);
+
+            for (WhenClause whenClause : node.getWhenClauses()) {
+                Type whenClauseType = process(whenClause.getResult(), context);
+                setExpressionType(whenClause, whenClauseType);
+            }
+
+            return type;
+        }
+
+        private List<Expression> getCaseResultExpressions(List<WhenClause> whenClauses, Optional<Expression> defaultValue)
+        {
+            List<Expression> resultExpressions = new ArrayList<>();
+            for (WhenClause whenClause : whenClauses) {
+                resultExpressions.add(whenClause.getResult());
+            }
+            defaultValue.ifPresent(resultExpressions::add);
+            return resultExpressions;
+        }
+
+        @Override
+        protected Type visitCoalesceExpression(CoalesceExpression node, StackableAstVisitorContext<Context> context)
+        {
+            Type type = coerceToSingleType(context, "All COALESCE operands must be the same type: %s", node.getOperands());
+
+            return setExpressionType(node, type);
+        }
+
+        @Override
         protected Type visitArithmeticUnary(ArithmeticUnaryExpression node, StackableAstVisitorContext<Context> context)
         {
             switch (node.getSign()) {

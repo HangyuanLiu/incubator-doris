@@ -47,6 +47,11 @@ public abstract class AstVisitor<R, C>
         return visitExpression(node, context);
     }
 
+    protected R visitCoalesceExpression(CoalesceExpression node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitComparisonExpression(ComparisonExpression node, C context)
     {
         return visitExpression(node, context);
@@ -127,9 +132,19 @@ public abstract class AstVisitor<R, C>
         return visitQueryBody(node, context);
     }
 
+    protected R visitWhenClause(WhenClause node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitIntervalLiteral(IntervalLiteral node, C context)
     {
         return visitLiteral(node, context);
+    }
+
+    protected R visitSimpleCaseExpression(SimpleCaseExpression node, C context)
+    {
+        return visitExpression(node, context);
     }
 
     protected R visitStringLiteral(StringLiteral node, C context)
