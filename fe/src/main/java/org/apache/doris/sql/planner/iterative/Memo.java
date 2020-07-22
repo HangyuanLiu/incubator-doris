@@ -85,7 +85,7 @@ public class Memo
 
     private Group getGroup(int group)
     {
-        checkArgument(groups.containsKey(group), "Invalid group: %s", group);
+        checkArgument(groups.containsKey(group), "Invalid group: %s");
         return groups.get(group);
     }
 
@@ -114,10 +114,7 @@ public class Memo
         LogicalPlanNode old = getGroup(group).membership;
 
         checkArgument(new HashSet<>(old.getOutputVariables()).equals(new HashSet<>(node.getOutputVariables())),
-                "%s: transformed expression doesn't produce same outputs: %s vs %s",
-                reason,
-                old.getOutputVariables(),
-                node.getOutputVariables());
+                "%s: transformed expression doesn't produce same outputs: %s vs %s");
 
         if (node instanceof GroupReference) {
             node = getNode(((GroupReference) node).getGroupId());

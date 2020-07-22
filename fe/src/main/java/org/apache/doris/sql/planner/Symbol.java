@@ -27,7 +27,7 @@ public class Symbol
 
     public static Symbol from(Expression expression)
     {
-        checkArgument(expression instanceof SymbolReference, "Unexpected expression: %s", expression);
+        checkArgument(expression instanceof SymbolReference, "Unexpected expression");
         return new Symbol(((SymbolReference) expression).getName());
     }
 

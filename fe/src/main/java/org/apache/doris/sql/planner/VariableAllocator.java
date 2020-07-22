@@ -152,9 +152,9 @@ public class VariableAllocator
 
     public VariableReferenceExpression toVariableReference(Expression expression)
     {
-        checkArgument(expression instanceof SymbolReference, "Unexpected expression: %s", expression);
+        checkArgument(expression instanceof SymbolReference, "Unexpected expression");
         String name = ((SymbolReference) expression).getName();
-        checkArgument(variables.containsKey(name), "variable map does not contain name %s", name);
+        checkArgument(variables.containsKey(name), "variable map does not contain name");
         return new VariableReferenceExpression(name, variables.get(name));
     }
 

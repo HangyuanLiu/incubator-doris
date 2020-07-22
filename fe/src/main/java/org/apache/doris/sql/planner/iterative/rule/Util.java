@@ -118,9 +118,7 @@ class Util
 
         checkArgument(
                 (node.getSources().size() == permittedChildOutputs.size()),
-                "Mismatched child (%d) and permitted outputs (%d) sizes",
-                node.getSources().size(),
-                permittedChildOutputs.size());
+                "Mismatched child (%d) and permitted outputs (%d) sizes");
 
         ImmutableList.Builder<LogicalPlanNode> newChildrenBuilder = ImmutableList.builder();
         boolean rewroteChildren = false;

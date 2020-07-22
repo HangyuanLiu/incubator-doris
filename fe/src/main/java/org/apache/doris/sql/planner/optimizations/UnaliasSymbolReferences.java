@@ -226,7 +226,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
 
         private void map(VariableReferenceExpression variable, VariableReferenceExpression canonical)
         {
-            Preconditions.checkArgument(!variable.equals(canonical), "Can't map variable to itself: %s", variable);
+            Preconditions.checkArgument(!variable.equals(canonical), "Can't map variable to itself: %s");
             mapping.put(variable.getName(), canonical.getName());
         }
 

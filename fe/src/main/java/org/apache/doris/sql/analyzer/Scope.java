@@ -234,7 +234,7 @@ public class Scope
 
         public Builder withNamedQuery(String name, WithQuery withQuery)
         {
-            checkArgument(!containsNamedQuery(name), "Query '%s' is already added", name);
+            checkArgument(!containsNamedQuery(name), "Query '%s' is already added");
             namedQueries.put(name, withQuery);
             return this;
         }
