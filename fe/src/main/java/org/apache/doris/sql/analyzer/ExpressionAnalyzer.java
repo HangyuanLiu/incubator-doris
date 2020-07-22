@@ -122,7 +122,7 @@ public class ExpressionAnalyzer
         Objects.requireNonNull(expression, "expression cannot be null");
 
         Type type = expressionTypes.get(NodeRef.of(expression));
-        Preconditions.checkState(type != null, "Expression not yet analyzed: %s", expression);
+        Preconditions.checkState(type != null, "Expression not yet analyzed");
         return type;
     }
 

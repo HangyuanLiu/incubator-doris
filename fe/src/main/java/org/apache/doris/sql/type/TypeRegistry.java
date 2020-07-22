@@ -223,7 +223,7 @@ public final class TypeRegistry
     {
         requireNonNull(type, "type is null");
         Type existingType = types.putIfAbsent(type.getTypeSignature(), type);
-        checkState(existingType == null || existingType.equals(type), "Type %s is already registered", type);
+        checkState(existingType == null || existingType.equals(type), "Type %s is already registered");
     }
 
     public void addParametricType(ParametricType parametricType)

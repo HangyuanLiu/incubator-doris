@@ -38,7 +38,7 @@ public final class RowExpressionVariableInliner
     {
         if (!excludedNames.contains(node.getName())) {
             RowExpression result = mapping.apply(node);
-            checkState(result != null, "Cannot resolve symbol %s", node.getName());
+            checkState(result != null, "Cannot resolve symbol");
             return result;
         }
         return null;
