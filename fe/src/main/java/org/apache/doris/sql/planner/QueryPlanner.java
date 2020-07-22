@@ -574,7 +574,7 @@ public class QueryPlanner {
         List<Set<Integer>> descriptor = groupingSets.stream()
                 .map(set -> set.stream()
                         .map(FieldId::getFieldIndex)
-                        .collect(toImmutableSet()))
+                        .collect(Collectors.toSet()))
                 .collect(Collectors.toList());
 
         for (GroupingOperation groupingOperation : analysis.getGroupingOperations(node)) {

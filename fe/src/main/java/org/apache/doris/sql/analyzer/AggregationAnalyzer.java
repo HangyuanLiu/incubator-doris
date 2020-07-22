@@ -114,7 +114,7 @@ class AggregationAnalyzer
                 .map(NodeRef::of)
                 .filter(columnReferences::containsKey)
                 .map(columnReferences::get)
-                .collect(toImmutableSet());
+                .collect(Collectors.toSet());
 
         this.groupingFields.forEach(fieldId -> {
             checkState(isFieldFromScope(fieldId, sourceScope),

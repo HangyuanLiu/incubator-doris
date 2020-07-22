@@ -23,6 +23,7 @@ import org.apache.doris.sql.type.Type;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
@@ -71,7 +72,7 @@ public class TypeProvider
     {
         return types.entrySet().stream()
                 .map(entry -> new VariableReferenceExpression(entry.getKey(), entry.getValue()))
-                .collect(ImmutableSet.toImmutableSet());
+                .collect(Collectors.toSet());
     }
 
     public Map<String, Type> allTypes()

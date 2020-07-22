@@ -124,7 +124,7 @@ class SubqueryPlanner
         return analysis.getInPredicateSubqueries(node)
                 .stream()
                 .filter(inPredicate -> nodeContains(expression, inPredicate.getValueList()))
-                .collect(toImmutableSet());
+                .collect(Collectors.toSet());
     }
 
     public Set<SubqueryExpression> collectScalarSubqueries(Expression expression, Node node)
@@ -132,7 +132,7 @@ class SubqueryPlanner
         return analysis.getScalarSubqueries(node)
                 .stream()
                 .filter(subquery -> nodeContains(expression, subquery))
-                .collect(toImmutableSet());
+                .collect(Collectors.toSet());
     }
 
     public Set<ExistsPredicate> collectExistsSubqueries(Expression expression, Node node)
@@ -140,7 +140,7 @@ class SubqueryPlanner
         return analysis.getExistsSubqueries(node)
                 .stream()
                 .filter(subquery -> nodeContains(expression, subquery))
-                .collect(toImmutableSet());
+                .collect(Collectors.toSet());
     }
 
     public Set<QuantifiedComparisonExpression> collectQuantifiedComparisonSubqueries(Expression expression, Node node)
@@ -148,7 +148,7 @@ class SubqueryPlanner
         return analysis.getQuantifiedComparisonSubqueries(node)
                 .stream()
                 .filter(quantifiedComparison -> nodeContains(expression, quantifiedComparison.getSubquery()))
-                .collect(toImmutableSet());
+                .collect(Collectors.toSet());
     }
 
     private PlanBuilder appendInPredicateApplyNodes(PlanBuilder subPlan, Set<InPredicate> inPredicates, boolean correlationAllowed, Node node)
@@ -491,7 +491,7 @@ class SubqueryPlanner
                 .filter(OriginalExpressionUtils::isExpression)
                 .map(OriginalExpressionUtils::castToExpression)
                 .flatMap(expression -> extractColumnReferences(expression, analysis.getColumnReferences()).stream())
-                .collect(toImmutableSet());
+                .collect(Collectors.toSet());
     }
 
     private static Set<Expression> extractColumnReferences(Expression expression, Set<NodeRef<Expression>> columnReferences)

@@ -460,7 +460,7 @@ public class StatementAnalyzer
                             Set<FieldId> cube = groupingElement.getExpressions().stream()
                                     .map(NodeRef::of)
                                     .map(analysis.getColumnReferenceFields()::get)
-                                    .collect(toImmutableSet());
+                                    .collect(Collectors.toSet());
 
                             cubes.add(cube);
                         }
@@ -477,7 +477,7 @@ public class StatementAnalyzer
                                     .map(set -> set.stream()
                                             .map(NodeRef::of)
                                             .map(analysis.getColumnReferenceFields()::get)
-                                            .collect(toImmutableSet()))
+                                            .collect(Collectors.toSet()))
                                     .collect(Collectors.toList());
 
                             sets.add(groupingSets);
