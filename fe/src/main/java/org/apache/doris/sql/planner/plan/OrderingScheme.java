@@ -65,7 +65,7 @@ public class OrderingScheme
 
     public SortOrder getOrdering(VariableReferenceExpression variable)
     {
-        checkArgument(orderings.containsKey(variable), "No ordering for variable: %s", variable);
+        checkArgument(orderings.containsKey(variable), "No ordering for variable");
         return orderings.get(variable);
     }
 

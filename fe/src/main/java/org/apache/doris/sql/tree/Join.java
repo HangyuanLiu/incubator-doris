@@ -29,7 +29,7 @@ public class Join
         requireNonNull(left, "left is null");
         requireNonNull(right, "right is null");
         if ((type == Type.CROSS) || (type == Type.IMPLICIT)) {
-            checkArgument(!criteria.isPresent(), "%s join cannot have join criteria", type);
+            checkArgument(!criteria.isPresent(), "%s join cannot have join criteria");
         }
         else {
             checkArgument(criteria.isPresent(), "No join criteria specified");

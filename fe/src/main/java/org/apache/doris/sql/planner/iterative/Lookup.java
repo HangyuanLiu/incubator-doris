@@ -62,7 +62,7 @@ public interface Lookup
     static Lookup from(Function<GroupReference, Stream<LogicalPlanNode>> resolver)
     {
         return node -> {
-            Preconditions.checkArgument(node instanceof GroupReference, "Node '%s' is not a GroupReference", node.getClass().getSimpleName());
+            Preconditions.checkArgument(node instanceof GroupReference, "Node '%s' is not a GroupReference");
             return resolver.apply((GroupReference) node);
         };
     }
