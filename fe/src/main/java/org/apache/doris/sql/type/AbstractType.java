@@ -20,4 +20,23 @@ public abstract class AbstractType
     {
         return signature.toString();
     }
+
+    @Override
+    public String toString()
+    {
+        return getTypeSignature().toString();
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        return this.getTypeSignature().equals(((Type) o).getTypeSignature());
+    }
 }

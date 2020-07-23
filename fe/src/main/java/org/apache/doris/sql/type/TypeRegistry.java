@@ -40,6 +40,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static java.util.Objects.requireNonNull;
 
+import static org.apache.doris.sql.type.CharType.createCharType;
 import static org.apache.doris.sql.type.DateType.DATE;
 import static org.apache.doris.sql.type.DecimalType.createDecimalType;
 import static org.apache.doris.sql.type.IntegerType.INTEGER;
@@ -50,6 +51,8 @@ import static org.apache.doris.sql.type.UnknownType.UNKNOWN;
 import static org.apache.doris.sql.type.BigintType.BIGINT;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 import static org.apache.doris.sql.type.DoubleType.DOUBLE;
+import static org.apache.doris.sql.type.VarcharType.createUnboundedVarcharType;
+import static org.apache.doris.sql.type.VarcharType.createVarcharType;
 
 @ThreadSafe
 public final class TypeRegistry
@@ -177,7 +180,7 @@ public final class TypeRegistry
 
         String fromTypeBaseName = fromType.getTypeSignature().getBase();
         String toTypeBaseName = toType.getTypeSignature().getBase();
-        /*
+
         if (fromTypeBaseName.equals(toTypeBaseName)) {
             if (fromTypeBaseName.equals(StandardTypes.DECIMAL)) {
                 Type commonSuperType = getCommonSuperTypeForDecimal((DecimalType) fromType, (DecimalType) toType);
@@ -187,20 +190,12 @@ public final class TypeRegistry
                 Type commonSuperType = getCommonSuperTypeForVarchar((VarcharType) fromType, (VarcharType) toType);
                 return TypeCompatibility.compatible(commonSuperType, commonSuperType.equals(toType));
             }
-            if (fromTypeBaseName.equals(StandardTypes.CHAR) && !featuresConfig.isLegacyCharToVarcharCoercion()) {
+            if (fromTypeBaseName.equals(StandardTypes.CHAR)) { //&& !featuresConfig.isLegacyCharToVarcharCoercion()) {
                 Type commonSuperType = getCommonSuperTypeForChar((CharType) fromType, (CharType) toType);
                 return TypeCompatibility.compatible(commonSuperType, commonSuperType.equals(toType));
             }
-            if (fromTypeBaseName.equals(StandardTypes.ROW)) {
-                return typeCompatibilityForRow((RowType) fromType, (RowType) toType);
-            }
-
-            if (isCovariantParametrizedType(fromType)) {
-                return typeCompatibilityForCovariantParametrizedType(fromType, toType);
-            }
             return TypeCompatibility.incompatible();
         }
-         */
 
         Optional<Type> coercedType = coerceTypeBase(fromType, toType.getTypeSignature().getBase());
         if (coercedType.isPresent()) {
@@ -219,6 +214,29 @@ public final class TypeRegistry
         return TypeCompatibility.incompatible();
     }
 
+    private static Type getCommonSuperTypeForDecimal(DecimalType firstType, DecimalType secondType)
+    {
+        int targetScale = Math.max(firstType.getScale(), secondType.getScale());
+        int targetPrecision = Math.max(firstType.getPrecision() - firstType.getScale(), secondType.getPrecision() - secondType.getScale()) + targetScale;
+        //we allow potential loss of precision here. Overflow checking is done in operators.
+        targetPrecision = Math.min(38, targetPrecision);
+        return createDecimalType(targetPrecision, targetScale);
+    }
+
+    private static Type getCommonSuperTypeForVarchar(VarcharType firstType, VarcharType secondType)
+    {
+        if (firstType.isUnbounded() || secondType.isUnbounded()) {
+            return createUnboundedVarcharType();
+        }
+
+        return createVarcharType(Math.max(firstType.getLength(), secondType.getLength()));
+    }
+
+    private static Type getCommonSuperTypeForChar(CharType firstType, CharType secondType)
+    {
+        return createCharType(Math.max(firstType.getLength(), secondType.getLength()));
+    }
+
     public void addType(Type type)
     {
         requireNonNull(type, "type is null");
@@ -229,7 +247,7 @@ public final class TypeRegistry
     public void addParametricType(ParametricType parametricType)
     {
         String name = parametricType.getName().toLowerCase(Locale.ENGLISH);
-        checkArgument(!parametricTypes.containsKey(name), "Parametric type already registered: %s", name);
+        checkArgument(!parametricTypes.containsKey(name), "Parametric type already registered");
         parametricTypes.putIfAbsent(name, parametricType);
     }
 
