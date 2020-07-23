@@ -118,7 +118,7 @@ class AggregationAnalyzer
 
         this.groupingFields.forEach(fieldId -> {
             checkState(isFieldFromScope(fieldId, sourceScope),
-                    "Grouping field %s should originate from %s", fieldId, sourceScope.getRelationType());
+                    "Grouping field %s should originate from %s");
         });
     }
 

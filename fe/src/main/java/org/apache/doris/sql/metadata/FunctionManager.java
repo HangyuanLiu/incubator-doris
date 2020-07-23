@@ -189,13 +189,13 @@ public class FunctionManager
 
         }
 
-        Function searchDesc = new Function(new FunctionName("castTo" + toType.toDorisType().getPrimitiveType().toString()),
+        Function searchDesc = new Function(new FunctionName("castto" + toType.toDorisType().getPrimitiveType().toString()),
                 Lists.newArrayList(fromType.toDorisType()),
                 org.apache.doris.catalog.Type.INVALID, false);
 
         Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
 
-        return new FunctionHandle("castTo" + toType.toDorisType().toString(),
+        return new FunctionHandle("castto" + toType.toDorisType().toString(),
                 TypeSignature.create(fn.getReturnType()),
                 null,
                 Lists.newArrayList(fromType), FunctionHandle.FunctionKind.SCALAR, fn);

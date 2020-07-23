@@ -19,6 +19,7 @@ import org.apache.doris.analysis.SlotRef;
 import org.apache.doris.analysis.StringLiteral;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Function;
+import org.apache.doris.catalog.PrimitiveType;
 import org.apache.doris.catalog.ScalarFunction;
 import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.catalog.Type;
@@ -32,12 +33,16 @@ import org.apache.doris.sql.relation.SpecialFormExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.type.BigintType;
 import org.apache.doris.sql.type.StandardTypes;
+import org.apache.doris.sql.type.TypeSignature;
 import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.doris.catalog.ScalarFunction.createBuiltinOperator;
 import static org.apache.doris.sql.type.StandardTypes.DATE;
 import static org.apache.doris.sql.type.StandardTypes.INTERVAL_DAY_TO_SECOND;
 import static org.apache.doris.sql.type.StandardTypes.TIMESTAMP;
@@ -131,12 +136,25 @@ public class RowExpressionToExpr {
                 default:
                     List<Expr> arg = node.getArguments().stream().map(expr -> formatRowExpression(expr, context)).collect(Collectors.toList());
                     FunctionHandle fnHandle = node.getFunctionHandle();
-                    if (fnName.startsWith("castTo")) {
+                    if (fnName.startsWith("castto")) {
                         callExpr = new CastExpr(fnHandle.getReturnType().toDorisType(), formatRowExpression(node.getArguments().get(0), context));
                     } else {
                         callExpr = new FunctionCallExpr(fnHandle.getFunctionName(), new FunctionParams(false, arg));
                     }
-                    callExpr.setFn(fnHandle.getResolevedFn());
+            }
+            if (callExpr instanceof ArithmeticExpr && node.getFunctionHandle().getReturnType().getBase().equals("decimal")) {
+                ArrayList<Type> arrayList = new ArrayList<>();
+                for (TypeSignature typeSignature : node.getFunctionHandle().getArgumentTypes()) {
+                    arrayList.add(typeSignature.toDorisType());
+                }
+
+                ScalarFunction fn = createBuiltinOperator(
+                        fnName,
+                        arrayList,
+                        node.getFunctionHandle().getReturnType().toDorisType());
+                callExpr.setFn(fn);
+            } else {
+                callExpr.setFn(node.getFunctionHandle().getResolevedFn());
             }
             callExpr.setType(node.getFunctionHandle().getReturnType().toDorisType());
             return callExpr;
