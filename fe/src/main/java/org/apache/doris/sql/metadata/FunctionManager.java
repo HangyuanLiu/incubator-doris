@@ -183,6 +183,12 @@ public class FunctionManager
 
     public FunctionHandle lookupCast(TypeSignature fromType, TypeSignature toType)
     {
+        org.apache.doris.catalog.Type dorisToType = toType.toDorisType();
+        org.apache.doris.catalog.Type dorisFromType = fromType.toDorisType();
+        if (dorisToType.isNativeType() && dorisFromType.isNativeType()) {
+
+        }
+
         Function searchDesc = new Function(new FunctionName("castTo" + toType.toDorisType().getPrimitiveType().toString()),
                 Lists.newArrayList(fromType.toDorisType()),
                 org.apache.doris.catalog.Type.INVALID, false);

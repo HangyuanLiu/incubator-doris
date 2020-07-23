@@ -3,6 +3,8 @@ package org.apache.doris.sql.relational;
 import com.google.common.collect.Lists;
 import org.apache.doris.analysis.ArithmeticExpr;
 import org.apache.doris.analysis.BinaryPredicate;
+import org.apache.doris.analysis.CaseExpr;
+import org.apache.doris.analysis.CastExpr;
 import org.apache.doris.analysis.CompoundPredicate;
 import org.apache.doris.analysis.DateLiteral;
 import org.apache.doris.analysis.DescriptorTable;
@@ -61,6 +63,7 @@ public class RowExpressionToExpr {
     {
         @Override
         public Expr visitCall(CallExpression node, FormatterContext context) {
+
             String fnName = node.getFunctionHandle().getFunctionName().toLowerCase();
             Expr callExpr;
             switch (fnName) {
@@ -128,7 +131,11 @@ public class RowExpressionToExpr {
                 default:
                     List<Expr> arg = node.getArguments().stream().map(expr -> formatRowExpression(expr, context)).collect(Collectors.toList());
                     FunctionHandle fnHandle = node.getFunctionHandle();
-                    callExpr = new FunctionCallExpr(fnHandle.getFunctionName(), new FunctionParams(false, arg));
+                    if (fnName.startsWith("castTo")) {
+                        callExpr = new CastExpr(fnHandle.getReturnType().toDorisType(), formatRowExpression(node.getArguments().get(0), context));
+                    } else {
+                        callExpr = new FunctionCallExpr(fnHandle.getFunctionName(), new FunctionParams(false, arg));
+                    }
                     callExpr.setFn(fnHandle.getResolevedFn());
             }
             callExpr.setType(node.getFunctionHandle().getReturnType().toDorisType());
