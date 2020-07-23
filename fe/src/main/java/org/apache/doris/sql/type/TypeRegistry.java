@@ -47,6 +47,7 @@ import static org.apache.doris.sql.type.IntegerType.INTEGER;
 import static org.apache.doris.sql.type.IntervalDayTimeType.INTERVAL_DAY_TIME;
 import static org.apache.doris.sql.type.IntervalYearMonthType.INTERVAL_YEAR_MONTH;
 import static org.apache.doris.sql.type.TimestampType.TIMESTAMP;
+import static org.apache.doris.sql.type.TinyintType.TINYINT;
 import static org.apache.doris.sql.type.UnknownType.UNKNOWN;
 import static org.apache.doris.sql.type.BigintType.BIGINT;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
@@ -70,6 +71,7 @@ public final class TypeRegistry
 
         // always add the built-in types; Presto will not function without these
         addType(BOOLEAN);
+        addType(TINYINT);
         addType(BIGINT);
         addType(INTEGER);
         addType(DOUBLE);

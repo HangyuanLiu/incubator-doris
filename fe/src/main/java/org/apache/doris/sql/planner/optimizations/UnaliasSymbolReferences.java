@@ -16,9 +16,11 @@ import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.ApplyNode;
 import org.apache.doris.sql.planner.plan.Assignments;
+import org.apache.doris.sql.planner.plan.EnforceSingleRowNode;
 import org.apache.doris.sql.planner.plan.ExchangeNode;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.JoinNode;
+import org.apache.doris.sql.planner.plan.LateralJoinNode;
 import org.apache.doris.sql.planner.plan.LimitNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.Ordering;
@@ -135,6 +137,14 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
         }
 
         @Override
+        public LogicalPlanNode visitEnforceSingleRow(EnforceSingleRowNode node, RewriteContext<Void> context)
+        {
+            LogicalPlanNode source = context.rewrite(node.getSource());
+
+            return new EnforceSingleRowNode(node.getId(), source);
+        }
+
+        @Override
         public LogicalPlanNode visitLimit(LimitNode node, RewriteContext<Void> context)
         {
             return context.defaultRewrite(node);
@@ -150,6 +160,16 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
             Assignments assignments = canonicalize(node.getSubqueryAssignments());
             verifySubquerySupported(assignments);
             return new ApplyNode(node.getId(), source, subquery, assignments, canonicalCorrelation, node.getOriginSubqueryError());
+        }
+
+        @Override
+        public LogicalPlanNode visitLateralJoin(LateralJoinNode node, RewriteContext<Void> context)
+        {
+            LogicalPlanNode source = context.rewrite(node.getInput());
+            LogicalPlanNode subquery = context.rewrite(node.getSubquery());
+            List<VariableReferenceExpression> canonicalCorrelation = canonicalizeAndDistinct(node.getCorrelation());
+
+            return new LateralJoinNode(node.getId(), source, subquery, canonicalCorrelation, node.getType(), node.getOriginSubqueryError());
         }
 
         @Override

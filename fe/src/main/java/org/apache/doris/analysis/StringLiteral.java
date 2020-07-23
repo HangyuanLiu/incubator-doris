@@ -180,7 +180,10 @@ public class StringLiteral extends LiteralExpr {
                 case BIGINT:
                     return new IntLiteral(value, targetType);
                 case LARGEINT:
-                    return new LargeIntLiteral(value);
+                    //return new LargeIntLiteral(value);
+                    Expr ex = new LargeIntLiteral(value);
+                    ex.analyze(null);
+                    return ex;
                 case FLOAT:
                 case DOUBLE:
                     try {

@@ -208,13 +208,6 @@ public class AstBuilder
     }
 
     @Override
-    public Node visitCast(SqlBaseParser.CastContext context)
-    {
-        boolean isTryCast = context.TRY_CAST() != null;
-        return new Cast(getLocation(context), (Expression) visit(context.expression()), getType(context.type()), isTryCast);
-    }
-
-    @Override
     public Node visitSubquery(SqlBaseParser.SubqueryContext context)
     {
         return new TableSubquery(getLocation(context), (Query) visit(context.queryNoWith()));
@@ -434,6 +427,20 @@ public class AstBuilder
 
 
     // ********************* primary expressions **********************
+
+    @Override
+    public Node visitCast(SqlBaseParser.CastContext context)
+    {
+        boolean isTryCast = context.TRY_CAST() != null;
+        return new Cast(getLocation(context), (Expression) visit(context.expression()), getType(context.type()), isTryCast);
+    }
+
+    @Override
+    public Node visitSubqueryExpression(SqlBaseParser.SubqueryExpressionContext context)
+    {
+        return new SubqueryExpression(getLocation(context), (Query) visit(context.query()));
+    }
+
     @Override
     public Node visitDereference(SqlBaseParser.DereferenceContext context)
     {

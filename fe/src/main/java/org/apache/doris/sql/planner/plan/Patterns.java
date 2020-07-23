@@ -54,6 +54,11 @@ public class Patterns
         return typeOf(JoinNode.class);
     }
 
+    public static Pattern<LateralJoinNode> lateralJoin()
+    {
+        return typeOf(LateralJoinNode.class);
+    }
+
     public static Pattern<LimitNode> limit()
     {
         return typeOf(LimitNode.class);
@@ -94,6 +99,19 @@ public class Patterns
         public static Property<JoinNode, JoinNode.Type> type()
         {
             return property("type", JoinNode::getType);
+        }
+    }
+
+    public static class LateralJoin
+    {
+        public static Property<LateralJoinNode, List<VariableReferenceExpression>> correlation()
+        {
+            return property("correlation", LateralJoinNode::getCorrelation);
+        }
+
+        public static Property<LateralJoinNode, LogicalPlanNode> subquery()
+        {
+            return property("subquery", LateralJoinNode::getSubquery);
         }
     }
 }

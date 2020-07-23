@@ -1,5 +1,6 @@
 package org.apache.doris.sql.type;
 
+import com.baidu.jprotobuf.com.squareup.protoparser.DataType;
 import org.apache.doris.catalog.PrimitiveType;
 import org.apache.doris.catalog.ScalarType;
 
@@ -49,12 +50,16 @@ public class TypeSignature {
 
     public ScalarType toDorisType() {
         switch (this.getBase().toLowerCase()) {
-            case "bigint":
-                return ScalarType.BIGINT;
+            case StandardTypes.BOOLEAN:
+                return ScalarType.BOOLEAN;
+            case StandardTypes.TINYINT:
+                return ScalarType.TINYINT;
             case StandardTypes.INTEGER:
             case StandardTypes.INTERVAL_DAY_TO_SECOND:
                 return ScalarType.INT;
-            case "double":
+            case StandardTypes.BIGINT:
+                return ScalarType.BIGINT;
+            case StandardTypes.DOUBLE:
                 return ScalarType.DOUBLE;
             case "char":
                 return ScalarType.CHAR;
@@ -62,8 +67,6 @@ public class TypeSignature {
                 return ScalarType.VARCHAR;
             case "date":
                 return ScalarType.DATE;
-            case "boolean":
-                return ScalarType.BOOLEAN;
             case "timestamp":
                 return ScalarType.DATETIME;
             case "decimal":
@@ -75,6 +78,8 @@ public class TypeSignature {
 
     public static TypeSignature create(org.apache.doris.catalog.Type dorisType) {
         switch (dorisType.getPrimitiveType()) {
+            case TINYINT:
+                return new TypeSignature(StandardTypes.TINYINT);
             case INT:
                 return new TypeSignature(StandardTypes.INTEGER);
             case BIGINT:
