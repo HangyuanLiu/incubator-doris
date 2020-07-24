@@ -6,15 +6,18 @@ import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.FunctionManager;
 import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.ComparisonExpression;
+import org.apache.doris.sql.tree.QualifiedName;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 
 import java.util.List;
+import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
+import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 import static org.apache.doris.sql.type.OperatorType.*;
 
 public final class FunctionResolution {
@@ -23,6 +26,16 @@ public final class FunctionResolution {
 
     public FunctionResolution(FunctionManager functionManager) {
         this.functionManager = requireNonNull(functionManager, "functionManager is null");
+    }
+
+    public FunctionHandle notFunction()
+    {
+        return functionManager.resolveFunction(QualifiedName.of("not"), fromTypes(BOOLEAN));
+    }
+
+    public boolean isNotFunction(FunctionHandle functionHandle)
+    {
+        return notFunction().equals(functionHandle);
     }
 
     public FunctionHandle arithmeticFunction(OperatorType operator, Type leftType, Type rightType)
@@ -117,5 +130,11 @@ public final class FunctionResolution {
         }
 
         return comparisonFunction(operatorType, leftType, rightType);
+    }
+
+    public boolean isComparisonFunction(FunctionHandle functionHandle)
+    {
+        Optional<OperatorType> operatorType = functionManager.getFunctionMetadata(functionHandle).getOperatorType();
+        return operatorType.isPresent() && operatorType.get().isComparisonOperator();
     }
 }

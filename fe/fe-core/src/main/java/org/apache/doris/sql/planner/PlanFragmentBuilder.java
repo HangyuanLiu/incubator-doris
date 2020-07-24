@@ -6,6 +6,7 @@ import javafx.util.Pair;
 import jersey.repackaged.com.google.common.collect.Maps;
 import org.apache.commons.validator.Var;
 import org.apache.doris.analysis.AggregateInfo;
+import org.apache.doris.analysis.AssertNumRowsElement;
 import org.apache.doris.analysis.BinaryPredicate;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
@@ -22,6 +23,7 @@ import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.catalog.Table;
 import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.common.IdGenerator;
+import org.apache.doris.planner.AssertNumRowsNode;
 import org.apache.doris.planner.DataPartition;
 import org.apache.doris.planner.HashJoinNode;
 import org.apache.doris.planner.PlanFragment;
@@ -34,6 +36,7 @@ import org.apache.doris.sql.metadata.DorisTableHandle;
 import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.Assignments;
+import org.apache.doris.sql.planner.plan.EnforceSingleRowNode;
 import org.apache.doris.sql.planner.plan.ExchangeNode;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.JoinNode;
@@ -641,6 +644,16 @@ public class PlanFragmentBuilder {
             PlanFragment fragment = new PlanFragment(context.plannerContext.getNextFragmentId(), scanNode, DataPartition.RANDOM);
             context.fragments.add(fragment);
             return fragment;
+        }
+
+        @Override
+        public PlanFragment visitEnforceSingleRow(EnforceSingleRowNode node, FragmentProperties context) {
+            PlanFragment inputFragment = visitPlan(node.getSource(), context);
+            AssertNumRowsNode root =
+                    new AssertNumRowsNode(context.plannerContext.getNextNodeId(), inputFragment.getPlanRoot(),
+                            new AssertNumRowsElement(1," ", AssertNumRowsElement.Assertion.LE));
+            inputFragment.setPlanRoot(root);
+            return inputFragment;
         }
     }
     private static class FragmentProperties {

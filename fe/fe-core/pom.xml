@@ -36,6 +36,7 @@ under the License.
 
     <properties>
         <doris.home>${basedir}/../../</doris.home>
+        <!--suppress UnresolvedMavenProperty -->
         <fe_ut_parallel>${env.FE_UT_PARALLEL}</fe_ut_parallel>
     </properties>
 

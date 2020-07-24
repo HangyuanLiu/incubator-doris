@@ -14,6 +14,9 @@
 package org.apache.doris.sql.type;
 
 
+import org.apache.doris.sql.metadata.CatalogSchemaName;
+import org.apache.doris.sql.metadata.QualifiedFunctionName;
+
 public enum OperatorType
 {
     // TODO: Move out this class. Ideally this class should not be in presto-common module.
@@ -40,11 +43,13 @@ public enum OperatorType
     INDETERMINATE("INDETERMINATE", true);
 
     private final String operator;
+    private final QualifiedFunctionName functionName;
     private final boolean calledOnNullInput;
 
     OperatorType(String operator, boolean calledOnNullInput)
     {
         this.operator = operator;
+        this.functionName = QualifiedFunctionName.of(new CatalogSchemaName("",""), name());
         this.calledOnNullInput = calledOnNullInput;
     }
 
@@ -53,6 +58,10 @@ public enum OperatorType
         return operator;
     }
 
+    public QualifiedFunctionName getFunctionName()
+    {
+        return functionName;
+    }
 
     public boolean isCalledOnNullInput()
     {

@@ -241,7 +241,7 @@ public class ConnectProcessor {
                 analyzer.analyze(stmt, Optional.empty());
 
                 //logical planner
-                PlanOptimizers optimizers = new PlanOptimizers(metadata, null);
+                PlanOptimizers optimizers = new PlanOptimizers(metadata, parser);
                 LogicalPlanner logicalPlanner = new LogicalPlanner(session, optimizers.get(), PlanNodeId.createGenerator(), metadata);
                 Plan plan = logicalPlanner.plan(analysis);
 

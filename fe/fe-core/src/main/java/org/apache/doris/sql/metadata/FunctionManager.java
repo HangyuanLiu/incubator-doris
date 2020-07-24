@@ -46,11 +46,20 @@ public class FunctionManager
     @Override
     public FunctionMetadata getFunctionMetadata(FunctionHandle functionHandle) {
         //TODO: 为了兼容逻辑，这里应该是可以删掉的
+        //FIXME:(lhy)
+        if (functionHandle.getFunctionName().equalsIgnoreCase("eq")) {
+            return new FunctionMetadata(
+                    new QualifiedFunctionName(null, functionHandle.getFunctionName()),
+                    functionHandle.getArgumentTypes(),
+                    functionHandle.getReturnType(),
+                    functionHandle.getFunctionKind(), OperatorType.EQUAL);
+        }
+
         return new FunctionMetadata(
                 new QualifiedFunctionName(null, functionHandle.getFunctionName()),
                 functionHandle.getArgumentTypes(),
                 functionHandle.getReturnType(),
-                functionHandle.getFunctionKind());
+                functionHandle.getFunctionKind(), null);
     }
 
     public FunctionHandle resolveOperator(OperatorType operatorType,  List<TypeSignatureProvider> argumentTypes) {

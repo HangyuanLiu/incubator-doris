@@ -19,6 +19,7 @@ import org.apache.doris.sql.planner.iterative.rule.TransformUncorrelatedLateralT
 import org.apache.doris.sql.planner.optimizations.AddExchanges;
 import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
 import org.apache.doris.sql.planner.iterative.rule.TranslateExpressions;
+import org.apache.doris.sql.planner.optimizations.RowExpressionPredicatePushDown;
 import org.apache.doris.sql.planner.optimizations.UnaliasSymbolReferences;
 
 import java.util.List;
@@ -39,7 +40,8 @@ public class PlanOptimizers {
                         new InlineProjections(metadata.getFunctionManager()),
                         new RemoveRedundantIdentityProjections()));
 
-
+        //谓词下推
+        PlanOptimizer rowExpressionPredicatePushDown = new RowExpressionPredicatePushDown(metadata, sqlParser);
 
         ImmutableList.Builder<PlanOptimizer> builder = ImmutableList.builder();
         builder.add(new IterativeOptimizer(null, null, null,
@@ -54,14 +56,16 @@ public class PlanOptimizers {
                 new MergeLimitWithSort(),
                 new SingleDistinctAggregationToGroupBy())));
 
+        builder.add(new IterativeOptimizer(
+                null, null, null,
+                new TranslateExpressions(metadata, sqlParser).rules()));
+
         builder.add(new IterativeOptimizer(null,null,null,
                 ImmutableSet.of(
                         new TransformUncorrelatedLateralToJoin(),
                         new TransformUncorrelatedInPredicateSubqueryToSemiJoin())));
 
-        builder.add(new IterativeOptimizer(
-                null, null, null,
-                new TranslateExpressions(metadata, sqlParser).rules()));
+        builder.add(rowExpressionPredicatePushDown);
 
         builder.add(
                 new UnaliasSymbolReferences(),

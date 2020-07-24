@@ -13,6 +13,7 @@
  */
 package org.apache.doris.sql.planner;
 
+import org.apache.doris.sql.ExpressionDeterminismEvaluator;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.metadata.ColumnHandle;
 import org.apache.doris.sql.planner.plan.AggregationNode;
@@ -53,6 +54,7 @@ import static org.apache.doris.sql.ExpressionUtils.combineConjuncts;
 import static org.apache.doris.sql.ExpressionUtils.expressionOrNullVariables;
 import static org.apache.doris.sql.ExpressionUtils.extractConjuncts;
 import static org.apache.doris.sql.ExpressionUtils.filterDeterministicConjuncts;
+import static org.apache.doris.sql.planner.EqualityInference.createEqualityInference;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.tree.BooleanLiteral.TRUE_LITERAL;
 import static com.google.common.base.Predicates.in;
@@ -192,7 +194,8 @@ public class EffectivePredicateExtractor
         public Expression visitTableScan(TableScanNode node, Void context)
         {
             Map<ColumnHandle, VariableReferenceExpression> assignments = ImmutableBiMap.copyOf(node.getAssignments()).inverse();
-            return domainTranslator.toPredicate(node.getCurrentConstraint().simplify().transform(column -> assignments.containsKey(column) ? assignments.get(column).getName() : null));
+            //return domainTranslator.toPredicate(node.getCurrentConstraint().simplify().transform(column -> assignments.containsKey(column) ? assignments.get(column).getName() : null));
+            return null;
         }
 
         @Override
@@ -248,7 +251,8 @@ public class EffectivePredicateExtractor
             return conjuncts.stream()
                     .map(expression -> pullExpressionThroughVariables(expression, outputVariables))
                     .map(expression -> VariablesExtractor.extractAll(expression, types).isEmpty() ? TRUE_LITERAL : expression)
-                    .map(expressionOrNullVariables(types, nullVariableScopes))
+                    //FIXME(lhy)
+                    //.map(expressionOrNullVariables(types, nullVariableScopes))
                     .collect(toImmutableList());
         }
 

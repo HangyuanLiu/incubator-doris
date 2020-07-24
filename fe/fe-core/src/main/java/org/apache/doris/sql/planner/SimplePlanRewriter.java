@@ -86,7 +86,7 @@ public abstract class SimplePlanRewriter<C>
         public LogicalPlanNode rewrite(LogicalPlanNode node, C userContext)
         {
             LogicalPlanNode result = node.accept(nodeRewriter, new RewriteContext<>(nodeRewriter, userContext));
-            verify(result != null, "nodeRewriter returned null for %s", node.getClass().getName());
+            verify(result != null, "nodeRewriter returned null for");
 
             return result;
         }

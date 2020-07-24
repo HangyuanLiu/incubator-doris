@@ -53,4 +53,9 @@ public final class Session
                 this,
                 connectorId);
     }
+
+    public ConnectorSession toConnectorSession()
+    {
+        return new FullConnectorSession(this, new ConnectorId("0"));
+    }
 }

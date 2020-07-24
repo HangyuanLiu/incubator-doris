@@ -726,10 +726,6 @@ public class InsertStmt extends DdlStmt {
             if (exprByName.containsKey(col.getName())) {
                 resultExprs.add(exprByName.get(col.getName()));
             } else {
-                //TODO(lhy)这里需要构建拓展列的计算表达式
-                //if (col.getDefineExpr != null) {
-                //    resultExprs.add(col.getDefineExpr);
-                //}
                 if (col.getDefaultValue() == null) {
                     /*
                     The import stmt has been filtered in function checkColumnCoverage when
