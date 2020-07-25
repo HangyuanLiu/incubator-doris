@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
 import static org.apache.doris.sql.expressions.LogicalRowExpressions.FALSE_CONSTANT;
@@ -157,7 +158,7 @@ public class RowExpressionPredicateExtractor
                     .filter(this::notIdentityAssignment)
                     .filter(this::canCompareEquity)
                     .map(this::toEquality)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             return pullExpressionThroughVariables(logicalRowExpressions.combineConjuncts(
                     ImmutableList.<RowExpression>builder()
@@ -201,7 +202,7 @@ public class RowExpressionPredicateExtractor
 
             List<RowExpression> joinConjuncts = node.getCriteria().stream()
                     .map(this::toRowExpression)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             switch (node.getType()) {
                 case INNER:
@@ -241,7 +242,7 @@ public class RowExpressionPredicateExtractor
                     .map(expression -> pullExpressionThroughVariables(expression, outputVariables))
                     .map(expression -> VariablesExtractor.extractAll(expression).isEmpty() ? TRUE_CONSTANT : expression)
                     .map(expressionOrNullVariables(nullVariableScopes))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
         }
 
         public Function<RowExpression, RowExpression> expressionOrNullVariables(final Predicate<VariableReferenceExpression>... nullVariableScopes)
@@ -253,7 +254,7 @@ public class RowExpressionPredicateExtractor
                 for (Predicate<VariableReferenceExpression> nullVariableScope : nullVariableScopes) {
                     List<VariableReferenceExpression> variables = VariablesExtractor.extractUnique(expression).stream()
                             .filter(nullVariableScope)
-                            .collect(toImmutableList());
+                            .collect(Collectors.toList());
 
                     if (Iterables.isEmpty(variables)) {
                         continue;
@@ -294,7 +295,7 @@ public class RowExpressionPredicateExtractor
                         .filter(this::notIdentityAssignment)
                         .filter(this::canCompareEquity)
                         .map(this::toEquality)
-                        .collect(toImmutableList());
+                        .collect(Collectors.toList());
 
                 sourceOutputConjuncts.add(ImmutableSet.copyOf(extractConjuncts(pullExpressionThroughVariables(logicalRowExpressions.combineConjuncts(
                         ImmutableList.<RowExpression>builder()

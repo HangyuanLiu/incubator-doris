@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -136,7 +137,7 @@ public class ExpressionEquivalence
                     call.getType(),
                     call.getArguments().stream()
                             .map(expression -> expression.accept(this, context))
-                            .collect(toImmutableList()));
+                            .collect(Collectors.toList()));
 
             QualifiedFunctionName callName = functionManager.getFunctionMetadata(call.getFunctionHandle()).getName();
             /*
@@ -154,7 +155,7 @@ public class ExpressionEquivalence
 
                 FunctionHandle functionHandle = functionManager.resolveOperator(
                         callName.equals(GREATER_THAN.getFunctionName()) ? LESS_THAN : LESS_THAN_OR_EQUAL,
-                        swapPair(fromTypes(call.getArguments().stream().map(RowExpression::getType).collect(toImmutableList()))));
+                        swapPair(fromTypes(call.getArguments().stream().map(RowExpression::getType).collect(Collectors.toList()))));
                 return new CallExpression(
                         call.getDisplayName(),
                         functionHandle,
@@ -209,7 +210,7 @@ public class ExpressionEquivalence
                     specialForm.getType(),
                     specialForm.getArguments().stream()
                             .map(expression -> expression.accept(this, context))
-                            .collect(toImmutableList()));
+                            .collect(Collectors.toList()));
 
             if (specialForm.getForm() == AND || specialForm.getForm() == OR) {
                 // if we have nested calls (of the same type) flatten them

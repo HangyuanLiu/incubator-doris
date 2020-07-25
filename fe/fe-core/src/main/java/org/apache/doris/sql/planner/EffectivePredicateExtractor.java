@@ -167,7 +167,7 @@ public class EffectivePredicateExtractor
             List<Expression> projectionEqualities = transformValues(node.getAssignments().getMap(), OriginalExpressionUtils::castToExpression).entrySet().stream()
                     .filter(VARIABLE_MATCHES_EXPRESSION.negate())
                     .map(VARIABLE_ENTRY_TO_EQUALITY)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             return pullExpressionThroughVariables(combineConjuncts(
                     ImmutableList.<Expression>builder()
@@ -212,7 +212,7 @@ public class EffectivePredicateExtractor
 
             List<Expression> joinConjuncts = node.getCriteria().stream()
                     .map(JoinNodeUtils::toExpression)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             switch (node.getType()) {
                 case INNER:
@@ -253,7 +253,7 @@ public class EffectivePredicateExtractor
                     .map(expression -> VariablesExtractor.extractAll(expression, types).isEmpty() ? TRUE_LITERAL : expression)
                     //FIXME(lhy)
                     //.map(expressionOrNullVariables(types, nullVariableScopes))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
         }
 
         @Override
@@ -273,7 +273,7 @@ public class EffectivePredicateExtractor
                 List<Expression> equalities = mapping.apply(i).stream()
                         .filter(VARIABLE_MATCHES_EXPRESSION.negate())
                         .map(VARIABLE_ENTRY_TO_EQUALITY)
-                        .collect(toImmutableList());
+                        .collect(Collectors.toList());
 
                 sourceOutputConjuncts.add(ImmutableSet.copyOf(extractConjuncts(pullExpressionThroughVariables(combineConjuncts(
                         ImmutableList.<Expression>builder()

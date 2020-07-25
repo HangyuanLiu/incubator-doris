@@ -438,7 +438,7 @@ public class RowExpressionInterpreter
                     // use toList to handle null values
                     List<RowExpression> valueExpressions = node.getArguments().subList(1, node.getArguments().size());
                     List<Object> values = valueExpressions.stream().map(value -> value.accept(this, context)).collect(toList());
-                    List<Type> valuesTypes = valueExpressions.stream().map(RowExpression::getType).collect(toImmutableList());
+                    List<Type> valuesTypes = valueExpressions.stream().map(RowExpression::getType).collect(Collectors.toList());
                     Object target = node.getArguments().get(0).accept(this, context);
                     Type targetType = node.getArguments().get(0).getType();
 
@@ -487,7 +487,7 @@ public class RowExpressionInterpreter
                                         Stream.of(toRowExpression(target, node.getArguments().get(0))),
                                         unresolvedValues.stream().filter(determinismEvaluator::isDeterministic).distinct()),
                                 unresolvedValues.stream().filter((expression -> !determinismEvaluator.isDeterministic(expression))))
-                                .collect(toImmutableList());
+                                .collect(Collectors.toList());
                         return new SpecialFormExpression(IN, node.getType(), simplifiedExpressionValues);
                     }
                     if (hasNullValue) {
@@ -519,7 +519,7 @@ public class RowExpressionInterpreter
                     List<Object> values = node.getArguments()
                             .stream()
                             .map(value -> value.accept(this, context))
-                            .collect(toImmutableList());
+                            .collect(Collectors.toList());
                     if (hasUnresolvedValue(values)) {
                         return new SpecialFormExpression(
                                 BIND,

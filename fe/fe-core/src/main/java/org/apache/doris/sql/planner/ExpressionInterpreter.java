@@ -484,7 +484,7 @@ public class ExpressionInterpreter
                                 .distinct(),
                         expressionValues.stream()
                                 .filter((expression -> !isDeterministic(expression))))
-                        .collect(toImmutableList());
+                        .collect(Collectors.toList());
                 return new InPredicate(toExpression(value, type), new InListExpression(simplifiedExpressionValues));
             }
             if (hasNullValue) {
@@ -920,7 +920,7 @@ public class ExpressionInterpreter
             return Stream.of(types)
                     .map(NodeRef::of)
                     .map(expressionTypes::get)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
         }
 
         private boolean hasUnresolvedValue(Object... values)
