@@ -223,6 +223,10 @@ public class InPredicate extends Predicate {
         }
     }
 
+    public void setOpcode(TExprOpcode opcode) {
+        this.opcode = opcode;
+    }
+
     @Override
     protected void toThrift(TExprNode msg) {
         // Can't serialize a predicate with a subquery

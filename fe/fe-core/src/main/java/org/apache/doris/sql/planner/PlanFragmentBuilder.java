@@ -754,7 +754,7 @@ public class PlanFragmentBuilder {
             org.apache.doris.planner.OlapScanNode scanNode = new org.apache.doris.planner.OlapScanNode(context.plannerContext.getNextNodeId(), tupleDescriptor, "OlapScanNode");
             try {
                 scanNode.computePartitionInfo();
-                scanNode.updateScanRangeInfoByNewMVSelector(((OlapTable) referenceTable).getBaseIndexId(), false, null);
+                scanNode.updateScanRangeInfoByNewMVSelector(((OlapTable) referenceTable).getBaseIndexId(), true, null);
                 scanNode.getScanRangeLocations();
             } catch (Exception ex) {
                 ex.printStackTrace();

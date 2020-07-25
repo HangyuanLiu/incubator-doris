@@ -30,6 +30,7 @@ import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.ArithmeticUnaryExpression;
 import org.apache.doris.sql.tree.AstVisitor;
+import org.apache.doris.sql.tree.BetweenPredicate;
 import org.apache.doris.sql.tree.BooleanLiteral;
 import org.apache.doris.sql.tree.Cast;
 import org.apache.doris.sql.tree.ComparisonExpression;
@@ -43,10 +44,13 @@ import org.apache.doris.sql.tree.Identifier;
 import org.apache.doris.sql.tree.InListExpression;
 import org.apache.doris.sql.tree.InPredicate;
 import org.apache.doris.sql.tree.IntervalLiteral;
+import org.apache.doris.sql.tree.IsNotNullPredicate;
+import org.apache.doris.sql.tree.IsNullPredicate;
 import org.apache.doris.sql.tree.LikePredicate;
 import org.apache.doris.sql.tree.LogicalBinaryExpression;
 import org.apache.doris.sql.tree.LongLiteral;
 import org.apache.doris.sql.tree.NodeRef;
+import org.apache.doris.sql.tree.NotExpression;
 import org.apache.doris.sql.tree.NullLiteral;
 import org.apache.doris.sql.tree.QualifiedName;
 import org.apache.doris.sql.tree.StringLiteral;
@@ -77,6 +81,8 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.AND;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.IN;
+import static org.apache.doris.sql.relation.SpecialFormExpression.Form.IS_NULL;
+import static org.apache.doris.sql.relation.SpecialFormExpression.Form.NULL_IF;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.OR;
 import static org.apache.doris.sql.relational.Expressions.call;
 import static org.apache.doris.sql.relational.Expressions.constant;
@@ -87,6 +93,7 @@ import static org.apache.doris.sql.type.BigintType.BIGINT;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 import static org.apache.doris.sql.type.DoubleType.DOUBLE;
 import static org.apache.doris.sql.type.IntegerType.INTEGER;
+import static org.apache.doris.sql.type.OperatorType.BETWEEN;
 import static org.apache.doris.sql.type.OperatorType.EQUAL;
 import static org.apache.doris.sql.type.OperatorType.NEGATION;
 import static org.apache.doris.sql.type.SmallintType.SMALLINT;
@@ -407,6 +414,48 @@ public final class SqlToRowExpressionTranslator
             return call("LIKE", functionManager.resolveFunction(QualifiedName.of("LIKE"),
                     fromTypes(value.getType(), pattern.getType())), getType(node), Lists.newArrayList(value, pattern));
 
+        }
+
+        @Override
+        protected RowExpression visitIsNotNullPredicate(IsNotNullPredicate node, Void context)
+        {
+            RowExpression expression = process(node.getValue(), context);
+
+            return call(
+                    "not",
+                    functionResolution.notFunction(),
+                    BOOLEAN,
+                    specialForm(IS_NULL, BOOLEAN, ImmutableList.of(expression)));
+        }
+
+        @Override
+        protected RowExpression visitIsNullPredicate(IsNullPredicate node, Void context)
+        {
+            RowExpression expression = process(node.getValue(), context);
+
+            return specialForm(IS_NULL, BOOLEAN, expression);
+        }
+
+        @Override
+        protected RowExpression visitNotExpression(NotExpression node, Void context)
+        {
+            return call("not", functionResolution.notFunction(), BOOLEAN, process(node.getValue(), context));
+        }
+
+        @Override
+        protected RowExpression visitBetweenPredicate(BetweenPredicate node, Void context)
+        {
+            RowExpression value = process(node.getValue(), context);
+            RowExpression min = process(node.getMin(), context);
+            RowExpression max = process(node.getMax(), context);
+
+            return call(
+                    BETWEEN.name(),
+                    functionManager.resolveOperator(BETWEEN, fromTypes(value.getType(), min.getType(), max.getType())),
+                    BOOLEAN,
+                    value,
+                    min,
+                    max);
         }
     }
 }

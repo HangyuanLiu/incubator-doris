@@ -423,6 +423,22 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitIsNullPredicate(IsNullPredicate node, StackableAstVisitorContext<Context> context)
+        {
+            process(node.getValue(), context);
+
+            return setExpressionType(node, BOOLEAN);
+        }
+
+        @Override
+        protected Type visitIsNotNullPredicate(IsNotNullPredicate node, StackableAstVisitorContext<Context> context)
+        {
+            process(node.getValue(), context);
+
+            return setExpressionType(node, BOOLEAN);
+        }
+
+        @Override
         protected Type visitBetweenPredicate(BetweenPredicate node, StackableAstVisitorContext<Context> context)
         {
             return getOperator(context, node, OperatorType.BETWEEN, node.getValue(), node.getMin(), node.getMax());

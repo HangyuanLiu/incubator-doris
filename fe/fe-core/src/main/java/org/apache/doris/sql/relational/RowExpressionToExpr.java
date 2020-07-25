@@ -12,7 +12,9 @@ import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.FunctionCallExpr;
 import org.apache.doris.analysis.FunctionName;
 import org.apache.doris.analysis.FunctionParams;
+import org.apache.doris.analysis.InPredicate;
 import org.apache.doris.analysis.IntLiteral;
+import org.apache.doris.analysis.IsNullPredicate;
 import org.apache.doris.analysis.LikePredicate;
 import org.apache.doris.analysis.SlotId;
 import org.apache.doris.analysis.SlotRef;
@@ -34,10 +36,12 @@ import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.type.BigintType;
 import org.apache.doris.sql.type.StandardTypes;
 import org.apache.doris.sql.type.TypeSignature;
+import org.apache.doris.thrift.TExprOpcode;
 import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -207,7 +211,26 @@ public class RowExpressionToExpr {
                 callExpr = new CompoundPredicate(CompoundPredicate.Operator.OR,
                         formatRowExpression(node.getArguments().get(0), context),
                         formatRowExpression(node.getArguments().get(1), context));
-            } else {
+            } else if (node.getForm().equals(SpecialFormExpression.Form.IN)) {
+                Iterator<RowExpression> rowExpressionIterator = node.getArguments().iterator();
+                Expr compareExpr = formatRowExpression(rowExpressionIterator.next(), context);
+                List<Expr> inList = new ArrayList<>();
+                while(rowExpressionIterator.hasNext()) {
+                    inList.add(formatRowExpression(rowExpressionIterator.next(), context));
+                }
+                InPredicate inPredicate = new InPredicate(compareExpr, inList, false);
+                inPredicate.setOpcode(TExprOpcode.FILTER_IN);
+                callExpr = inPredicate;
+            } else if (node.getForm().equals(SpecialFormExpression.Form.IS_NULL)) {
+                FunctionName fnName = new FunctionName("is_null_pred");
+                org.apache.doris.catalog.Type argDorisType = node.getArguments().get(0).getType().getTypeSignature().toDorisType();
+                Function searchDesc = new Function(fnName, Lists.newArrayList(argDorisType), Type.INVALID, false);
+                Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_INDISTINGUISHABLE);
+                callExpr = new FunctionCallExpr(fnName, Lists.newArrayList(formatRowExpression(node.getArguments().get(0), context)));
+                callExpr.setFn(fn);
+            }
+            else {
+
                 return null;
             }
             callExpr.setType(node.getType().getTypeSignature().toDorisType());

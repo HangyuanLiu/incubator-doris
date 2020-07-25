@@ -744,7 +744,7 @@ public class RowExpressionPredicatePushDown
 
         private JoinNode tryNormalizeToOuterToInnerJoin(JoinNode node, RowExpression inheritedPredicate)
         {
-            checkArgument(EnumSet.of(INNER, RIGHT, LEFT, FULL).contains(node.getType()), "Unsupported join type: %s", node.getType());
+            checkArgument(EnumSet.of(INNER, RIGHT, LEFT, FULL).contains(node.getType()), "Unsupported join type: %s");
 
             if (node.getType() == JoinNode.Type.INNER) {
                 return node;

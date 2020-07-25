@@ -353,6 +353,34 @@ public class AstBuilder
     }
 
     @Override
+    public Node visitBetween(SqlBaseParser.BetweenContext context)
+    {
+        Expression expression = new BetweenPredicate(
+                getLocation(context),
+                (Expression) visit(context.value),
+                (Expression) visit(context.lower),
+                (Expression) visit(context.upper));
+
+        if (context.NOT() != null) {
+            expression = new NotExpression(getLocation(context), expression);
+        }
+
+        return expression;
+    }
+
+    @Override
+    public Node visitNullPredicate(SqlBaseParser.NullPredicateContext context)
+    {
+        Expression child = (Expression) visit(context.value);
+
+        if (context.NOT() == null) {
+            return new IsNullPredicate(getLocation(context), child);
+        }
+
+        return new IsNotNullPredicate(getLocation(context), child);
+    }
+
+    @Override
     public Node visitLike(SqlBaseParser.LikeContext context)
     {
         Expression result = new LikePredicate(
@@ -396,6 +424,12 @@ public class AstBuilder
         }
 
         return result;
+    }
+
+    @Override
+    public Node visitExists(SqlBaseParser.ExistsContext context)
+    {
+        return new ExistsPredicate(getLocation(context), new SubqueryExpression(getLocation(context), (Query) visit(context.query())));
     }
 
     // ************** value expressions **************

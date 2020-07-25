@@ -296,6 +296,28 @@ public final class TypeRegistry
                         return Optional.empty();
                 }
             }
+            case StandardTypes.VARCHAR: {
+                switch (resultTypeBase) {
+                    case StandardTypes.CHAR:
+                        VarcharType varcharType = (VarcharType) sourceType;
+                        if (varcharType.isUnbounded()) {
+                            return Optional.of(CharType.createCharType(CharType.MAX_LENGTH));
+                        }
+
+                        return Optional.of(createCharType(Math.min(CharType.MAX_LENGTH, varcharType.getLengthSafe())));
+                    default:
+                        return Optional.empty();
+                }
+            }
+            case StandardTypes.CHAR: {
+                switch (resultTypeBase) {
+                    case StandardTypes.VARCHAR:
+                        CharType charType = (CharType) sourceType;
+                        return Optional.of(createVarcharType(charType.getLength()));
+                    default:
+                        return Optional.empty();
+                }
+            }
             default:
                 return Optional.empty();
         }
