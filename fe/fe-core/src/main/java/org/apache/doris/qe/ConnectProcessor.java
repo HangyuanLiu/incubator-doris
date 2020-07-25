@@ -211,7 +211,7 @@ public class ConnectProcessor {
             .setUser(ctx.getQualifiedUser())
             .setDb(ctx.getDatabase());
 
-        if (true) {
+        if (ctx.getSessionVariable().isPlannerV2()) {
             try {
                 System.out.println("Query :" + originStmt);
                 //parser

@@ -101,6 +101,8 @@ public class SessionVariable implements Serializable, Writable {
     public static final String MAX_SCAN_KEY_NUM = "max_scan_key_num";
     public static final String MAX_PUSHDOWN_CONDITIONS_PER_COLUMN = "max_pushdown_conditions_per_column";
 
+    public static final String PLANNDER_V2 = "planner_v2";
+
     // max memory used on every backend.
     @VariableMgr.VarAttr(name = EXEC_MEM_LIMIT)
     public long maxExecMemByte = 2147483648L;
@@ -248,6 +250,13 @@ public class SessionVariable implements Serializable, Writable {
     private int maxScanKeyNum = -1;
     @VariableMgr.VarAttr(name = MAX_PUSHDOWN_CONDITIONS_PER_COLUMN)
     private int maxPushdownConditionsPerColumn = -1;
+
+    @VariableMgr.VarAttr(name = PLANNDER_V2)
+    private boolean planner_v2 = true;
+
+    public boolean isPlannerV2() {
+        return planner_v2;
+    }
 
     public long getMaxExecMemByte() {
         return maxExecMemByte;

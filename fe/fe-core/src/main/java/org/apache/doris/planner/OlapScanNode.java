@@ -410,9 +410,10 @@ public class OlapScanNode extends ScanNode {
         }
     }
 
-    private void computePartitionInfo() throws AnalysisException {
+    public void computePartitionInfo() throws AnalysisException {
         long start = System.currentTimeMillis();
         // Step1: compute partition ids
+        /*
         PartitionNames partitionNames = ((BaseTableRef) desc.getRef()).getPartitionNames();
         PartitionInfo partitionInfo = olapTable.getPartitionInfo();
         if (partitionInfo.getType() == PartitionType.RANGE) {
@@ -420,6 +421,9 @@ public class OlapScanNode extends ScanNode {
         } else {
             selectedPartitionIds = null;
         }
+         */
+        //FIXME(lhy)
+        selectedPartitionIds = null;
 
         if (selectedPartitionIds == null) {
             selectedPartitionIds = Lists.newArrayList();
@@ -452,7 +456,7 @@ public class OlapScanNode extends ScanNode {
                 (System.currentTimeMillis() - start), selectedIndexId);
     }
 
-    private void getScanRangeLocations() throws UserException {
+    public void getScanRangeLocations() throws UserException {
         if (selectedPartitionIds.size() == 0) {
             return;
         }
@@ -478,7 +482,9 @@ public class OlapScanNode extends ScanNode {
             final Partition partition = olapTable.getPartition(partitionId);
             final MaterializedIndex selectedTable = partition.getIndex(selectedIndexId);
             final List<Tablet> tablets = Lists.newArrayList();
-            final Collection<Long> tabletIds = distributionPrune(selectedTable, partition.getDistributionInfo());
+            //FIXME(lhy)
+            //final Collection<Long> tabletIds = distributionPrune(selectedTable, partition.getDistributionInfo());
+            final Collection<Long> tabletIds = null;
             LOG.debug("distribution prune tablets: {}", tabletIds);
 
             List<Long> allTabletIds = selectedTable.getTabletIdsInOrder();

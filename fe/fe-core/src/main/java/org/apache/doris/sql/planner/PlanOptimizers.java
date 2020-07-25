@@ -56,14 +56,18 @@ public class PlanOptimizers {
                 new MergeLimitWithSort(),
                 new SingleDistinctAggregationToGroupBy())));
 
+
+        builder.add(new IterativeOptimizer(null,null,null,
+                ImmutableSet.of(
+                        new TransformUncorrelatedInPredicateSubqueryToSemiJoin())));
+
         builder.add(new IterativeOptimizer(
                 null, null, null,
                 new TranslateExpressions(metadata, sqlParser).rules()));
 
         builder.add(new IterativeOptimizer(null,null,null,
                 ImmutableSet.of(
-                        new TransformUncorrelatedLateralToJoin(),
-                        new TransformUncorrelatedInPredicateSubqueryToSemiJoin())));
+                        new TransformUncorrelatedLateralToJoin())));
 
         builder.add(rowExpressionPredicatePushDown);
 

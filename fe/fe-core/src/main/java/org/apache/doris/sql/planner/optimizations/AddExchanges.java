@@ -74,7 +74,7 @@ public class AddExchanges implements PlanOptimizer {
         public LogicalPlanNode visitPlan(LogicalPlanNode node, RewriteContext<ExchangeContext> context) {
             return context.defaultRewrite(node, context.get());
         }
-
+        /*
         @Override
         public LogicalPlanNode visitJoin(JoinNode node, RewriteContext<ExchangeContext> context) {
 
@@ -110,7 +110,7 @@ public class AddExchanges implements PlanOptimizer {
                     node.getFilter(),
                     node.getLeftHashVariable(), node.getRightHashVariable(), Optional.of(JoinNode.DistributionType.PARTITIONED));
         }
-
+        */
         @Override
         public LogicalPlanNode visitSemiJoin(SemiJoinNode node, RewriteContext<ExchangeContext> context) {
 
