@@ -207,6 +207,11 @@ public abstract class AstVisitor<R, C>
         return visitSelectItem(node, context);
     }
 
+    protected R visitSearchedCaseExpression(SearchedCaseExpression node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitLikePredicate(LikePredicate node, C context)
     {
         return visitExpression(node, context);

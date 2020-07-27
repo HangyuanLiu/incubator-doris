@@ -246,6 +246,26 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitSearchedCaseExpression(SearchedCaseExpression node, StackableAstVisitorContext<Context> context)
+        {
+            for (WhenClause whenClause : node.getWhenClauses()) {
+                coerceType(context, whenClause.getOperand(), BOOLEAN, "CASE WHEN clause");
+            }
+
+            Type type = coerceToSingleType(context,
+                    "All CASE results must be the same type: %s",
+                    getCaseResultExpressions(node.getWhenClauses(), node.getDefaultValue()));
+            setExpressionType(node, type);
+
+            for (WhenClause whenClause : node.getWhenClauses()) {
+                Type whenClauseType = process(whenClause.getResult(), context);
+                setExpressionType(whenClause, whenClauseType);
+            }
+
+            return type;
+        }
+
+        @Override
         protected Type visitSimpleCaseExpression(SimpleCaseExpression node, StackableAstVisitorContext<Context> context)
         {
             for (WhenClause whenClause : node.getWhenClauses()) {

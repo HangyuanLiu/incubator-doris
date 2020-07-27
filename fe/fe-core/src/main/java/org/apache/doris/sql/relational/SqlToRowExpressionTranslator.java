@@ -24,6 +24,7 @@ import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.FunctionManager;
 import org.apache.doris.sql.metadata.QualifiedFunctionName;
 import org.apache.doris.sql.metadata.Session;
+import org.apache.doris.sql.relation.ConstantExpression;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.SpecialFormExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
@@ -54,6 +55,7 @@ import org.apache.doris.sql.tree.NodeRef;
 import org.apache.doris.sql.tree.NotExpression;
 import org.apache.doris.sql.tree.NullLiteral;
 import org.apache.doris.sql.tree.QualifiedName;
+import org.apache.doris.sql.tree.SearchedCaseExpression;
 import org.apache.doris.sql.tree.SimpleCaseExpression;
 import org.apache.doris.sql.tree.StringLiteral;
 import org.apache.doris.sql.tree.SymbolReference;
@@ -396,6 +398,13 @@ public final class SqlToRowExpressionTranslator
         protected RowExpression visitSimpleCaseExpression(SimpleCaseExpression node, Void context)
         {
             return buildSwitch(process(node.getOperand(), context), node.getWhenClauses(), node.getDefaultValue(), getType(node), context);
+        }
+
+        @Override
+        protected RowExpression visitSearchedCaseExpression(SearchedCaseExpression node, Void context)
+        {
+            // We rewrite this as - CASE true WHEN p1 THEN v1 WHEN p2 THEN v2 .. ELSE v END
+            return buildSwitch(new ConstantExpression(true, BOOLEAN), node.getWhenClauses(), node.getDefaultValue(), getType(node), context);
         }
 
         private RowExpression buildSwitch(RowExpression operand, List<WhenClause> whenClauses, Optional<Expression> defaultValue, Type returnType, Void context)

@@ -497,6 +497,31 @@ public class AstBuilder
     }
 
     @Override
+    public Node visitSimpleCase(SqlBaseParser.SimpleCaseContext context)
+    {
+        return new SimpleCaseExpression(
+                getLocation(context),
+                (Expression) visit(context.valueExpression()),
+                visit(context.whenClause(), WhenClause.class),
+                visitIfPresent(context.elseExpression, Expression.class));
+    }
+
+    @Override
+    public Node visitSearchedCase(SqlBaseParser.SearchedCaseContext context)
+    {
+        return new SearchedCaseExpression(
+                getLocation(context),
+                visit(context.whenClause(), WhenClause.class),
+                visitIfPresent(context.elseExpression, Expression.class));
+    }
+
+    @Override
+    public Node visitWhenClause(SqlBaseParser.WhenClauseContext context)
+    {
+        return new WhenClause(getLocation(context), (Expression) visit(context.condition), (Expression) visit(context.result));
+    }
+
+    @Override
     public Node visitFunctionCall(SqlBaseParser.FunctionCallContext context)
     {
         Optional<Expression> filter = visitIfPresent(context.filter(), Expression.class);

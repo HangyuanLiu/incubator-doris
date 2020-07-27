@@ -27,8 +27,7 @@ import static org.apache.doris.sql.planner.LiteralEncoder.toRowExpression;
 import static org.apache.doris.sql.relation.ExpressionOptimizer.Level.OPTIMIZED;
 
 public final class RowExpressionOptimizer
-        implements ExpressionOptimizer
-{
+        implements ExpressionOptimizer {
     private final Metadata metadata;
 
     public RowExpressionOptimizer(Metadata metadata)
@@ -37,11 +36,10 @@ public final class RowExpressionOptimizer
     }
 
     @Override
-    public RowExpression optimize(RowExpression rowExpression, ExpressionOptimizer.Level level, ConnectorSession session)
+    public RowExpression optimize(RowExpression rowExpression, Level level, ConnectorSession session)
     {
         if (level.ordinal() <= OPTIMIZED.ordinal()) {
-            //return toRowExpression(new RowExpressionInterpreter(rowExpression, metadata, session, level).optimize(), rowExpression.getType());
-            return rowExpression;
+            return toRowExpression(new RowExpressionInterpreter(rowExpression, metadata, session, level).optimize(), rowExpression.getType());
         }
         throw new IllegalArgumentException("Not supported optimization level: " + level);
     }
@@ -49,8 +47,7 @@ public final class RowExpressionOptimizer
     @Override
     public Object optimize(RowExpression expression, Level level, ConnectorSession session, Function<VariableReferenceExpression, Object> variableResolver)
     {
-        //RowExpressionInterpreter interpreter = new RowExpressionInterpreter(expression, metadata, session, level);
-        //return interpreter.optimize(variableResolver::apply);
-        return null;
+        RowExpressionInterpreter interpreter = new RowExpressionInterpreter(expression, metadata, session, level);
+        return interpreter.optimize(variableResolver::apply);
     }
 }
