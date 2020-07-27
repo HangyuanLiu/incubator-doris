@@ -10,10 +10,14 @@ import org.apache.doris.sql.planner.iterative.rule.InlineProjections;
 import org.apache.doris.sql.planner.iterative.rule.MergeLimitWithSort;
 import org.apache.doris.sql.planner.iterative.rule.MergeLimitWithTopN;
 import org.apache.doris.sql.planner.iterative.rule.MergeLimits;
+import org.apache.doris.sql.planner.iterative.rule.PruneAggregationColumns;
+import org.apache.doris.sql.planner.iterative.rule.PruneAggregationSourceColumns;
 import org.apache.doris.sql.planner.iterative.rule.PruneTableScanColumns;
 import org.apache.doris.sql.planner.iterative.rule.PushLimitThroughProject;
 import org.apache.doris.sql.planner.iterative.rule.RemoveRedundantIdentityProjections;
 import org.apache.doris.sql.planner.iterative.rule.SingleDistinctAggregationToGroupBy;
+import org.apache.doris.sql.planner.iterative.rule.TransformCorrelatedLateralJoinToJoin;
+import org.apache.doris.sql.planner.iterative.rule.TransformExistsApplyToLateralNode;
 import org.apache.doris.sql.planner.iterative.rule.TransformUncorrelatedInPredicateSubqueryToSemiJoin;
 import org.apache.doris.sql.planner.iterative.rule.TransformUncorrelatedLateralToJoin;
 import org.apache.doris.sql.planner.optimizations.AddExchanges;
@@ -31,7 +35,21 @@ public class PlanOptimizers {
     public PlanOptimizers(Metadata metadata, SqlParser sqlParser) {
 
         //列裁剪
-        Set<Rule<?>> columnPruningRules = ImmutableSet.of(new PruneTableScanColumns());
+        Set<Rule<?>> columnPruningRules = ImmutableSet.of(
+                new PruneAggregationColumns(),
+                new PruneAggregationSourceColumns(),
+                //new PruneCrossJoinColumns(),
+                //new PruneFilterColumns(),
+                //new PruneJoinChildrenColumns(),
+                //new PruneJoinColumns(),
+                //new PruneMarkDistinctColumns(),
+                //new PruneOutputColumns(),
+                //new PruneProjectColumns(),
+                //new PruneSemiJoinColumns(),
+                //new PruneSemiJoinFilteringSourceColumns(),
+                //new PruneTopNColumns(),
+                //new PruneLimitColumns(),
+                new PruneTableScanColumns());
 
         //统一裁剪冗余project
         IterativeOptimizer inlineProjections = new IterativeOptimizer(
@@ -57,9 +75,13 @@ public class PlanOptimizers {
                 new SingleDistinctAggregationToGroupBy())));
 
 
-        builder.add(new IterativeOptimizer(null,null,null,
-                ImmutableSet.of(
-                        new TransformUncorrelatedInPredicateSubqueryToSemiJoin())));
+        builder.add(
+                new IterativeOptimizer(null,null,null,
+                        ImmutableSet.of(new TransformExistsApplyToLateralNode(metadata.getFunctionManager()))),
+                new IterativeOptimizer(null,null,null,
+                        ImmutableSet.of(
+                                new TransformUncorrelatedInPredicateSubqueryToSemiJoin(),
+                                new TransformCorrelatedLateralJoinToJoin())));
 
         builder.add(new IterativeOptimizer(
                 null, null, null,

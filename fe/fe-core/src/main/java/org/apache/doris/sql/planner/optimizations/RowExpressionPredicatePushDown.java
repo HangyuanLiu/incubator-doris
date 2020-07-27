@@ -32,6 +32,7 @@ import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.planner.plan.TableScanNode;
 
@@ -118,7 +119,7 @@ public class RowExpressionPredicatePushDown
     }
 
     @Override
-    public LogicalPlanNode optimize(LogicalPlanNode plan, Session session, TypeProvider types, VariableAllocator variableAllocator, IdGenerator<PlanNodeId> idAllocator, WarningCollector warningCollector)
+    public LogicalPlanNode optimize(LogicalPlanNode plan, Session session, TypeProvider types, VariableAllocator variableAllocator, PlanNodeIdAllocator idAllocator, WarningCollector warningCollector)
     {
         requireNonNull(plan, "plan is null");
         requireNonNull(session, "session is null");
@@ -135,7 +136,7 @@ public class RowExpressionPredicatePushDown
             extends SimplePlanRewriter<RowExpression>
     {
         private final VariableAllocator variableAllocator;
-        private final IdGenerator<PlanNodeId> idAllocator;
+        private final PlanNodeIdAllocator idAllocator;
         private final Metadata metadata;
         private final RowExpressionPredicateExtractor effectivePredicateExtractor;
         private final Session session;
@@ -147,7 +148,7 @@ public class RowExpressionPredicatePushDown
 
         private Rewriter(
                 VariableAllocator variableAllocator,
-                IdGenerator<PlanNodeId> idAllocator,
+                PlanNodeIdAllocator idAllocator,
                 Metadata metadata,
                 RowExpressionPredicateExtractor effectivePredicateExtractor,
                 SqlParser sqlParser,

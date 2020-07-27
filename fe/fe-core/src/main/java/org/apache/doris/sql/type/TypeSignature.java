@@ -3,6 +3,7 @@ package org.apache.doris.sql.type;
 import com.baidu.jprotobuf.com.squareup.protoparser.DataType;
 import org.apache.doris.catalog.PrimitiveType;
 import org.apache.doris.catalog.ScalarType;
+import org.apache.doris.common.NotImplementedException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -101,5 +102,15 @@ public class TypeSignature {
             default:
                 throw new UnsupportedOperationException(dorisType.toString() + " not yet implemented");
         }
+    }
+
+    @Override
+    public String toString(){
+        try {
+            throw new NotImplementedException("toString is no implement");
+        } catch (NotImplementedException ex) {
+            ex.printStackTrace();
+        }
+        return "Not Implement";
     }
 }

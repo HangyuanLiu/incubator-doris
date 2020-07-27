@@ -19,6 +19,7 @@ import org.apache.doris.sql.planner.plan.GroupIdNode;
 import org.apache.doris.sql.planner.plan.LimitNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.OrderingScheme;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.planner.plan.SortNode;
 import org.apache.doris.sql.relation.CallExpression;
@@ -63,14 +64,14 @@ import static org.apache.doris.sql.type.BigintType.BIGINT;
 public class QueryPlanner {
     private final Analysis analysis;
     private final VariableAllocator variableAllocator;
-    private final IdGenerator<PlanNodeId> idAllocator;
+    private final PlanNodeIdAllocator idAllocator;
     private final Metadata metadata;
     private final Session session;
     private final SubqueryPlanner subqueryPlanner;
 
     QueryPlanner(Analysis analysis,
                  VariableAllocator variableAllocator,
-                 IdGenerator<PlanNodeId> idAllocator,
+                 PlanNodeIdAllocator idAllocator,
                  Metadata metadata,
                  Session session) {
         this.analysis = analysis;

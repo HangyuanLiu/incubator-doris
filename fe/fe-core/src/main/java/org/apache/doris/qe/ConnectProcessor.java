@@ -66,6 +66,7 @@ import org.apache.doris.sql.planner.LogicalPlanner;
 import org.apache.doris.sql.planner.Plan;
 import org.apache.doris.sql.planner.PlanFragmentBuilder;
 import org.apache.doris.sql.planner.PlanOptimizers;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
@@ -242,7 +243,7 @@ public class ConnectProcessor {
 
                 //logical planner
                 PlanOptimizers optimizers = new PlanOptimizers(metadata, parser);
-                LogicalPlanner logicalPlanner = new LogicalPlanner(session, optimizers.get(), PlanNodeId.createGenerator(), metadata);
+                LogicalPlanner logicalPlanner = new LogicalPlanner(session, optimizers.get(), new PlanNodeIdAllocator(PlanNodeId.createGenerator()), metadata);
                 Plan plan = logicalPlanner.plan(analysis);
 
                 TQueryOptions tQueryOptions = new TQueryOptions();

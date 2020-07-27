@@ -35,12 +35,12 @@ class RelationPlanner
         extends DefaultTraversalVisitor<RelationPlan, Void> {
     private final Analysis analysis;
     private final VariableAllocator variableAllocator;
-    private final IdGenerator<PlanNodeId> idAllocator;
+    private final PlanNodeIdAllocator idAllocator;
     private final Metadata metadata;
     private final Session session;
     private final SubqueryPlanner subqueryPlanner;
 
-    RelationPlanner(Analysis analysis, VariableAllocator variableAllocator, IdGenerator<PlanNodeId> idAllocator,
+    RelationPlanner(Analysis analysis, VariableAllocator variableAllocator, PlanNodeIdAllocator idAllocator,
                     Metadata metadata,
                     Session session) {
         this.analysis = analysis;

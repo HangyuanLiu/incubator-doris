@@ -20,6 +20,7 @@ import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.planner.cost.PlanCostEstimate;
 import org.apache.doris.sql.planner.cost.PlanNodeStatsEstimate;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
@@ -64,14 +65,14 @@ public class Memo
 {
     private static final int ROOT_GROUP_REF = 0;
 
-    private final IdGenerator<PlanNodeId> idAllocator;
+    private final PlanNodeIdAllocator idAllocator;
     private final int rootGroup;
 
     private final Map<Integer, Group> groups = new HashMap<>();
 
     private int nextGroupId = ROOT_GROUP_REF + 1;
 
-    public Memo(IdGenerator<PlanNodeId> idAllocator, LogicalPlanNode plan)
+    public Memo(PlanNodeIdAllocator idAllocator, LogicalPlanNode plan)
     {
         this.idAllocator = idAllocator;
         rootGroup = insertRecursive(plan);

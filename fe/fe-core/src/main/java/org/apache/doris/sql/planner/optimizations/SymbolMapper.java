@@ -27,6 +27,7 @@ import org.apache.doris.sql.planner.plan.AggregationNode.Aggregation;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.Ordering;
 import org.apache.doris.sql.planner.plan.OrderingScheme;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.planner.plan.SortOrder;
 import org.apache.doris.sql.planner.plan.TopNNode;
 import org.apache.doris.sql.relation.CallExpression;
@@ -145,7 +146,7 @@ public class SymbolMapper
         return map(node, source, node.getId());
     }
 
-    public AggregationNode map(AggregationNode node, LogicalPlanNode source, IdGenerator<PlanNodeId> idAllocator)
+    public AggregationNode map(AggregationNode node, LogicalPlanNode source, PlanNodeIdAllocator idAllocator)
     {
         return map(node, source, idAllocator.getNextId());
     }

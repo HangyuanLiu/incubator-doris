@@ -173,9 +173,9 @@ public class StatementAnalyzer
                         // if columns are explicitly aliased -> WITH cte(alias1, alias2 ...)
                         ImmutableList.Builder<Field> fieldBuilder = ImmutableList.builder();
 
-                        int field = 0;
+                        Iterator<Field> visibleFieldsIterator = queryDescriptor.getVisibleFields().iterator();
                         for (Identifier columnName : columnNames.get()) {
-                            Field inputField = queryDescriptor.getFieldByIndex(field);
+                            Field inputField = visibleFieldsIterator.next();
                             fieldBuilder.add(Field.newQualified(
                                     QualifiedName.of(name),
                                     Optional.of(columnName.getValue()),
@@ -184,8 +184,6 @@ public class StatementAnalyzer
                                     inputField.getOriginTable(),
                                     inputField.getOriginColumnName(),
                                     inputField.isAliased()));
-
-                            field++;
                         }
 
                         fields = fieldBuilder.build();
@@ -277,14 +275,6 @@ public class StatementAnalyzer
             RelationType descriptor = relationType.withAlias(relation.getAlias().getValue(), aliases);
 
             return createAndAssignScope(relation, scope, descriptor);
-        }
-
-        @Override
-        protected Scope visitSampledRelation(SampledRelation relation, Optional<Scope> scope)
-        {
-            System.out.println("visitSampledRelation");
-            Scope relationScope = process(relation.getRelation(), scope);
-            return createAndAssignScope(relation, scope, relationScope.getRelationType());
         }
 
         @Override
@@ -405,6 +395,30 @@ public class StatementAnalyzer
             return node instanceof Unnest || node instanceof Lateral;
              */
             return false;
+        }
+
+        private void analyzeHaving(QuerySpecification node, Scope scope)
+        {
+            if (node.getHaving().isPresent()) {
+                Expression predicate = node.getHaving().get();
+
+                ExpressionAnalysis expressionAnalysis = analyzeExpression(predicate, scope);
+                /*
+                expressionAnalysis.getWindowFunctions().stream()
+                        .findFirst()
+                        .ifPresent(function -> {
+                            throw new SemanticException(NESTED_WINDOW, function.getNode(), "HAVING clause cannot contain window functions");
+                        });
+                 */
+                analysis.recordSubqueries(node, expressionAnalysis);
+
+                Type predicateType = expressionAnalysis.getType(predicate);
+                if (!predicateType.equals(BOOLEAN) && !predicateType.equals(UNKNOWN)) {
+                    throw new SemanticException(TYPE_MISMATCH, predicate, "HAVING clause must evaluate to a boolean: actual type %s", predicateType);
+                }
+
+                analysis.setHaving(node, predicate);
+            }
         }
 
         private List<Expression> analyzeGroupBy(QuerySpecification node, Scope scope, List<Expression> outputExpressions)
@@ -871,29 +885,7 @@ public class StatementAnalyzer
             return withScope;
         }
 
-        private void analyzeHaving(QuerySpecification node, Scope scope)
-        {
-            if (node.getHaving().isPresent()) {
-                Expression predicate = node.getHaving().get();
 
-                ExpressionAnalysis expressionAnalysis = analyzeExpression(predicate, scope);
-                /*
-                expressionAnalysis.getWindowFunctions().stream()
-                        .findFirst()
-                        .ifPresent(function -> {
-                            throw new SemanticException(NESTED_WINDOW, function.getNode(), "HAVING clause cannot contain window functions");
-                        });
-                 */
-                analysis.recordSubqueries(node, expressionAnalysis);
-
-                Type predicateType = expressionAnalysis.getType(predicate);
-                if (!predicateType.equals(BOOLEAN) && !predicateType.equals(UNKNOWN)) {
-                    throw new SemanticException(TYPE_MISMATCH, predicate, "HAVING clause must evaluate to a boolean: actual type %s", predicateType);
-                }
-
-                analysis.setHaving(node, predicate);
-            }
-        }
 
         private Scope createAndAssignScope(Node node, Optional<Scope> parentScope)
         {

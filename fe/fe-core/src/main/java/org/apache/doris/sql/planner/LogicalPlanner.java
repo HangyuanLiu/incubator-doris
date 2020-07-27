@@ -10,6 +10,7 @@ import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
 import org.apache.doris.sql.planner.plan.ExchangeNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.Field;
@@ -31,7 +32,7 @@ public class LogicalPlanner {
     }
 
     private final Session session;
-    IdGenerator<PlanNodeId> idAllocator;
+    PlanNodeIdAllocator idAllocator;
     private final List<PlanOptimizer> planOptimizers;
     private final VariableAllocator variableAllocator = new VariableAllocator();
     private final Metadata metadata;
@@ -39,7 +40,7 @@ public class LogicalPlanner {
     public LogicalPlanner(
             Session session,
             List<PlanOptimizer> planOptimizers,
-            IdGenerator<PlanNodeId> idAllocator,
+            PlanNodeIdAllocator idAllocator,
             Metadata metadata) {
         this.session = session;
         this.planOptimizers = planOptimizers;

@@ -19,6 +19,7 @@ import org.apache.doris.sql.planner.plan.ExchangeNode;
 import org.apache.doris.sql.planner.plan.JoinNode;
 import org.apache.doris.sql.planner.plan.LimitNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.planner.plan.PlanVisitor;
 import org.apache.doris.sql.planner.plan.SemiJoinNode;
 import org.apache.doris.sql.relation.CallExpression;
@@ -47,7 +48,7 @@ public class AddExchanges implements PlanOptimizer {
                                     Session session,
                                     TypeProvider types,
                                     VariableAllocator variableAllocator,
-                                    IdGenerator<PlanNodeId> idAllocator,
+                                    PlanNodeIdAllocator idAllocator,
                                     WarningCollector warningCollector) {
         return SimplePlanRewriter.rewriteWith(new Rewriter(variableAllocator, idAllocator, metadata.getFunctionManager(), metadata.getTypeManager()), plan, null);
     }
@@ -59,11 +60,11 @@ public class AddExchanges implements PlanOptimizer {
     private static class Rewriter
             extends SimplePlanRewriter<ExchangeContext> {
         private final VariableAllocator variableAllocator;
-        private final IdGenerator<PlanNodeId> idAllocator;
+        private final PlanNodeIdAllocator idAllocator;
         private final FunctionManager functionManager;
         private final TypeManager typeManager;
 
-        private Rewriter(VariableAllocator variableAllocator, IdGenerator<PlanNodeId> idAllocator, FunctionManager functionManager, TypeManager typeManager) {
+        private Rewriter(VariableAllocator variableAllocator, PlanNodeIdAllocator idAllocator, FunctionManager functionManager, TypeManager typeManager) {
             this.variableAllocator = requireNonNull(variableAllocator);
             this.idAllocator = requireNonNull(idAllocator, "idAllocator is null");
             this.functionManager = requireNonNull(functionManager);

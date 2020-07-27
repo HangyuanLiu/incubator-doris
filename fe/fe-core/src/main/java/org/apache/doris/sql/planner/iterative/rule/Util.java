@@ -21,6 +21,7 @@ import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.planner.VariablesExtractor;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
@@ -90,7 +91,7 @@ class Util
     /**
      * @return If the node has outputs not in permittedOutputs, returns an identity projection containing only those node outputs also in permittedOutputs.
      */
-    public static Optional<LogicalPlanNode> restrictOutputs(IdGenerator<PlanNodeId> idAllocator, LogicalPlanNode node, Set<VariableReferenceExpression> permittedOutputs, boolean useRowExpression)
+    public static Optional<LogicalPlanNode> restrictOutputs(PlanNodeIdAllocator idAllocator, LogicalPlanNode node, Set<VariableReferenceExpression> permittedOutputs, boolean useRowExpression)
     {
         List<VariableReferenceExpression> restrictedOutputs = node.getOutputVariables().stream()
                 .filter(permittedOutputs::contains)
@@ -112,7 +113,7 @@ class Util
      * Returns a present Optional iff at least one child was rewritten.
      */
     @SafeVarargs
-    public static Optional<LogicalPlanNode> restrictChildOutputs(IdGenerator<PlanNodeId> idAllocator, LogicalPlanNode node, Set<VariableReferenceExpression>... permittedChildOutputsArgs)
+    public static Optional<LogicalPlanNode> restrictChildOutputs(PlanNodeIdAllocator idAllocator, LogicalPlanNode node, Set<VariableReferenceExpression>... permittedChildOutputsArgs)
     {
         List<Set<VariableReferenceExpression>> permittedChildOutputs = ImmutableList.copyOf(permittedChildOutputsArgs);
 

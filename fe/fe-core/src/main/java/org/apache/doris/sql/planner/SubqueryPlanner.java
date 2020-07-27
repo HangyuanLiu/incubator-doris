@@ -16,6 +16,7 @@ import org.apache.doris.sql.planner.plan.EnforceSingleRowNode;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.LateralJoinNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.planner.plan.ValuesNode;
 import org.apache.doris.sql.relation.RowExpression;
@@ -65,14 +66,14 @@ class SubqueryPlanner
 {
     private final Analysis analysis;
     private final VariableAllocator variableAllocator;
-    private final IdGenerator<PlanNodeId> idAllocator;
+    private final PlanNodeIdAllocator idAllocator;
     private final Metadata metadata;
     private final Session session;
 
     SubqueryPlanner(
             Analysis analysis,
             VariableAllocator variableAllocator,
-            IdGenerator<PlanNodeId> idAllocator,
+            PlanNodeIdAllocator idAllocator,
             Metadata metadata,
             Session session)
     {
@@ -543,10 +544,10 @@ class SubqueryPlanner
     private static class ExpressionReplacer
             extends SimplePlanRewriter<Void>
     {
-        private final IdGenerator<PlanNodeId> idAllocator;
+        private final PlanNodeIdAllocator idAllocator;
         private final Map<Expression, Expression> mapping;
 
-        public ExpressionReplacer(IdGenerator<PlanNodeId> idAllocator, Map<Expression, Expression> mapping)
+        public ExpressionReplacer(PlanNodeIdAllocator idAllocator, Map<Expression, Expression> mapping)
         {
             this.idAllocator = requireNonNull(idAllocator, "idAllocator is null");
             this.mapping = requireNonNull(mapping, "mapping is null");

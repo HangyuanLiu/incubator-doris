@@ -18,6 +18,7 @@ import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.planner.plan.TableScanNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 
@@ -37,7 +38,7 @@ public class PruneTableScanColumns
     }
 
     @Override
-    protected Optional<LogicalPlanNode> pushDownProjectOff(IdGenerator<PlanNodeId> idAllocator, VariableAllocator variableAllocator, TableScanNode tableScanNode, Set<VariableReferenceExpression> referencedOutputs)
+    protected Optional<LogicalPlanNode> pushDownProjectOff(PlanNodeIdAllocator idAllocator, VariableAllocator variableAllocator, TableScanNode tableScanNode, Set<VariableReferenceExpression> referencedOutputs)
     {
         return Optional.of(
                 new TableScanNode(

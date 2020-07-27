@@ -15,8 +15,10 @@ package org.apache.doris.sql.planner.optimizations;
 
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.relational.OriginalExpressionUtils;
+import org.apache.doris.sql.tree.ExistsPredicate;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.InPredicate;
+import org.apache.doris.sql.tree.QuantifiedComparisonExpression;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -34,7 +36,8 @@ public final class ApplyNodeUtil
     public static boolean isSupportedSubqueryExpression(Expression expression)
     {
         // TODO: add RowExpression support
-        return expression instanceof InPredicate;
-                //|| expression instanceof ExistsPredicate || expression instanceof QuantifiedComparisonExpression;
+        return expression instanceof InPredicate ||
+                expression instanceof ExistsPredicate ||
+                expression instanceof QuantifiedComparisonExpression;
     }
 }

@@ -3,6 +3,7 @@ package org.apache.doris.sql.relational;
 import com.google.common.collect.Lists;
 import org.apache.doris.analysis.ArithmeticExpr;
 import org.apache.doris.analysis.BinaryPredicate;
+import org.apache.doris.analysis.BoolLiteral;
 import org.apache.doris.analysis.CaseExpr;
 import org.apache.doris.analysis.CastExpr;
 import org.apache.doris.analysis.CompoundPredicate;
@@ -180,6 +181,8 @@ public class RowExpressionToExpr {
                         return new IntLiteral((long) node.getValue(), Type.BIGINT);
                     case "varchar":
                         return new StringLiteral((String) node.getValue());
+                    case StandardTypes.BOOLEAN:
+                        return new BoolLiteral((Boolean) node.getValue());
                         /*
                     case DATE:
                         return new DateLiteral(Type.DATE,)

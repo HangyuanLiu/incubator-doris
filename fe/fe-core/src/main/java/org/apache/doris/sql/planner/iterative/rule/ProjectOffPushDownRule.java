@@ -22,6 +22,7 @@ import org.apache.doris.sql.planner.iterative.matching.Capture;
 import org.apache.doris.sql.planner.iterative.matching.Captures;
 import org.apache.doris.sql.planner.iterative.matching.Pattern;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 
@@ -74,5 +75,5 @@ public abstract class ProjectOffPushDownRule<N extends LogicalPlanNode>
                 .orElse(Result.empty());
     }
 
-    protected abstract Optional<LogicalPlanNode> pushDownProjectOff(IdGenerator<PlanNodeId> idAllocator, VariableAllocator variableAllocator, N targetNode, Set<VariableReferenceExpression> referencedOutputs);
+    protected abstract Optional<LogicalPlanNode> pushDownProjectOff(PlanNodeIdAllocator idAllocator, VariableAllocator variableAllocator, N targetNode, Set<VariableReferenceExpression> referencedOutputs);
 }

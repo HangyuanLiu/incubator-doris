@@ -430,6 +430,26 @@ public class ExpressionTreeRewriter<C> {
         }
 
         @Override
+        protected Expression visitExists(ExistsPredicate node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteExists(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression subquery = node.getSubquery();
+            subquery = rewrite(subquery, context.get());
+
+            if (subquery != node.getSubquery()) {
+                return new ExistsPredicate(subquery);
+            }
+
+            return node;
+        }
+
+        @Override
         public Expression visitSubqueryExpression(SubqueryExpression node, Context<C> context)
         {
             if (!context.isDefaultRewrite()) {

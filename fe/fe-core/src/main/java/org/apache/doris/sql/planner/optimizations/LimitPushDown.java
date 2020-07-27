@@ -22,6 +22,7 @@ import org.apache.doris.sql.planner.SimplePlanRewriter;
 import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.plan.LimitNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -35,7 +36,7 @@ public class LimitPushDown
                                     Session session,
                                     TypeProvider types,
                                     VariableAllocator variableAllocator,
-                                    IdGenerator<PlanNodeId> idAllocator,
+                                    PlanNodeIdAllocator idAllocator,
                                     WarningCollector warningCollector) {
         //requireNonNull(plan, "plan is null");
         //requireNonNull(session, "session is null");
@@ -79,9 +80,9 @@ public class LimitPushDown
     private static class Rewriter
             extends SimplePlanRewriter<LimitContext>
     {
-        private final IdGenerator<PlanNodeId>  idAllocator;
+        private final PlanNodeIdAllocator  idAllocator;
 
-        private Rewriter(IdGenerator<PlanNodeId>  idAllocator)
+        private Rewriter(PlanNodeIdAllocator  idAllocator)
         {
             this.idAllocator = requireNonNull(idAllocator, "idAllocator is null");
         }

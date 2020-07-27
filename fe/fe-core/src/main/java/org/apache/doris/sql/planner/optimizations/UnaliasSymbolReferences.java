@@ -26,6 +26,7 @@ import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.Ordering;
 import org.apache.doris.sql.planner.plan.OrderingScheme;
 import org.apache.doris.sql.planner.plan.OutputNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.planner.plan.SemiJoinNode;
 import org.apache.doris.sql.planner.plan.SortNode;
@@ -78,7 +79,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                                     Session session,
                                     TypeProvider types,
                                     VariableAllocator variableAllocator,
-                                    IdGenerator<PlanNodeId> idAllocator,
+                                    PlanNodeIdAllocator idAllocator,
                                     WarningCollector warningCollector) {
         return SimplePlanRewriter.rewriteWith(new Rewriter(types), plan);
     }

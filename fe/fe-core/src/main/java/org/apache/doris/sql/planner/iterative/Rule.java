@@ -23,6 +23,7 @@ import org.apache.doris.sql.planner.cost.StatsProvider;
 import org.apache.doris.sql.planner.iterative.matching.Captures;
 import org.apache.doris.sql.planner.iterative.matching.Pattern;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 
 import java.util.Optional;
 
@@ -46,7 +47,7 @@ public interface Rule<T>
     {
         Lookup getLookup();
 
-        IdGenerator<PlanNodeId> getIdAllocator();
+        PlanNodeIdAllocator getIdAllocator();
 
         VariableAllocator getVariableAllocator();
 

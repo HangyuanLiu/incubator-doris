@@ -1,12 +1,16 @@
 package org.apache.doris.sql.relational;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.doris.sql.analyzer.TypeSignatureProvider;
+import org.apache.doris.sql.metadata.CatalogSchemaName;
 import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.FunctionManager;
+import org.apache.doris.sql.metadata.QualifiedFunctionName;
 import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.ComparisonExpression;
 import org.apache.doris.sql.tree.QualifiedName;
+import org.apache.doris.sql.type.BigintType;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 
@@ -136,5 +140,15 @@ public final class FunctionResolution {
     {
         Optional<OperatorType> operatorType = functionManager.getFunctionMetadata(functionHandle).getOperatorType();
         return operatorType.isPresent() && operatorType.get().isComparisonOperator();
+    }
+
+    public boolean isCountFunction(FunctionHandle functionHandle)
+    {
+        return functionManager.getFunctionMetadata(functionHandle).getName().equals(QualifiedFunctionName.of(new CatalogSchemaName("", ""),"count"));
+    }
+
+    public FunctionHandle countFunction()
+    {
+        return functionManager.resolveFunction(QualifiedName.of("count"), fromTypes(BigintType.BIGINT));
     }
 }

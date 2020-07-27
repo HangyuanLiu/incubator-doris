@@ -30,6 +30,7 @@ import org.apache.doris.sql.planner.iterative.matching.Match;
 import org.apache.doris.sql.planner.iterative.matching.Matcher;
 import org.apache.doris.sql.planner.optimizations.PlanOptimizer;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 
 import java.util.Iterator;
 import java.util.List;
@@ -75,7 +76,7 @@ public class IterativeOptimizer
                                     Session session,
                                     TypeProvider types,
                                     VariableAllocator variableAllocator,
-                                    IdGenerator<PlanNodeId> idAllocator,
+                                    PlanNodeIdAllocator idAllocator,
                                     WarningCollector warningCollector) {
         // only disable new rules if we have legacy rules to fall back to
         /*
@@ -210,7 +211,7 @@ public class IterativeOptimizer
             }
 
             @Override
-            public IdGenerator<PlanNodeId>  getIdAllocator()
+            public PlanNodeIdAllocator  getIdAllocator()
             {
                 return context.idAllocator;
             }
@@ -257,7 +258,7 @@ public class IterativeOptimizer
     {
         private final Memo memo;
         private final Lookup lookup;
-        private final IdGenerator<PlanNodeId> idAllocator;
+        private final PlanNodeIdAllocator idAllocator;
         private final VariableAllocator variableAllocator;
         private final long startTimeInNanos;
         private final long timeoutInMilliseconds;
@@ -267,7 +268,7 @@ public class IterativeOptimizer
         public Context(
                 Memo memo,
                 Lookup lookup,
-                IdGenerator<PlanNodeId>  idAllocator,
+                PlanNodeIdAllocator  idAllocator,
                 VariableAllocator variableAllocator,
                 long startTimeInNanos,
                 long timeoutInMilliseconds,

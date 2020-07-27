@@ -34,13 +34,22 @@ import java.util.Set;
 
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.planner.ExpressionExtractor.extractExpressions;
 import static org.apache.doris.sql.planner.iterative.Lookup.noLookup;
+import static org.apache.doris.sql.planner.optimizations.PlanNodeSearcher.searchFrom;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.isExpression;
 
 public final class VariablesExtractor
 {
     private VariablesExtractor() {}
+
+    public static Set<VariableReferenceExpression> extractUnique(LogicalPlanNode node, Lookup lookup, TypeProvider types)
+    {
+        ImmutableSet.Builder<VariableReferenceExpression> unique = ImmutableSet.builder();
+        extractExpressions(node, lookup).forEach(expression -> unique.addAll(extractUniqueVariableInternal(expression, types)));
+        return unique.build();
+    }
 
     public static Set<VariableReferenceExpression> extractUnique(Expression expression, TypeProvider types)
     {
@@ -98,6 +107,23 @@ public final class VariablesExtractor
         ImmutableSet.Builder<QualifiedName> builder = ImmutableSet.builder();
         new QualifiedNameBuilderVisitor(columnReferences).process(expression, builder);
         return builder.build();
+    }
+
+    public static Set<VariableReferenceExpression> extractOutputVariables(LogicalPlanNode planNode, Lookup lookup)
+    {
+        return searchFrom(planNode, lookup)
+                .findAll()
+                .stream()
+                .flatMap(node -> node.getOutputVariables().stream())
+                .collect(toImmutableSet());
+    }
+
+    private static Set<VariableReferenceExpression> extractUniqueVariableInternal(RowExpression expression, TypeProvider types)
+    {
+        if (isExpression(expression)) {
+            return extractUnique(castToExpression(expression), types);
+        }
+        return extractUnique(expression);
     }
 
     private static class SymbolBuilderVisitor

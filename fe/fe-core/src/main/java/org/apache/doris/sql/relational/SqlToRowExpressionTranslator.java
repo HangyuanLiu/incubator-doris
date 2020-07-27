@@ -33,6 +33,7 @@ import org.apache.doris.sql.tree.AstVisitor;
 import org.apache.doris.sql.tree.BetweenPredicate;
 import org.apache.doris.sql.tree.BooleanLiteral;
 import org.apache.doris.sql.tree.Cast;
+import org.apache.doris.sql.tree.CoalesceExpression;
 import org.apache.doris.sql.tree.ComparisonExpression;
 import org.apache.doris.sql.tree.DecimalLiteral;
 import org.apache.doris.sql.tree.DoubleLiteral;
@@ -53,8 +54,10 @@ import org.apache.doris.sql.tree.NodeRef;
 import org.apache.doris.sql.tree.NotExpression;
 import org.apache.doris.sql.tree.NullLiteral;
 import org.apache.doris.sql.tree.QualifiedName;
+import org.apache.doris.sql.tree.SimpleCaseExpression;
 import org.apache.doris.sql.tree.StringLiteral;
 import org.apache.doris.sql.tree.SymbolReference;
+import org.apache.doris.sql.tree.WhenClause;
 import org.apache.doris.sql.type.BigintType;
 import org.apache.doris.sql.type.BooleanType;
 import org.apache.doris.sql.type.CharType;
@@ -80,10 +83,13 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.AND;
+import static org.apache.doris.sql.relation.SpecialFormExpression.Form.COALESCE;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.IN;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.IS_NULL;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.NULL_IF;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.OR;
+import static org.apache.doris.sql.relation.SpecialFormExpression.Form.SWITCH;
+import static org.apache.doris.sql.relation.SpecialFormExpression.Form.WHEN;
 import static org.apache.doris.sql.relational.Expressions.call;
 import static org.apache.doris.sql.relational.Expressions.constant;
 import static org.apache.doris.sql.relational.Expressions.constantNull;
@@ -374,6 +380,43 @@ public final class SqlToRowExpressionTranslator
 
             FunctionHandle functionHandle = functionManager.lookupCast(value.getType().getTypeSignature(), getType(node).getTypeSignature());
             return call(functionHandle.getFunctionName(), functionHandle, getType(node), value);
+        }
+
+        @Override
+        protected RowExpression visitCoalesceExpression(CoalesceExpression node, Void context)
+        {
+            List<RowExpression> arguments = node.getOperands().stream()
+                    .map(value -> process(value, context))
+                    .collect(toImmutableList());
+
+            return specialForm(COALESCE, getType(node), arguments);
+        }
+
+        @Override
+        protected RowExpression visitSimpleCaseExpression(SimpleCaseExpression node, Void context)
+        {
+            return buildSwitch(process(node.getOperand(), context), node.getWhenClauses(), node.getDefaultValue(), getType(node), context);
+        }
+
+        private RowExpression buildSwitch(RowExpression operand, List<WhenClause> whenClauses, Optional<Expression> defaultValue, Type returnType, Void context)
+        {
+            ImmutableList.Builder<RowExpression> arguments = ImmutableList.builder();
+
+            arguments.add(operand);
+
+            for (WhenClause clause : whenClauses) {
+                arguments.add(specialForm(
+                        WHEN,
+                        getType(clause.getResult()),
+                        process(clause.getOperand(), context),
+                        process(clause.getResult(), context)));
+            }
+
+            arguments.add(defaultValue
+                    .map((value) -> process(value, context))
+                    .orElse(constantNull(returnType)));
+
+            return specialForm(SWITCH, returnType, arguments.build());
         }
 
         private RowExpression buildEquals(RowExpression lhs, RowExpression rhs)

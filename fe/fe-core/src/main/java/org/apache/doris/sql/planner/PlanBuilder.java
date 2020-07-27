@@ -18,6 +18,7 @@ import org.apache.doris.common.IdGenerator;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
+import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
@@ -99,7 +100,7 @@ class PlanBuilder
         return translations;
     }
 
-    public PlanBuilder appendProjections(Iterable<Expression> expressions, VariableAllocator variableAllocator, IdGenerator<PlanNodeId> idAllocator)
+    public PlanBuilder appendProjections(Iterable<Expression> expressions, VariableAllocator variableAllocator, PlanNodeIdAllocator idAllocator)
     {
         TranslationMap translations = copyTranslations();
 
