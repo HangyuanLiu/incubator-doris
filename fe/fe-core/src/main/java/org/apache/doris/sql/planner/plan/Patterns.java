@@ -44,6 +44,11 @@ public class Patterns
         return typeOf(ProjectNode.class);
     }
 
+    public static Pattern<SemiJoinNode> semiJoin()
+    {
+        return typeOf(SemiJoinNode.class);
+    }
+
     public static Pattern<FilterNode> filter()
     {
         return typeOf(FilterNode.class);

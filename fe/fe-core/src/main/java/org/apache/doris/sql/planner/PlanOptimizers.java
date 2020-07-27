@@ -12,7 +12,16 @@ import org.apache.doris.sql.planner.iterative.rule.MergeLimitWithTopN;
 import org.apache.doris.sql.planner.iterative.rule.MergeLimits;
 import org.apache.doris.sql.planner.iterative.rule.PruneAggregationColumns;
 import org.apache.doris.sql.planner.iterative.rule.PruneAggregationSourceColumns;
+import org.apache.doris.sql.planner.iterative.rule.PruneCrossJoinColumns;
+import org.apache.doris.sql.planner.iterative.rule.PruneFilterColumns;
+import org.apache.doris.sql.planner.iterative.rule.PruneJoinChildrenColumns;
+import org.apache.doris.sql.planner.iterative.rule.PruneJoinColumns;
+import org.apache.doris.sql.planner.iterative.rule.PruneLimitColumns;
+import org.apache.doris.sql.planner.iterative.rule.PruneProjectColumns;
+import org.apache.doris.sql.planner.iterative.rule.PruneSemiJoinColumns;
+import org.apache.doris.sql.planner.iterative.rule.PruneSemiJoinFilteringSourceColumns;
 import org.apache.doris.sql.planner.iterative.rule.PruneTableScanColumns;
+import org.apache.doris.sql.planner.iterative.rule.PruneTopNColumns;
 import org.apache.doris.sql.planner.iterative.rule.PushLimitThroughProject;
 import org.apache.doris.sql.planner.iterative.rule.RemoveRedundantIdentityProjections;
 import org.apache.doris.sql.planner.iterative.rule.SingleDistinctAggregationToGroupBy;
@@ -38,17 +47,17 @@ public class PlanOptimizers {
         Set<Rule<?>> columnPruningRules = ImmutableSet.of(
                 new PruneAggregationColumns(),
                 new PruneAggregationSourceColumns(),
-                //new PruneCrossJoinColumns(),
-                //new PruneFilterColumns(),
-                //new PruneJoinChildrenColumns(),
-                //new PruneJoinColumns(),
+                new PruneCrossJoinColumns(),
+                new PruneFilterColumns(),
+                new PruneJoinChildrenColumns(),
+                new PruneJoinColumns(),
                 //new PruneMarkDistinctColumns(),
                 //new PruneOutputColumns(),
-                //new PruneProjectColumns(),
-                //new PruneSemiJoinColumns(),
-                //new PruneSemiJoinFilteringSourceColumns(),
-                //new PruneTopNColumns(),
-                //new PruneLimitColumns(),
+                new PruneProjectColumns(),
+                new PruneSemiJoinColumns(),
+                new PruneSemiJoinFilteringSourceColumns(),
+                new PruneTopNColumns(),
+                new PruneLimitColumns(),
                 new PruneTableScanColumns());
 
         //统一裁剪冗余project
