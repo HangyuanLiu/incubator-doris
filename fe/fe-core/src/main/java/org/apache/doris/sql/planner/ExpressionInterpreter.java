@@ -23,6 +23,7 @@ import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.FunctionMetadata;
 import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.metadata.Session;
+import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.ArithmeticUnaryExpression;
 import org.apache.doris.sql.tree.AstVisitor;
@@ -107,7 +108,7 @@ public class ExpressionInterpreter
     // if optimize flag is on, we will ways return evaluated result or throw.
     private final boolean optimize;
     private final Map<NodeRef<Expression>, Type> expressionTypes;
-    private final InterpretedFunctionInvoker functionInvoker;
+    //private final InterpretedFunctionInvoker functionInvoker;
     private final boolean legacyRowFieldOrdinalAccess;
 
     private final Visitor visitor;
@@ -974,11 +975,5 @@ public class ExpressionInterpreter
 
         return new Cast(failureFunction, type.getTypeSignature().toString());
     }
-
-    private static boolean isArray(Type type)
-    {
-        return type.getTypeSignature().getBase().equals(StandardTypes.ARRAY);
-    }
-
      */
 }

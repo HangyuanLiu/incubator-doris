@@ -1059,7 +1059,8 @@ public class StmtRewriter {
         // Update subquery's GROUP BY clause
         if (groupByExprs != null && !groupByExprs.isEmpty()) {
             if (stmt.hasGroupByClause()) {
-                stmt.groupByClause.getGroupingExprs().addAll(groupByExprs);
+                //stmt.groupByClause.getGroupingExprs().addAll(groupByExprs);
+                //stmt.groupByClause.oriGroupingExprs.addAll(groupByExprs);
             } else {
                 stmt.groupByClause = new GroupByClause(groupByExprs, GroupByClause.GroupingType.GROUP_BY);
             }

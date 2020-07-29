@@ -235,16 +235,16 @@ public final class ExpressionUtils
         return combineConjuncts(conjuncts);
     }
 
-    public static Function<Expression, Expression> expressionOrNullVariables(TypeProvider types, final Predicate<VariableReferenceExpression>... nullVariableScopes)
+    public static Function<Expression, Expression> expressionOrNullVariables(TypeProvider types, final java.util.function.Predicate<VariableReferenceExpression>... nullVariableScopes)
     {
         return expression -> {
             ImmutableList.Builder<Expression> resultDisjunct = ImmutableList.builder();
             resultDisjunct.add(expression);
 
-            for (Predicate<VariableReferenceExpression> nullVariableScope : nullVariableScopes) {
+            for (java.util.function.Predicate<VariableReferenceExpression> nullVariableScope : nullVariableScopes) {
                 List<VariableReferenceExpression> variables = VariablesExtractor.extractUnique(expression, types).stream()
                         .filter(nullVariableScope)
-                        .collect(Collectors.toList());
+                        .collect(toImmutableList());
 
                 if (Iterables.isEmpty(variables)) {
                     continue;

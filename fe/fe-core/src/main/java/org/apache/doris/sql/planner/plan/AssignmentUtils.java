@@ -17,6 +17,7 @@ import com.google.common.collect.Maps;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
+import org.apache.doris.sql.tree.SymbolReference;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -29,6 +30,7 @@ import static java.util.Collections.singletonMap;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.asSymbolReference;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
+import static org.apache.doris.sql.relational.OriginalExpressionUtils.isExpression;
 
 public class AssignmentUtils
 {
@@ -71,8 +73,19 @@ public class AssignmentUtils
 
     public static boolean isIdentity(Assignments assignments, VariableReferenceExpression output)
     {
+        //TODO this will be checking against VariableExpression once getOutput returns VariableReferenceExpression
         RowExpression value = assignments.get(output);
+        if (isExpression(value)) {
+            Expression expression = castToExpression(value);
+            return expression instanceof SymbolReference && ((SymbolReference) expression).getName().equals(output.getName());
+        }
         return value instanceof VariableReferenceExpression && ((VariableReferenceExpression) value).getName().equals(output.getName());
+    }
+
+    @Deprecated
+    public static Assignments identityAssignmentsAsSymbolReferences(VariableReferenceExpression... variables)
+    {
+        return identityAssignmentsAsSymbolReferences(asList(variables));
     }
 
     public static Assignments rewrite(Assignments assignments, Function<Expression, Expression> rewrite)

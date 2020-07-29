@@ -47,11 +47,14 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.SemanticErrorCode.MULTIPLE_FIELDS_FROM_SUBQUERY;
 import static org.apache.doris.sql.analyzer.SemanticErrorCode.TYPE_MISMATCH;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
+import static org.apache.doris.sql.tree.Extract.Field.TIMEZONE_HOUR;
 import static org.apache.doris.sql.type.BigintType.BIGINT;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
+import static org.apache.doris.sql.type.DateType.DATE;
 import static org.apache.doris.sql.type.IntegerType.INTEGER;
 import static org.apache.doris.sql.type.IntervalDayTimeType.INTERVAL_DAY_TIME;
 import static org.apache.doris.sql.type.IntervalYearMonthType.INTERVAL_YEAR_MONTH;
+import static org.apache.doris.sql.type.TimestampType.TIMESTAMP;
 import static org.apache.doris.sql.type.VarcharType.VARCHAR;
 import static org.apache.doris.sql.type.DoubleType.DOUBLE;
 import static org.apache.doris.sql.type.UnknownType.UNKNOWN;
@@ -456,6 +459,30 @@ public class ExpressionAnalyzer
             process(node.getValue(), context);
 
             return setExpressionType(node, BOOLEAN);
+        }
+
+        @Override
+        protected Type visitExtract(Extract node, StackableAstVisitorContext<Context> context)
+        {
+            Type type = process(node.getExpression(), context);
+            if (!isDateTimeType(type)) {
+                throw new SemanticException(TYPE_MISMATCH, node.getExpression(), "Type of argument to extract must be DATE, TIME, TIMESTAMP, or INTERVAL (actual %s)", type);
+            }
+            Extract.Field field = node.getField();
+            /*
+            if ((field == TIMEZONE_HOUR || field == TIMEZONE_MINUTE) && !(type.equals(TIME_WITH_TIME_ZONE) || type.equals(TIMESTAMP_WITH_TIME_ZONE))) {
+                throw new SemanticException(TYPE_MISMATCH, node.getExpression(), "Type of argument to extract time zone field must have a time zone (actual %s)", type);
+            }
+            */
+            return setExpressionType(node, BIGINT);
+        }
+
+        private boolean isDateTimeType(Type type)
+        {
+            return type.equals(DATE) ||
+                    type.equals(TIMESTAMP) ||
+                    type.equals(INTERVAL_DAY_TIME) ||
+                    type.equals(INTERVAL_YEAR_MONTH);
         }
 
         @Override
@@ -922,5 +949,46 @@ public class ExpressionAnalyzer
                 analysis.getParameters(),
                 warningCollector,
                 analysis.isDescribe());
+    }
+
+    public static ExpressionAnalyzer createWithoutSubqueries(
+            FunctionManager functionManager,
+            TypeManager typeManager,
+            Session session,
+            TypeProvider symbolTypes,
+            List<Expression> parameters,
+            Function<? super Node, ? extends RuntimeException> statementAnalyzerRejection,
+            WarningCollector warningCollector,
+            boolean isDescribe)
+    {
+        return createWithoutSubqueries(
+                functionManager,
+                typeManager,
+                symbolTypes,
+                parameters,
+                statementAnalyzerRejection,
+                warningCollector,
+                isDescribe);
+    }
+
+    public static ExpressionAnalyzer createWithoutSubqueries(
+            FunctionManager functionManager,
+            TypeManager typeManager,
+            TypeProvider symbolTypes,
+            List<Expression> parameters,
+            Function<? super Node, ? extends RuntimeException> statementAnalyzerRejection,
+            WarningCollector warningCollector,
+            boolean isDescribe)
+    {
+        return new ExpressionAnalyzer(
+                functionManager,
+                typeManager,
+                node -> {
+                    throw statementAnalyzerRejection.apply(node);
+                },
+                symbolTypes,
+                parameters,
+                warningCollector,
+                isDescribe);
     }
 }

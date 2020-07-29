@@ -79,6 +79,11 @@ public class Patterns
         return typeOf(TopNNode.class);
     }
 
+    public static Pattern<ValuesNode> values()
+    {
+        return typeOf(ValuesNode.class);
+    }
+
     public static Pattern<TableScanNode> tableScan()
     {
         return typeOf(TableScanNode.class);
@@ -117,6 +122,14 @@ public class Patterns
         public static Property<LateralJoinNode, LogicalPlanNode> subquery()
         {
             return property("subquery", LateralJoinNode::getSubquery);
+        }
+    }
+
+    public static class Limit
+    {
+        public static Property<LimitNode, Long> count()
+        {
+            return property("count", LimitNode::getCount);
         }
     }
 }

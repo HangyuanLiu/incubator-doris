@@ -13,8 +13,10 @@
  */
 package org.apache.doris.sql.metadata;
 
+import org.apache.doris.sql.planner.statistics.TableStatistics;
 import org.apache.doris.sql.type.TypeManager;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -44,4 +46,9 @@ public interface Metadata
     FunctionManager getFunctionManager();
 
     TypeManager getTypeManager();
+
+    /**
+     * Return statistics for specified table for given columns and filtering constraint.
+     */
+    TableStatistics getTableStatistics(Session session, TableHandle tableHandle, List<ColumnHandle> columnHandles);
 }

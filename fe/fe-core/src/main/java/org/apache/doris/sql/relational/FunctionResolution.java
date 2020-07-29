@@ -1,16 +1,26 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.doris.sql.relational;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import org.apache.doris.sql.analyzer.TypeSignatureProvider;
 import org.apache.doris.sql.metadata.CatalogSchemaName;
 import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.FunctionManager;
 import org.apache.doris.sql.metadata.QualifiedFunctionName;
 import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.ComparisonExpression;
-import org.apache.doris.sql.tree.QualifiedName;
-import org.apache.doris.sql.type.BigintType;
+import org.apache.doris.sql.type.CharType;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 
@@ -22,25 +32,85 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
-import static org.apache.doris.sql.type.OperatorType.*;
+import static org.apache.doris.sql.type.OperatorType.ADD;
+import static org.apache.doris.sql.type.OperatorType.BETWEEN;
+import static org.apache.doris.sql.type.OperatorType.DIVIDE;
+import static org.apache.doris.sql.type.OperatorType.EQUAL;
+import static org.apache.doris.sql.type.OperatorType.GREATER_THAN;
+import static org.apache.doris.sql.type.OperatorType.GREATER_THAN_OR_EQUAL;
+import static org.apache.doris.sql.type.OperatorType.IS_DISTINCT_FROM;
+import static org.apache.doris.sql.type.OperatorType.LESS_THAN;
+import static org.apache.doris.sql.type.OperatorType.LESS_THAN_OR_EQUAL;
+import static org.apache.doris.sql.type.OperatorType.MODULUS;
+import static org.apache.doris.sql.type.OperatorType.MULTIPLY;
+import static org.apache.doris.sql.type.OperatorType.NEGATION;
+import static org.apache.doris.sql.type.OperatorType.NOT_EQUAL;
+import static org.apache.doris.sql.type.OperatorType.SUBSCRIPT;
+import static org.apache.doris.sql.type.OperatorType.SUBTRACT;
+import static org.apache.doris.sql.type.VarcharType.VARCHAR;
 
-public final class FunctionResolution {
-
+public final class FunctionResolution
+{
+    public static final CatalogSchemaName DEFAULT_NAMESPACE = new CatalogSchemaName("", "");
     private final FunctionManager functionManager;
 
-    public FunctionResolution(FunctionManager functionManager) {
+    public FunctionResolution(FunctionManager functionManager)
+    {
         this.functionManager = requireNonNull(functionManager, "functionManager is null");
     }
 
     public FunctionHandle notFunction()
     {
-        return functionManager.resolveFunction(QualifiedName.of("not"), fromTypes(BOOLEAN));
+        return functionManager.lookupFunction("not", fromTypes(BOOLEAN));
     }
 
     public boolean isNotFunction(FunctionHandle functionHandle)
     {
         return notFunction().equals(functionHandle);
     }
+
+
+    public FunctionHandle likeVarcharFunction()
+    {
+        //return functionManager.lookupFunction("LIKE", fromTypes(VARCHAR, LIKE_PATTERN));
+        return functionManager.lookupFunction("LIKE", fromTypes(VARCHAR));
+    }
+
+
+    public FunctionHandle likeCharFunction(Type valueType)
+    {
+        checkArgument(valueType instanceof CharType, "Expected CHAR value type");
+        //return functionManager.lookupFunction("LIKE", fromTypes(valueType, LIKE_PATTERN));
+        return functionManager.lookupFunction("LIKE", fromTypes(valueType));
+    }
+
+    public boolean isLikeFunction(FunctionHandle functionHandle)
+    {
+        return functionManager.getFunctionMetadata(functionHandle).getName().equals(QualifiedFunctionName.of(DEFAULT_NAMESPACE, "LIKE"));
+    }
+
+    public FunctionHandle likePatternFunction()
+    {
+        return functionManager.lookupFunction("LIKE_PATTERN", fromTypes(VARCHAR, VARCHAR));
+    }
+
+
+    public boolean isCastFunction(FunctionHandle functionHandle)
+    {
+        return functionManager.getFunctionMetadata(functionHandle).getOperatorType().equals(Optional.of(OperatorType.CAST));
+    }
+
+    public FunctionHandle betweenFunction(Type valueType, Type lowerBoundType, Type upperBoundType)
+    {
+        return functionManager.lookupFunction(BETWEEN.getFunctionName().getFunctionName(), fromTypes(valueType, lowerBoundType, upperBoundType));
+    }
+
+
+    public boolean isBetweenFunction(FunctionHandle functionHandle)
+    {
+        return functionManager.getFunctionMetadata(functionHandle).getOperatorType().equals(Optional.of(BETWEEN));
+    }
+
 
     public FunctionHandle arithmeticFunction(OperatorType operator, Type leftType, Type rightType)
     {
@@ -73,30 +143,25 @@ public final class FunctionResolution {
         return arithmeticFunction(operatorType, leftType, rightType);
     }
 
-    public FunctionHandle timeUnitArichemeticFunction(ArithmeticBinaryExpression.Operator operator, List<Type> argumentType, String timeUnit) {
 
-        OperatorType operatorType;
-        switch (operator) {
-            case ADD:
-                operatorType = ADD;
-                break;
-            case SUBTRACT:
-                operatorType = SUBTRACT;
-                break;
-            case MULTIPLY:
-                operatorType = MULTIPLY;
-                break;
-            case DIVIDE:
-                operatorType = DIVIDE;
-                break;
-            case MODULUS:
-                operatorType = MODULUS;
-                break;
-            default:
-                throw new IllegalStateException("Unknown arithmetic operator: " + operator);
-        }
-        return functionManager.resolveTimeUnitOperator(operatorType, fromTypes(argumentType), timeUnit);
+    public boolean isArithmeticFunction(FunctionHandle functionHandle)
+    {
+        Optional<OperatorType> operatorType = functionManager.getFunctionMetadata(functionHandle).getOperatorType();
+        return operatorType.isPresent() && operatorType.get().isArithmeticOperator();
     }
+
+
+    public FunctionHandle negateFunction(Type type)
+    {
+        return functionManager.lookupFunction(NEGATION.getFunctionName().getFunctionName(), fromTypes(type));
+    }
+
+
+    public boolean isNegateFunction(FunctionHandle functionHandle)
+    {
+        return functionManager.getFunctionMetadata(functionHandle).getOperatorType().equals(Optional.of(NEGATION));
+    }
+
 
     public FunctionHandle comparisonFunction(OperatorType operator, Type leftType, Type rightType)
     {
@@ -142,13 +207,71 @@ public final class FunctionResolution {
         return operatorType.isPresent() && operatorType.get().isComparisonOperator();
     }
 
+
+    public FunctionHandle subscriptFunction(Type baseType, Type indexType)
+    {
+        return functionManager.lookupFunction(SUBSCRIPT.getFunctionName().getFunctionName(), fromTypes(baseType, indexType));
+    }
+
+    public boolean isSubscriptFunction(FunctionHandle functionHandle)
+    {
+        return functionManager.getFunctionMetadata(functionHandle).getOperatorType().equals(Optional.of(SUBSCRIPT));
+    }
+
+    public FunctionHandle tryFunction(Type returnType)
+    {
+        return functionManager.lookupFunction("$internal$try", fromTypes(returnType));
+    }
+
+    public boolean isTryFunction(FunctionHandle functionHandle)
+    {
+        return functionManager.getFunctionMetadata(functionHandle).getName().equals("$internal$try");
+    }
+
+    public boolean isFailFunction(FunctionHandle functionHandle)
+    {
+        return functionManager.getFunctionMetadata(functionHandle).getName().equals(QualifiedFunctionName.of(DEFAULT_NAMESPACE, "fail"));
+    }
+
+
     public boolean isCountFunction(FunctionHandle functionHandle)
     {
-        return functionManager.getFunctionMetadata(functionHandle).getName().equals(QualifiedFunctionName.of(new CatalogSchemaName("", ""),"count"));
+        return functionManager.getFunctionMetadata(functionHandle).getName().equals(QualifiedFunctionName.of(DEFAULT_NAMESPACE, "count"));
     }
+
 
     public FunctionHandle countFunction()
     {
-        return functionManager.resolveFunction(QualifiedName.of("count"), fromTypes(BigintType.BIGINT));
+        return functionManager.lookupFunction("count", ImmutableList.of());
+    }
+
+
+    public FunctionHandle countFunction(Type valueType)
+    {
+        return functionManager.lookupFunction("count", fromTypes(valueType));
+    }
+
+
+    public boolean isMaxFunction(FunctionHandle functionHandle)
+    {
+        return functionManager.getFunctionMetadata(functionHandle).getName().equals(QualifiedFunctionName.of(DEFAULT_NAMESPACE, "max"));
+    }
+
+
+    public FunctionHandle maxFunction(Type valueType)
+    {
+        return functionManager.lookupFunction("max", fromTypes(valueType));
+    }
+
+
+    public boolean isMinFunction(FunctionHandle functionHandle)
+    {
+        return functionManager.getFunctionMetadata(functionHandle).getName().equals(QualifiedFunctionName.of(DEFAULT_NAMESPACE, "min"));
+    }
+
+
+    public FunctionHandle minFunction(Type valueType)
+    {
+        return functionManager.lookupFunction("min", fromTypes(valueType));
     }
 }

@@ -106,11 +106,15 @@ public class TypeSignature {
 
     @Override
     public String toString(){
+        return getBase();
+        /*
         try {
             throw new NotImplementedException("toString is no implement");
         } catch (NotImplementedException ex) {
             ex.printStackTrace();
         }
         return "Not Implement";
+
+         */
     }
 }

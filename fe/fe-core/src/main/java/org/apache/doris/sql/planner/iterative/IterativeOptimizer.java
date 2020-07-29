@@ -22,6 +22,8 @@ import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.planner.RuleStatsRecorder;
 import org.apache.doris.sql.planner.VariableAllocator;
+import org.apache.doris.sql.planner.cost.CachingCostProvider;
+import org.apache.doris.sql.planner.cost.CachingStatsProvider;
 import org.apache.doris.sql.planner.cost.CostCalculator;
 import org.apache.doris.sql.planner.cost.CostProvider;
 import org.apache.doris.sql.planner.cost.StatsCalculator;
@@ -46,7 +48,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 public class IterativeOptimizer
         implements PlanOptimizer
 {
-    private final RuleStatsRecorder stats;
+    private RuleStatsRecorder stats;
     private final StatsCalculator statsCalculator;
     private final CostCalculator costCalculator;
     private final List<PlanOptimizer> legacyRules;
@@ -59,11 +61,11 @@ public class IterativeOptimizer
 
     public IterativeOptimizer(RuleStatsRecorder stats, StatsCalculator statsCalculator, CostCalculator costCalculator, List<PlanOptimizer> legacyRules, Set<Rule<?>> newRules)
     {
-        this.stats = null;
-        this.statsCalculator = null;
-        this.costCalculator = null;
-        this.legacyRules = null;
-
+        //this.stats = requireNonNull(stats, "stats is null");
+        this.stats = stats;
+        this.statsCalculator = statsCalculator;
+        this.costCalculator = costCalculator;
+        this.legacyRules = ImmutableList.copyOf(legacyRules);
         this.ruleIndex = RuleIndex.builder()
                 .register(newRules)
                 .build();
@@ -197,10 +199,8 @@ public class IterativeOptimizer
 
     private Rule.Context ruleContext(Context context)
     {
-        //StatsProvider statsProvider = new CachingStatsProvider(statsCalculator, Optional.of(context.memo), context.lookup, context.session, context.variableAllocator.getTypes());
-        //CostProvider costProvider = new CachingCostProvider(costCalculator, statsProvider, Optional.of(context.memo), context.session);
-        StatsProvider statsProvider = null;
-        CostProvider costProvider = null;
+        StatsProvider statsProvider = new CachingStatsProvider(statsCalculator, Optional.of(context.memo), context.lookup, context.session, context.variableAllocator.getTypes());
+        CostProvider costProvider = new CachingCostProvider(costCalculator, statsProvider, Optional.of(context.memo), context.session);
 
         return new Rule.Context()
         {

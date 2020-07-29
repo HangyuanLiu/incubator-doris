@@ -13,6 +13,66 @@
  */
 package org.apache.doris.sql.planner;
 
+
+import org.apache.doris.sql.planner.iterative.Rule;
+import org.apache.doris.sql.planner.iterative.RuleStats;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Verify.verify;
+import static java.lang.String.format;
+
 public class RuleStatsRecorder
 {
+    private final Map<Class<?>, RuleStats> stats = new HashMap<>();
+
+    public void registerAll(Collection<Rule<?>> rules)
+    {
+        for (Rule<?> rule : rules) {
+            checkArgument(!rule.getClass().isAnonymousClass());
+            stats.put(rule.getClass(), new RuleStats());
+        }
+    }
+    /*
+    public void record(Rule<?> rule, long nanos, boolean match)
+    {
+        stats.get(rule.getClass()).record(nanos, match);
+    }
+
+    public void recordFailure(Rule<?> rule)
+    {
+        stats.get(rule.getClass()).recordFailure();
+    }
+
+    void export(MBeanExporter exporter)
+    {
+        for (Map.Entry<Class<?>, RuleStats> entry : stats.entrySet()) {
+            verify(!entry.getKey().getSimpleName().isEmpty());
+            String name = ObjectNames.builder(IterativeOptimizer.class)
+                    .withProperty("rule", entry.getKey().getSimpleName())
+                    .build();
+
+            try {
+                exporter.export(name, entry.getValue());
+            }
+            catch (RuntimeException e) {
+                throw new RuntimeException(format("Failed to export MBean with name '%s'", name), e);
+            }
+        }
+    }
+
+    void unexport(MBeanExporter exporter)
+    {
+        for (Class<?> rule : stats.keySet()) {
+            String name = ObjectNames.builder(IterativeOptimizer.class)
+                    .withProperty("rule", rule.getSimpleName())
+                    .build();
+
+            exporter.unexport(name);
+        }
+    }
+     */
 }

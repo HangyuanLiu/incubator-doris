@@ -55,7 +55,7 @@ public class GroupByClause implements ParseNode {
     private boolean exprGenerated = false;
     private GroupingType groupingType;
     private ArrayList<Expr> groupingExprs;
-    private ArrayList<Expr> oriGroupingExprs;
+    public ArrayList<Expr> oriGroupingExprs;
     // reserve this info for toSQL
     private List<ArrayList<Expr>> groupingSetList;
 
@@ -125,6 +125,7 @@ public class GroupByClause implements ParseNode {
         }
         return groupingExprs;
     }
+
 
     // generate grouping exprs from group by, grouping sets, cube, rollup cluase
     public void genGroupingExprs() throws AnalysisException {

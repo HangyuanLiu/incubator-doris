@@ -1,12 +1,18 @@
 package org.apache.doris.sql.metadata;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import org.apache.doris.catalog.Catalog;
+import org.apache.doris.catalog.OlapTable;
+import org.apache.doris.sql.planner.statistics.ColumnStatistics;
+import org.apache.doris.sql.planner.statistics.Estimate;
+import org.apache.doris.sql.planner.statistics.TableStatistics;
 import org.apache.doris.sql.type.TypeManager;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
@@ -75,5 +81,15 @@ public class MetadataManager implements Metadata {
     {
         // TODO: make this transactional when we allow user defined types
         return typeManager;
+    }
+
+    @Override
+    public TableStatistics getTableStatistics(Session session, TableHandle tableHandle, List<ColumnHandle> columnHandles) {
+        Map<ColumnHandle, ColumnStatistics> columnStatisticsMap = Maps.newHashMap();
+
+        OlapTable olapTable = (OlapTable)(((DorisTableHandle)tableHandle.getConnectorHandle()).getTable());
+        int rowCount = new Random().nextInt(10000);
+        System.out.println(rowCount);
+        return new TableStatistics(Estimate.of(rowCount), columnStatisticsMap);
     }
 }

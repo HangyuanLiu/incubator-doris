@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static org.apache.doris.sql.ExpressionUtils.combineConjuncts;
 import static org.apache.doris.sql.ExpressionUtils.expressionOrNullVariables;
@@ -70,7 +71,7 @@ import static java.util.Objects.requireNonNull;
 @Deprecated
 public class EffectivePredicateExtractor
 {
-    /*
+
     private static final Predicate<Map.Entry<VariableReferenceExpression, ? extends Expression>> VARIABLE_MATCHES_EXPRESSION =
             entry -> entry.getValue().equals(new SymbolReference(entry.getKey().getName()));
 
@@ -83,27 +84,18 @@ public class EffectivePredicateExtractor
                 return new ComparisonExpression(ComparisonExpression.Operator.EQUAL, reference, expression);
             };
 
-    private final ExpressionDomainTranslator domainTranslator;
-
-    public EffectivePredicateExtractor(ExpressionDomainTranslator domainTranslator)
-    {
-        this.domainTranslator = requireNonNull(domainTranslator, "domainTranslator is null");
-    }
-
     public Expression extract(LogicalPlanNode node, TypeProvider types)
     {
-        return node.accept(new Visitor(domainTranslator, types), null);
+        return node.accept(new Visitor(types), null);
     }
 
     private static class Visitor
             extends PlanVisitor<Expression, Void>
     {
-        private final ExpressionDomainTranslator domainTranslator;
         private final TypeProvider types;
 
-        public Visitor(ExpressionDomainTranslator domainTranslator, TypeProvider types)
+        public Visitor(TypeProvider types)
         {
-            this.domainTranslator = requireNonNull(domainTranslator, "domainTranslator is null");
             this.types = requireNonNull(types, "types is null");
         }
 
@@ -195,7 +187,8 @@ public class EffectivePredicateExtractor
         {
             Map<ColumnHandle, VariableReferenceExpression> assignments = ImmutableBiMap.copyOf(node.getAssignments()).inverse();
             //return domainTranslator.toPredicate(node.getCurrentConstraint().simplify().transform(column -> assignments.containsKey(column) ? assignments.get(column).getName() : null));
-            return null;
+            //FIXME:
+            return TRUE_LITERAL;
         }
 
         @Override
@@ -251,8 +244,7 @@ public class EffectivePredicateExtractor
             return conjuncts.stream()
                     .map(expression -> pullExpressionThroughVariables(expression, outputVariables))
                     .map(expression -> VariablesExtractor.extractAll(expression, types).isEmpty() ? TRUE_LITERAL : expression)
-                    //FIXME(lhy)
-                    //.map(expressionOrNullVariables(types, nullVariableScopes))
+                    .map(expressionOrNullVariables(types, nullVariableScopes))
                     .collect(Collectors.toList());
         }
 
@@ -313,6 +305,4 @@ public class EffectivePredicateExtractor
             return combineConjuncts(effectiveConjuncts.build());
         }
     }
-
-     */
 }

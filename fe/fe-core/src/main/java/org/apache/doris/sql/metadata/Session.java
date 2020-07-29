@@ -16,6 +16,7 @@ package org.apache.doris.sql.metadata;
 import com.google.common.collect.ImmutableMap;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.qe.ConnectContext;
+import org.apache.doris.sql.util.DataSize;
 
 import java.util.Optional;
 
@@ -57,5 +58,32 @@ public final class Session
     public ConnectorSession toConnectorSession()
     {
         return new FullConnectorSession(this, new ConnectorId("0"));
+    }
+
+
+    public enum JoinDistributionType
+    {
+        BROADCAST,
+        PARTITIONED,
+        AUTOMATIC;
+
+        public boolean canPartition()
+        {
+            return this == PARTITIONED || this == AUTOMATIC;
+        }
+
+        public boolean canReplicate()
+        {
+            return this == BROADCAST || this == AUTOMATIC;
+        }
+    }
+
+    public static JoinDistributionType getJoinDistributionType(Session session) {
+        return JoinDistributionType.AUTOMATIC;
+    }
+
+    public static Optional<DataSize> getJoinMaxBroadcastTableSize(Session session)
+    {
+        return Optional.of(new DataSize());
     }
 }

@@ -35,6 +35,7 @@ import java.util.Set;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.planner.ExpressionExtractor.extractExpressions;
+import static org.apache.doris.sql.planner.ExpressionExtractor.extractExpressionsNonRecursive;
 import static org.apache.doris.sql.planner.iterative.Lookup.noLookup;
 import static org.apache.doris.sql.planner.optimizations.PlanNodeSearcher.searchFrom;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
@@ -43,6 +44,22 @@ import static org.apache.doris.sql.relational.OriginalExpressionUtils.isExpressi
 public final class VariablesExtractor
 {
     private VariablesExtractor() {}
+
+    public static Set<VariableReferenceExpression> extractUnique(LogicalPlanNode node, TypeProvider types)
+    {
+        ImmutableSet.Builder<VariableReferenceExpression> unique = ImmutableSet.builder();
+        extractExpressions(node).forEach(expression -> unique.addAll(extractUniqueVariableInternal(expression, types)));
+
+        return unique.build();
+    }
+
+    public static Set<VariableReferenceExpression> extractUniqueNonRecursive(LogicalPlanNode node, TypeProvider types)
+    {
+        ImmutableSet.Builder<VariableReferenceExpression> uniqueVariables = ImmutableSet.builder();
+        extractExpressionsNonRecursive(node).forEach(expression -> uniqueVariables.addAll(extractUniqueVariableInternal(expression, types)));
+
+        return uniqueVariables.build();
+    }
 
     public static Set<VariableReferenceExpression> extractUnique(LogicalPlanNode node, Lookup lookup, TypeProvider types)
     {

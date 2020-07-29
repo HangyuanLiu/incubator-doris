@@ -37,6 +37,11 @@ public abstract class AstVisitor<R, C>
         return visitNode(node, context);
     }
 
+    protected R visitExtract(Extract node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitArithmeticBinary(ArithmeticBinaryExpression node, C context)
     {
         return visitExpression(node, context);
@@ -273,6 +278,11 @@ public abstract class AstVisitor<R, C>
     }
 
     protected R visitExists(ExistsPredicate node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
+    protected R visitTryExpression(TryExpression node, C context)
     {
         return visitExpression(node, context);
     }

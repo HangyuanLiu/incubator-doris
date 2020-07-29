@@ -97,12 +97,15 @@ import static org.apache.doris.sql.relational.Expressions.constant;
 import static org.apache.doris.sql.relational.Expressions.constantNull;
 import static org.apache.doris.sql.relational.Expressions.field;
 import static org.apache.doris.sql.relational.Expressions.specialForm;
+import static org.apache.doris.sql.tree.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 import static org.apache.doris.sql.type.BigintType.BIGINT;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 import static org.apache.doris.sql.type.DoubleType.DOUBLE;
 import static org.apache.doris.sql.type.IntegerType.INTEGER;
 import static org.apache.doris.sql.type.OperatorType.BETWEEN;
 import static org.apache.doris.sql.type.OperatorType.EQUAL;
+import static org.apache.doris.sql.type.OperatorType.GREATER_THAN;
+import static org.apache.doris.sql.type.OperatorType.LESS_THAN;
 import static org.apache.doris.sql.type.OperatorType.NEGATION;
 import static org.apache.doris.sql.type.SmallintType.SMALLINT;
 import static org.apache.doris.sql.type.TinyintType.TINYINT;
@@ -501,6 +504,11 @@ public final class SqlToRowExpressionTranslator
             RowExpression min = process(node.getMin(), context);
             RowExpression max = process(node.getMax(), context);
 
+            Expression upperBound = new ComparisonExpression(ComparisonExpression.Operator.LESS_THAN, node.getValue(), node.getMax());
+            Expression lowerBound = new ComparisonExpression(ComparisonExpression.Operator.GREATER_THAN, node.getValue(), node.getMin());
+
+            return specialForm(AND, BOOLEAN, process(lowerBound), process(upperBound));
+            /*
             return call(
                     BETWEEN.name(),
                     functionManager.resolveOperator(BETWEEN, fromTypes(value.getType(), min.getType(), max.getType())),
@@ -508,6 +516,7 @@ public final class SqlToRowExpressionTranslator
                     value,
                     min,
                     max);
+             */
         }
     }
 }

@@ -233,7 +233,6 @@ public class RowExpressionToExpr {
                 callExpr.setFn(fn);
             }
             else {
-
                 return null;
             }
             callExpr.setType(node.getType().getTypeSignature().toDorisType());

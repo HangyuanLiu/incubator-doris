@@ -470,6 +470,20 @@ public class AstBuilder
     }
 
     @Override
+    public Node visitExtract(SqlBaseParser.ExtractContext context)
+    {
+        String fieldString = context.identifier().getText();
+        Extract.Field field;
+        try {
+            field = Extract.Field.valueOf(fieldString.toUpperCase());
+        }
+        catch (IllegalArgumentException e) {
+            throw parseError("Invalid EXTRACT field: " + fieldString, context);
+        }
+        return new Extract(getLocation(context), (Expression) visit(context.valueExpression()), field);
+    }
+
+    @Override
     public Node visitSubqueryExpression(SqlBaseParser.SubqueryExpressionContext context)
     {
         return new SubqueryExpression(getLocation(context), (Query) visit(context.query()));

@@ -34,6 +34,7 @@ import java.util.stream.Stream;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.planner.iterative.Plans.resolveGroupReferences;
 
 /**
  * Stores a plan in a form that's efficient to mutate locally (i.e. without
@@ -107,7 +108,7 @@ public class Memo
 
     private LogicalPlanNode extract(LogicalPlanNode node)
     {
-        return Plans.resolveGroupReferences(node, Lookup.from(planNode -> Stream.of(this.resolve(planNode))));
+        return resolveGroupReferences(node, Lookup.from(planNode -> Stream.of(this.resolve(planNode))));
     }
 
     public LogicalPlanNode replace(int group, LogicalPlanNode node, String reason)

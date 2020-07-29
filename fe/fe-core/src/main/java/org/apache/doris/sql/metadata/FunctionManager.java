@@ -103,6 +103,10 @@ public class FunctionManager
                 functionName = "ne";
                 isPredicate = true;
                 break;
+            case BETWEEN:
+                functionName = "between";
+                isPredicate = true;
+                break;
             default:
                 throw new UnsupportedOperationException("not yet implemented");
         }
@@ -208,5 +212,33 @@ public class FunctionManager
                 TypeSignature.create(fn.getReturnType()),
                 null,
                 Lists.newArrayList(fromType), FunctionHandle.FunctionKind.SCALAR, fn);
+    }
+
+    public FunctionHandle lookupFunction(String name, List<TypeSignatureProvider> parameterTypes)
+    {
+        List<TypeSignature> arguments = parameterTypes.stream().map(TypeSignatureProvider::getTypeSignature).collect(Collectors.toList());
+
+        Function searchDesc = new Function(
+                new FunctionName(name),
+                arguments.stream().map(TypeSignature::toDorisType).collect(Collectors.toList()),
+                org.apache.doris.catalog.Type.INVALID, false);
+        Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
+
+        FunctionHandle.FunctionKind functionKind;
+        TypeSignature intermediateType;
+        if (fn instanceof AggregateFunction) {
+            AggregateFunction fnAgg = (AggregateFunction) fn;
+            functionKind = FunctionHandle.FunctionKind.AGGREGATE;
+            intermediateType = TypeSignature.create(
+                    (fnAgg.getIntermediateType() == null ? fnAgg.getReturnType() : fnAgg.getIntermediateType()));
+        } else {
+            functionKind = FunctionHandle.FunctionKind.SCALAR;
+            intermediateType = null;
+        }
+
+        return new FunctionHandle(name,
+                TypeSignature.create(fn.getReturnType()),
+                intermediateType,
+                arguments, functionKind, fn);
     }
 }

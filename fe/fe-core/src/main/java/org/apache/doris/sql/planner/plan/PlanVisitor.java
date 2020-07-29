@@ -63,6 +63,11 @@ public abstract class PlanVisitor<R, C>
         return visitPlan(node, context);
     }
 
+    public R visitMarkDistinct(MarkDistinctNode node, C context)
+    {
+        return visitPlan(node, context);
+    }
+
     public R visitTopN(TopNNode node, C context)
     {
         return visitPlan(node, context);
@@ -84,6 +89,11 @@ public abstract class PlanVisitor<R, C>
     }
 
     public R visitApply(ApplyNode node, C context)
+    {
+        return visitPlan(node, context);
+    }
+
+    public R visitAssignUniqueId(AssignUniqueId node, C context)
     {
         return visitPlan(node, context);
     }

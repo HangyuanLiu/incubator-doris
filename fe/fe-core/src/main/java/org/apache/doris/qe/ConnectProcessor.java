@@ -66,6 +66,14 @@ import org.apache.doris.sql.planner.LogicalPlanner;
 import org.apache.doris.sql.planner.Plan;
 import org.apache.doris.sql.planner.PlanFragmentBuilder;
 import org.apache.doris.sql.planner.PlanOptimizers;
+import org.apache.doris.sql.planner.cost.CostCalculatorUsingExchanges;
+import org.apache.doris.sql.planner.cost.CostCalculatorWithEstimatedExchanges;
+import org.apache.doris.sql.planner.cost.CostComparator;
+import org.apache.doris.sql.planner.cost.FilterStatsCalculator;
+import org.apache.doris.sql.planner.cost.ScalarStatsCalculator;
+import org.apache.doris.sql.planner.cost.StatsCalculator;
+import org.apache.doris.sql.planner.cost.StatsNormalizer;
+import org.apache.doris.sql.planner.cost.TaskCountEstimator;
 import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
@@ -96,6 +104,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static org.apache.doris.sql.planner.cost.StatsCalculatorModule.createNewStatsCalculator;
 
 /**
  * Process one mysql connection, receive one pakcet, process, send one packet.
@@ -242,7 +252,15 @@ public class ConnectProcessor {
                 analyzer.analyze(stmt, Optional.empty());
 
                 //logical planner
-                PlanOptimizers optimizers = new PlanOptimizers(metadata, parser);
+                StatsNormalizer statsNormalizer = new StatsNormalizer();
+                ScalarStatsCalculator scalarStatsCalculator = new ScalarStatsCalculator(metadata);
+                FilterStatsCalculator filterStatsCalculator = new FilterStatsCalculator(metadata, scalarStatsCalculator, statsNormalizer);
+                StatsCalculator statsCalculator = createNewStatsCalculator(metadata, scalarStatsCalculator, statsNormalizer, filterStatsCalculator);
+
+                TaskCountEstimator taskCountEstimator = new TaskCountEstimator();
+                CostCalculatorUsingExchanges costCalculator = new CostCalculatorUsingExchanges(taskCountEstimator);
+                PlanOptimizers optimizers = new PlanOptimizers(
+                        metadata, parser, statsCalculator,new CostCalculatorWithEstimatedExchanges(costCalculator, taskCountEstimator), new CostComparator(), taskCountEstimator);
                 LogicalPlanner logicalPlanner = new LogicalPlanner(session, optimizers.get(), new PlanNodeIdAllocator(PlanNodeId.createGenerator()), metadata);
                 Plan plan = logicalPlanner.plan(analysis);
 
