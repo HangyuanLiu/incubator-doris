@@ -65,7 +65,7 @@ import java.util.stream.Collectors;
 import static org.apache.doris.sql.planner.optimizations.AggregationNodeUtils.extractAggregationUniqueVariables;
 import static org.apache.doris.sql.planner.optimizations.ApplyNodeUtil.verifySubquerySupported;
 import static org.apache.doris.sql.planner.optimizations.QueryCardinalityUtil.isScalar;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Iterables.concat;
@@ -162,7 +162,7 @@ public class PruneUnreferencedOutputs
                 outputVariables = node.getOutputVariables().stream()
                         .filter(variable -> context.get().contains(variable))
                         .distinct()
-                        .collect(toImmutableList());
+                        .collect(Collectors.toList());
             }
 
             return new JoinNode(node.getId(), node.getType(), left, right, node.getCriteria(), outputVariables, node.getFilter(), node.getLeftHashVariable(), node.getRightHashVariable(), node.getDistributionType());
@@ -237,7 +237,7 @@ public class PruneUnreferencedOutputs
         {
             List<VariableReferenceExpression> newOutputs = node.getOutputVariables().stream()
                     .filter(context.get()::contains)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             Map<VariableReferenceExpression, ColumnHandle> newAssignments = newOutputs.stream()
                     .collect(Collectors.toMap(identity(), node.getAssignments()::get));
@@ -314,7 +314,7 @@ public class PruneUnreferencedOutputs
                     .addAll(node.getDistinctVariables())
                     .addAll(context.get().stream()
                             .filter(variable -> !variable.equals(node.getMarkerVariable()))
-                            .collect(toImmutableList()));
+                            .collect(Collectors.toList()));
 
             if (node.getHashVariable().isPresent()) {
                 expectedInputs.add(node.getHashVariable().get());
@@ -410,7 +410,7 @@ public class PruneUnreferencedOutputs
             }
             List<List<RowExpression>> rewrittenRows = rowBuilders.stream()
                     .map(ImmutableList.Builder::build)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
             return new ValuesNode(node.getId(), rewrittenOutputVariablesBuilder.build(), rewrittenRows);
         }
 
@@ -446,7 +446,7 @@ public class PruneUnreferencedOutputs
             Set<VariableReferenceExpression> subquerySymbols = VariablesExtractor.extractUnique(subquery, variableAllocator.getTypes());
             List<VariableReferenceExpression> newCorrelation = node.getCorrelation().stream()
                     .filter(subquerySymbols::contains)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             Set<VariableReferenceExpression> inputContext = ImmutableSet.<VariableReferenceExpression>builder()
                     .addAll(context.get())
@@ -482,7 +482,7 @@ public class PruneUnreferencedOutputs
             Set<VariableReferenceExpression> subqueryVariables = VariablesExtractor.extractUnique(subquery, variableAllocator.getTypes());
             List<VariableReferenceExpression> newCorrelation = node.getCorrelation().stream()
                     .filter(subqueryVariables::contains)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             Set<VariableReferenceExpression> inputContext = ImmutableSet.<VariableReferenceExpression>builder()
                     .addAll(context.get())

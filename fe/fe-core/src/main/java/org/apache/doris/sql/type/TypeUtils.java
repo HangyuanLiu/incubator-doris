@@ -15,8 +15,8 @@ package org.apache.doris.sql.type;
 
 
 import java.util.List;
+import java.util.stream.Collectors;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 
 public final class TypeUtils {
     public static final long NULL_HASH_CODE = 0;
@@ -46,6 +46,6 @@ public final class TypeUtils {
     public static List<Type> resolveTypes(List<TypeSignature> typeNames, TypeManager typeManager) {
         return typeNames.stream()
                 .map((TypeSignature type) -> resolveType(type, typeManager))
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 }

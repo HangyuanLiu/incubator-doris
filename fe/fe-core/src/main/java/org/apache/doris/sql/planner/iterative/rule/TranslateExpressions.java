@@ -31,7 +31,7 @@ import org.apache.doris.sql.type.Type;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.util.Collections.emptyList;
 import static org.apache.doris.sql.analyzer.ExpressionAnalyzer.getExpressionTypes;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;

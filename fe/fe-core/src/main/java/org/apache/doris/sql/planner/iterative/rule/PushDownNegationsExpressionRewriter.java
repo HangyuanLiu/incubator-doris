@@ -22,8 +22,9 @@ import org.apache.doris.sql.tree.LogicalBinaryExpression;
 import org.apache.doris.sql.tree.NotExpression;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static org.apache.doris.sql.ExpressionUtils.combinePredicates;
 import static org.apache.doris.sql.ExpressionUtils.extractPredicates;
 import static org.apache.doris.sql.tree.ComparisonExpression.Operator.IS_DISTINCT_FROM;
@@ -46,7 +47,7 @@ public class PushDownNegationsExpressionRewriter
             if (node.getValue() instanceof LogicalBinaryExpression) {
                 LogicalBinaryExpression child = (LogicalBinaryExpression) node.getValue();
                 List<Expression> predicates = extractPredicates(child);
-                List<Expression> negatedPredicates = predicates.stream().map(predicate -> treeRewriter.rewrite((Expression) new NotExpression(predicate), context)).collect(toImmutableList());
+                List<Expression> negatedPredicates = predicates.stream().map(predicate -> treeRewriter.rewrite((Expression) new NotExpression(predicate), context)).collect(Collectors.toList());
                 return combinePredicates(child.getOperator().flip(), negatedPredicates);
             }
             else if (node.getValue() instanceof ComparisonExpression && ((ComparisonExpression) node.getValue()).getOperator() != IS_DISTINCT_FROM) {

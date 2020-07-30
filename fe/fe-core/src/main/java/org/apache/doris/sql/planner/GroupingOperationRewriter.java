@@ -30,7 +30,7 @@ import java.util.Set;
 
 import static org.apache.doris.sql.tree.ArithmeticBinaryExpression.Operator.ADD;
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.util.Objects.requireNonNull;
 
 public final class GroupingOperationRewriter

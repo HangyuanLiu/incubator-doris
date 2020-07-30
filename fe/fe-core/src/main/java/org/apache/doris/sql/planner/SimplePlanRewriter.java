@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Verify.verify;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static org.apache.doris.sql.planner.plan.ChildReplacer.replaceChildren;
 
 public abstract class SimplePlanRewriter<C>

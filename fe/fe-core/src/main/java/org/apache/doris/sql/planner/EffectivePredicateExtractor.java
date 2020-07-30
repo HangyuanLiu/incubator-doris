@@ -59,7 +59,6 @@ import static org.apache.doris.sql.planner.EqualityInference.createEqualityInfer
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.tree.BooleanLiteral.TRUE_LITERAL;
 import static com.google.common.base.Predicates.in;
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Maps.transformValues;
 import static java.util.Objects.requireNonNull;
 

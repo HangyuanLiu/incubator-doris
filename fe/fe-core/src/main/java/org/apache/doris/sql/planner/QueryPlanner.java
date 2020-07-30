@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.base.MoreObjects.firstNonNull;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Streams.stream;
 import static org.apache.doris.sql.planner.PlannerUtils.toOrderingScheme;

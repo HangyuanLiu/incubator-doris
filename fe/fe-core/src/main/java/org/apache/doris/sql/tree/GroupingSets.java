@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.util.Objects.requireNonNull;
 
 public final class GroupingSets

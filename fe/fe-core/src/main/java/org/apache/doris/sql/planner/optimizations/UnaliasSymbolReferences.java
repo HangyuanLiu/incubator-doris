@@ -60,7 +60,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.planner.optimizations.ApplyNodeUtil.verifySubquerySupported;
 import static org.apache.doris.sql.planner.plan.JoinNode.Type.INNER;
@@ -156,7 +156,7 @@ public class UnaliasSymbolReferences
             return callExpression.getArguments()
                     .stream()
                     .map(this::canonicalize)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
         }
 
         @Override
@@ -208,7 +208,7 @@ public class UnaliasSymbolReferences
         {
             return node.getInputs().stream()
                     .map(input -> canonicalize(input.get(symbolIndex)))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
         }
 
         @Override
@@ -223,8 +223,8 @@ public class UnaliasSymbolReferences
             List<List<RowExpression>> canonicalizedRows = node.getRows().stream()
                     .map(rowExpressions -> rowExpressions.stream()
                             .map(this::canonicalize)
-                            .collect(toImmutableList()))
-                    .collect(toImmutableList());
+                            .collect(Collectors.toList()))
+                    .collect(Collectors.toList());
             List<VariableReferenceExpression> canonicalizedOutputVariables = canonicalizeAndDistinct(node.getOutputVariables());
             checkState(node.getOutputVariables().size() == canonicalizedOutputVariables.size(), "Values output symbols were pruned");
             return new ValuesNode(
@@ -369,7 +369,7 @@ public class UnaliasSymbolReferences
 
         private void map(VariableReferenceExpression variable, VariableReferenceExpression canonical)
         {
-            Preconditions.checkArgument(!variable.equals(canonical), "Can't map variable to itself: %s", variable);
+            Preconditions.checkArgument(!variable.equals(canonical), "Can't map variable to itself");
             mapping.put(variable.getName(), canonical.getName());
         }
 
@@ -505,7 +505,7 @@ public class UnaliasSymbolReferences
             }
 
             ImmutableMap<VariableReferenceExpression, SortOrder> orderingsMap = orderings.build();
-            return new OrderingScheme(variables.build().stream().map(variable -> new Ordering(variable, orderingsMap.get(variable))).collect(toImmutableList()));
+            return new OrderingScheme(variables.build().stream().map(variable -> new Ordering(variable, orderingsMap.get(variable))).collect(Collectors.toList()));
         }
 
         private Set<VariableReferenceExpression> canonicalize(Set<VariableReferenceExpression> variables)

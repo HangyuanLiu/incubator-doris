@@ -46,7 +46,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.planner.plan.AggregationNode.singleGroupingSet;
 import static org.apache.doris.sql.planner.plan.AssignmentUtils.identitiesAsSymbolReferences;
@@ -219,7 +219,7 @@ public class PlanNodeDecorrelator
             Set<VariableReferenceExpression> groupingKeys = ImmutableSet.copyOf(node.getGroupingKeys());
             List<VariableReferenceExpression> variablesToAdd = childDecorrelationResult.variablesToPropagate.stream()
                     .filter(variable -> !groupingKeys.contains(variable))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             if (!constantVariables.containsAll(variablesToAdd)) {
                 return Optional.empty();
@@ -261,7 +261,7 @@ public class PlanNodeDecorrelator
             Set<VariableReferenceExpression> nodeOutputVariables = ImmutableSet.copyOf(node.getOutputVariables());
             List<VariableReferenceExpression> variablesToAdd = childDecorrelationResult.variablesToPropagate.stream()
                     .filter(variable -> !nodeOutputVariables.contains(variable))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             Assignments assignments = Assignments.builder()
                     .putAll(node.getAssignments())

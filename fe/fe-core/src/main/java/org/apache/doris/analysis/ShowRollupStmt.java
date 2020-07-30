@@ -17,14 +17,25 @@
 
 package org.apache.doris.analysis;
 
+import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Column;
+import org.apache.doris.catalog.Database;
+import org.apache.doris.catalog.MaterializedIndex;
+import org.apache.doris.catalog.MaterializedIndexMeta;
+import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.catalog.ScalarType;
+import org.apache.doris.catalog.Table;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
+import org.apache.doris.mysql.privilege.PrivPredicate;
+import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.qe.ShowResultSetMetaData;
 
 import com.google.common.base.Strings;
+
+import java.util.ArrayList;
+import java.util.List;
 
 // Show rollup statement, used to show rollup information of one table.
 //
@@ -33,12 +44,15 @@ import com.google.common.base.Strings;
 public class ShowRollupStmt extends ShowStmt {
     private static final ShowResultSetMetaData META_DATA =
             ShowResultSetMetaData.builder()
-                    .addColumn(new Column("Table", ScalarType.createVarchar(20)))
-                    .addColumn(new Column("RollupHandler", ScalarType.createVarchar(30)))
-                    .addColumn(new Column("Columns", ScalarType.createVarchar(50)))
+                    .addColumn(new Column("id", ScalarType.createVarchar(50)))
+                    .addColumn(new Column("name", ScalarType.createVarchar(50)))
+                    .addColumn(new Column("database_name", ScalarType.createVarchar(20)))
+                    .addColumn(new Column("text", ScalarType.createVarchar(1024)))
+                    .addColumn(new Column("rows", ScalarType.createVarchar(50)))
                     .build();
     private TableName tbl;
     private String db;
+    private List<List<String>> result;
 
     public ShowRollupStmt(TableName tbl, String db) {
         this.tbl = tbl;
@@ -59,6 +73,7 @@ public class ShowRollupStmt extends ShowStmt {
         // 1. use `db` database info
         // 2. use `table` database info
         // 3. use default database info in analyzer.
+        /*
         if (tbl == null) {
             ErrorReport.reportAnalysisException(ErrorCode.ERR_NO_TABLES_USED);
         }
@@ -67,6 +82,21 @@ public class ShowRollupStmt extends ShowStmt {
             tbl.setDb(db);
         }
         tbl.analyze(analyzer);
+        */
+
+        tbl.analyze(analyzer);
+
+        if (!Catalog.getCurrentCatalog().getAuth().checkTblPriv(ConnectContext.get(), tbl.getDb(),
+                tbl.getTbl(), PrivPredicate.SHOW)) {
+            ErrorReport.reportAnalysisException(ErrorCode.ERR_TABLEACCESS_DENIED_ERROR, "SHOW MATERIALIZED VIEW",
+                    ConnectContext.get().getQualifiedUser(),
+                    ConnectContext.get().getRemoteIP(),
+                    tbl.getTbl());
+        }
+    }
+
+    public List<List<String>> getResultRows() {
+        return result;
     }
 
     @Override

@@ -25,7 +25,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.not;
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.doris.sql.tree.BooleanLiteral.FALSE_LITERAL;
@@ -244,7 +243,7 @@ public final class ExpressionUtils
             for (java.util.function.Predicate<VariableReferenceExpression> nullVariableScope : nullVariableScopes) {
                 List<VariableReferenceExpression> variables = VariablesExtractor.extractUnique(expression, types).stream()
                         .filter(nullVariableScope)
-                        .collect(toImmutableList());
+                        .collect(Collectors.toList());
 
                 if (Iterables.isEmpty(variables)) {
                     continue;

@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.doris.sql.planner.optimizations.ApplyNodeUtil.verifySubquerySupported;
 import static org.apache.doris.sql.planner.plan.Patterns.aggregation;
@@ -49,7 +50,7 @@ import static org.apache.doris.sql.planner.plan.Patterns.values;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.isExpression;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.util.Objects.requireNonNull;
 
 public class ExpressionRewriteRuleSet
@@ -164,7 +165,7 @@ public class ExpressionRewriteRuleSet
                                 aggregation.getCall().getArguments()
                                         .stream()
                                         .map(argument -> castToRowExpression(rewriter.rewrite(castToExpression(argument), context)))
-                                        .collect(toImmutableList())),
+                                        .collect(Collectors.toList())),
                         aggregation.getFilter()
                                 .map(filter -> castToRowExpression(rewriter.rewrite(castToExpression(filter), context))),
                         aggregation.getOrderBy(),

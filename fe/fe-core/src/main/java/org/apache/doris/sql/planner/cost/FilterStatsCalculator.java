@@ -62,6 +62,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.stream.Collectors;
 
 import static org.apache.doris.sql.expressions.LogicalRowExpressions.and;
 import static org.apache.doris.sql.planner.cost.ComparisonStatsCalculator.estimateExpressionToExpressionComparison;
@@ -85,7 +86,7 @@ import static org.apache.doris.sql.tree.ComparisonExpression.Operator.LESS_THAN;
 import static org.apache.doris.sql.tree.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 import static org.apache.doris.sql.tree.ComparisonExpression.Operator.NOT_EQUAL;
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.lang.Double.NaN;
 import static java.lang.Double.isInfinite;
 import static java.lang.Double.isNaN;
@@ -375,9 +376,9 @@ public class FilterStatsCalculator
             }
 
             InListExpression inList = (InListExpression) node.getValueList();
-            ImmutableList<PlanNodeStatsEstimate> equalityEstimates = inList.getValues().stream()
+            List<PlanNodeStatsEstimate> equalityEstimates = inList.getValues().stream()
                     .map(inValue -> process(new ComparisonExpression(EQUAL, node.getValue(), inValue)))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             if (equalityEstimates.stream().anyMatch(PlanNodeStatsEstimate::isOutputRowCountUnknown)) {
                 return PlanNodeStatsEstimate.unknown();
@@ -729,9 +730,9 @@ public class FilterStatsCalculator
 
         private PlanNodeStatsEstimate estimateIn(RowExpression value, List<RowExpression> candidates)
         {
-            ImmutableList<PlanNodeStatsEstimate> equalityEstimates = candidates.stream()
+            List<PlanNodeStatsEstimate> equalityEstimates = candidates.stream()
                     .map(inValue -> process(call(OperatorType.EQUAL.name(), metadata.getFunctionManager().resolveOperator(OperatorType.EQUAL, fromTypes(value.getType(), inValue.getType())), BOOLEAN, value, inValue)))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             if (equalityEstimates.stream().anyMatch(PlanNodeStatsEstimate::isOutputRowCountUnknown)) {
                 return PlanNodeStatsEstimate.unknown();

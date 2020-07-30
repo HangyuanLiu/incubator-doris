@@ -25,8 +25,9 @@ import org.apache.doris.sql.tree.LogicalBinaryExpression;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -63,7 +64,7 @@ public class ExtractCommonPredicatesExpressionRewriter
                     node.getOperator(),
                     extractPredicates(node.getOperator(), node).stream()
                             .map(subExpression -> treeRewriter.rewrite(subExpression, NodeContext.NOT_ROOT_NODE))
-                            .collect(toImmutableList()));
+                            .collect(Collectors.toList()));
 
             if (!(expression instanceof LogicalBinaryExpression)) {
                 return expression;
@@ -90,13 +91,13 @@ public class ExtractCommonPredicatesExpressionRewriter
 
             List<List<Expression>> uncorrelatedSubPredicates = subPredicates.stream()
                     .map(predicateList -> removeAll(predicateList, commonPredicates))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             LogicalBinaryExpression.Operator flippedOperator = node.getOperator().flip();
 
             List<Expression> uncorrelatedPredicates = uncorrelatedSubPredicates.stream()
                     .map(predicate -> combinePredicates(flippedOperator, predicate))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
             Expression combinedUncorrelatedPredicates = combinePredicates(node.getOperator(), uncorrelatedPredicates);
 
             return combinePredicates(flippedOperator, ImmutableList.<Expression>builder()
@@ -110,7 +111,7 @@ public class ExtractCommonPredicatesExpressionRewriter
             return extractPredicates(expression.getOperator(), expression).stream()
                     .map(predicate -> predicate instanceof LogicalBinaryExpression ?
                             extractPredicates((LogicalBinaryExpression) predicate) : ImmutableList.of(predicate))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
         }
 
         /**
@@ -162,7 +163,7 @@ public class ExtractCommonPredicatesExpressionRewriter
                     expression.getOperator().flip(),
                     crossProduct.stream()
                             .map(expressions -> combinePredicates(expression.getOperator(), expressions))
-                            .collect(toImmutableList()));
+                            .collect(Collectors.toList()));
         }
 
         private static Set<Expression> filterDeterministicPredicates(List<Expression> predicates)
@@ -176,7 +177,7 @@ public class ExtractCommonPredicatesExpressionRewriter
         {
             return collection.stream()
                     .filter(element -> !elementsToRemove.contains(element))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
         }
     }
 

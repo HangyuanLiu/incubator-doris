@@ -38,6 +38,7 @@ import javax.inject.Inject;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.doris.sql.planner.cost.CostCalculatorWithEstimatedExchanges.calculateJoinInputCost;
@@ -49,7 +50,7 @@ import static org.apache.doris.sql.planner.cost.LocalCostEstimate.addPartialComp
 import static org.apache.doris.sql.planner.plan.AggregationNode.Step.FINAL;
 import static org.apache.doris.sql.planner.plan.AggregationNode.Step.SINGLE;
 import static com.google.common.base.Verify.verify;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.lang.Math.max;
 import static java.util.Objects.requireNonNull;
 
@@ -294,7 +295,7 @@ public class CostCalculatorUsingExchanges
         private PlanCostEstimate costForLookupJoin(LogicalPlanNode node, LocalCostEstimate localCost)
         {
             verify(node.getSources().size() == 2, "Unexpected number of sources for %s: %s", node, node.getSources());
-            List<PlanCostEstimate> sourcesCosts = getSourcesEstimations(node).collect(toImmutableList());
+            List<PlanCostEstimate> sourcesCosts = getSourcesEstimations(node).collect(Collectors.toList());
             verify(sourcesCosts.size() == 2);
             PlanCostEstimate probeCost = sourcesCosts.get(0);
             PlanCostEstimate buildCost = sourcesCosts.get(1);

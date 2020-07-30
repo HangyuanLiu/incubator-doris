@@ -80,7 +80,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
@@ -392,7 +392,7 @@ public final class SqlToRowExpressionTranslator
         {
             List<RowExpression> arguments = node.getOperands().stream()
                     .map(value -> process(value, context))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
 
             return specialForm(COALESCE, getType(node), arguments);
         }

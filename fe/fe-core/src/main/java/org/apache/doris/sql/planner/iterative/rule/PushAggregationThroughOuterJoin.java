@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.doris.sql.planner.iterative.matching.Capture.newCapture;
 import static org.apache.doris.sql.planner.plan.AggregationNode.globalAggregation;
@@ -60,7 +61,7 @@ import static org.apache.doris.sql.planner.plan.Patterns.source;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -143,7 +144,7 @@ public class PushAggregationThroughOuterJoin
 
         List<VariableReferenceExpression> groupingKeys = join.getCriteria().stream()
                 .map(join.getType() == JoinNode.Type.RIGHT ? JoinNode.EquiJoinClause::getLeft : JoinNode.EquiJoinClause::getRight)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
         AggregationNode rewrittenAggregation = new AggregationNode(
                 aggregation.getId(),
                 getInnerTable(join),
@@ -326,7 +327,7 @@ public class PushAggregationThroughOuterJoin
                             aggregation.getArguments()
                                     .stream()
                                     .map(argument -> castToRowExpression(inlineVariables(sourcesVariableMapping, castToExpression(argument), types)))
-                                    .collect(toImmutableList())),
+                                    .collect(Collectors.toList())),
                     aggregation.getFilter().map(filter -> castToRowExpression(inlineVariables(sourcesVariableMapping, castToExpression(filter), types))),
                     aggregation.getOrderBy().map(orderBy -> inlineOrderByVariables(sourcesVariableMapping, orderBy)),
                     aggregation.isDistinct(),
@@ -364,7 +365,7 @@ public class PushAggregationThroughOuterJoin
         }
 
         ImmutableMap<VariableReferenceExpression, SortOrder> orderingMap = ordering.build();
-        return new OrderingScheme(orderBy.build().stream().map(variable -> new Ordering(variable, orderingMap.get(variable))).collect(toImmutableList()));
+        return new OrderingScheme(orderBy.build().stream().map(variable -> new Ordering(variable, orderingMap.get(variable))).collect(Collectors.toList()));
     }
 
     private static boolean isUsingVariables(AggregationNode.Aggregation aggregation, Set<VariableReferenceExpression> sourceVariables, TypeProvider types)

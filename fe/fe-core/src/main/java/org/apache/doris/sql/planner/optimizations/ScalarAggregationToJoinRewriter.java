@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.doris.sql.planner.optimizations.PlanNodeSearcher.searchFrom;
 import static org.apache.doris.sql.planner.plan.AggregationNode.singleGroupingSet;
@@ -49,7 +50,7 @@ import static org.apache.doris.sql.planner.plan.AssignmentUtils.identityAssignme
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.asSymbolReference;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToRowExpression;
 import static org.apache.doris.sql.tree.BooleanLiteral.TRUE_LITERAL;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.type.BigintType.BIGINT;
 
@@ -165,7 +166,7 @@ public class ScalarAggregationToJoinRewriter
         Set<VariableReferenceExpression> applyVariables = new HashSet<>(lateralJoinNode.getOutputVariables());
         return aggregationNode.getOutputVariables().stream()
                 .filter(applyVariables::contains)
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 
     private Optional<AggregationNode> createAggregationNode(

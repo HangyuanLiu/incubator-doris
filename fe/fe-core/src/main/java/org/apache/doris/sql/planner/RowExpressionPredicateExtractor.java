@@ -60,7 +60,7 @@ import static org.apache.doris.sql.relation.SpecialFormExpression.Form.IS_NULL;
 import static org.apache.doris.sql.relational.Expressions.call;
 import static org.apache.doris.sql.relational.Expressions.specialForm;
 import static com.google.common.base.Predicates.in;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 import static org.apache.doris.sql.type.OperatorType.EQUAL;

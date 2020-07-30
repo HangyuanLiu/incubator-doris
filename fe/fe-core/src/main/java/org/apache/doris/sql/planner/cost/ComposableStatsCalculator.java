@@ -26,10 +26,12 @@ import java.lang.reflect.Modifier;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.collect.Multimaps.newListMultimap;
 import static com.google.common.collect.Multimaps.toMultimap;
 
 public class ComposableStatsCalculator
@@ -39,16 +41,27 @@ public class ComposableStatsCalculator
 
     public ComposableStatsCalculator(List<Rule<?>> rules)
     {
+        /*
         this.rulesByRootType = rules.stream()
                 .peek(rule -> {
                     checkArgument(rule.getPattern() instanceof TypeOfPattern, "Rule pattern must be TypeOfPattern");
                     Class<?> expectedClass = ((TypeOfPattern<?>) rule.getPattern()).expectedClass();
                     checkArgument(!expectedClass.isInterface() && !Modifier.isAbstract(expectedClass.getModifiers()), "Rule must be registered on a concrete class");
                 })
+
                 .collect(toMultimap(
                         rule -> ((TypeOfPattern<?>) rule.getPattern()).expectedClass(),
                         rule -> rule,
                         ArrayListMultimap::create));
+        */
+        rulesByRootType = ArrayListMultimap.create();
+        for (Rule<?> rule : rules) {
+            checkArgument(rule.getPattern() instanceof TypeOfPattern, "Rule pattern must be TypeOfPattern");
+            Class<?> expectedClass = ((TypeOfPattern<?>) rule.getPattern()).expectedClass();
+            checkArgument(!expectedClass.isInterface() && !Modifier.isAbstract(expectedClass.getModifiers()), "Rule must be registered on a concrete class");
+
+            rulesByRootType.put(((TypeOfPattern<?>) rule.getPattern()).expectedClass(), rule);
+        }
     }
 
     private Stream<Rule<?>> getCandidates(LogicalPlanNode node)

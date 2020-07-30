@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.alwaysTrue;
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.planner.iterative.Lookup.noLookup;
@@ -45,7 +44,7 @@ public class PlanNodeSearcher
     private final LogicalPlanNode node;
     private final Lookup lookup;
     private Predicate<LogicalPlanNode> where = alwaysTrue();
-    private Predicate<LogicalPlanNode> recurseOnlyWhen = alwaysTrue();
+    private java.util.function.Predicate<LogicalPlanNode> recurseOnlyWhen = alwaysTrue();
 
     private PlanNodeSearcher(LogicalPlanNode node, Lookup lookup)
     {

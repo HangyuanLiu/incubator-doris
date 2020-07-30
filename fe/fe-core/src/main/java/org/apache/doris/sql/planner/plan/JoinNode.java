@@ -24,7 +24,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.planner.plan.JoinNode.DistributionType.PARTITIONED;

@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 import com.google.common.base.Preconditions;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
+
 
 public class RelationType
 {

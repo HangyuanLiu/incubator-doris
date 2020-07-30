@@ -2048,6 +2048,10 @@ show_param ::=
     {:
         RESULT = new ShowTableStatusStmt(db, parser.wild, parser.where);
     :}
+    | KW_MATERIALIZED KW_VIEW KW_ON table_name:tableName
+    {:
+        RESULT = new ShowRollupStmt(tableName, "");
+    :}
     /* show table status */
     | opt_full KW_TABLES opt_db:db opt_wild_where
     {:

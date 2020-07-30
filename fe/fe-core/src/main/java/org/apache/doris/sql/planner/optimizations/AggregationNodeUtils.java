@@ -27,7 +27,8 @@ import org.apache.doris.sql.relational.FunctionResolution;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+import java.util.stream.Collectors;
+
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.castToExpression;
 import static org.apache.doris.sql.relational.OriginalExpressionUtils.isExpression;
 import static org.apache.doris.sql.type.BigintType.BIGINT;
@@ -66,6 +67,6 @@ public class AggregationNodeUtils
         }
         return VariablesExtractor.extractAll(expression)
                 .stream()
-                .collect(toImmutableList());
+                .collect(Collectors.toList());
     }
 }
