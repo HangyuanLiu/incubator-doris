@@ -30,7 +30,7 @@ under the License.
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>doris-fe-core</artifactId>
+    <artifactId>fe-core</artifactId>
     <version>3.4.0</version>
     <packaging>jar</packaging>
 
@@ -41,6 +41,11 @@ under the License.
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.apache</groupId>
+            <artifactId>spark-dpp</artifactId>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/cglib/cglib -->
         <dependency>
             <groupId>cglib</groupId>
@@ -472,7 +477,7 @@ under the License.
                     <!--<cupDefinition>${doris.home}/gensrc/parser/sql_parser.cup</cupDefinition>-->
                     <className>SqlParser</className>
                     <symbolsName>SqlParserSymbols</symbolsName>
-                    <expectedConflicts>6</expectedConflicts>
+                    <expectedConflicts>0</expectedConflicts>
                     <!--<outputDirectory>src/main/java</outputDirectory>-->
                 </configuration>
             </plugin>

@@ -15,22 +15,25 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef DORIS_BE_EXPRS_BASE64_H
-#define DORIS_BE_EXPRS_BASE64_H
+package org.apache.doris.common;
 
-#include <stdio.h>
-#include <stdint.h>
+import com.google.common.base.Strings;
 
-namespace doris {
+// Exception for Spark DPP process
+public class SparkDppException extends Exception {
+    public SparkDppException(String msg, Throwable cause) {
+        super(Strings.nullToEmpty(msg), cause);
+    }
 
-int64_t base64_decode2(
-        const char *data,
-        size_t length,
-        char *decoded_data);
+    public SparkDppException(Throwable cause) {
+        super(cause);
+    }
 
-size_t base64_encode2(const unsigned char *data,
-                     size_t length,
-                     unsigned char *encoded_data);
+    public SparkDppException(String msg, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+        super(Strings.nullToEmpty(msg), cause, enableSuppression, writableStackTrace);
+    }
 
+    public SparkDppException(String msg) {
+        super(Strings.nullToEmpty(msg));
+    }
 }
-#endif

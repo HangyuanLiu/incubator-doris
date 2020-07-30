@@ -23,8 +23,11 @@ import org.apache.doris.catalog.FsBroker;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.ClientPool;
 import org.apache.doris.common.Config;
+import org.apache.doris.common.Pair;
 import org.apache.doris.common.UserException;
 import org.apache.doris.service.FrontendOptions;
+import org.apache.doris.thrift.TBrokerCheckPathExistRequest;
+import org.apache.doris.thrift.TBrokerCheckPathExistResponse;
 import org.apache.doris.thrift.TBrokerCloseReaderRequest;
 import org.apache.doris.thrift.TBrokerCloseWriterRequest;
 import org.apache.doris.thrift.TBrokerDeletePathRequest;
@@ -42,10 +45,10 @@ import org.apache.doris.thrift.TBrokerOperationStatusCode;
 import org.apache.doris.thrift.TBrokerPReadRequest;
 import org.apache.doris.thrift.TBrokerPWriteRequest;
 import org.apache.doris.thrift.TBrokerReadResponse;
+import org.apache.doris.thrift.TBrokerRenamePathRequest;
 import org.apache.doris.thrift.TBrokerVersion;
 import org.apache.doris.thrift.TNetworkAddress;
 import org.apache.doris.thrift.TPaloBrokerService;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
@@ -347,6 +350,62 @@ public class BrokerUtil {
         } finally {
             returnClient(client, address, failed);
         }
+    }
+
+    public static boolean checkPathExist(String remotePath, BrokerDesc brokerDesc) throws UserException {
+        Pair<TPaloBrokerService.Client, TNetworkAddress> pair = getBrokerAddressAndClient(brokerDesc);
+        TPaloBrokerService.Client client = pair.first;
+        TNetworkAddress address = pair.second;
+        boolean failed = true;
+        try {
+            TBrokerCheckPathExistRequest req = new TBrokerCheckPathExistRequest(TBrokerVersion.VERSION_ONE,
+                    remotePath, brokerDesc.getProperties());
+            TBrokerCheckPathExistResponse rep = client.checkPathExist(req);
+            if (rep.getOpStatus().getStatusCode() != TBrokerOperationStatusCode.OK) {
+                throw new UserException("Broker check path exist failed. path=" + remotePath + ", broker=" + address +
+                        ", msg=" + rep.getOpStatus().getMessage());
+            }
+            failed = false;
+            return rep.isPathExist;
+        } catch (TException e) {
+            LOG.warn("Broker check path exist failed, path={}, address={}, exception={}", remotePath, address, e);
+            throw new UserException("Broker check path exist exception. path=" + remotePath + ",broker=" + address);
+        } finally {
+            returnClient(client, address, failed);
+        }
+    }
+
+    public static void rename(String origFilePath, String destFilePath, BrokerDesc brokerDesc) throws UserException {
+        Pair<TPaloBrokerService.Client, TNetworkAddress> pair = getBrokerAddressAndClient(brokerDesc);
+        TPaloBrokerService.Client client = pair.first;
+        TNetworkAddress address = pair.second;
+        boolean failed = true;
+        try {
+            TBrokerRenamePathRequest req = new TBrokerRenamePathRequest(TBrokerVersion.VERSION_ONE, origFilePath,
+                    destFilePath, brokerDesc.getProperties());
+            TBrokerOperationStatus rep = client.renamePath(req);
+            if (rep.getStatusCode() != TBrokerOperationStatusCode.OK) {
+                throw new UserException("failed to rename " + origFilePath + " to " + destFilePath +
+                        ", msg: " + rep.getMessage() + ", broker: " + address);
+            }
+            failed = false;
+        } catch (TException e) {
+            LOG.warn("Broker rename file failed, origin path={}, dest path={}, address={}, exception={}",
+                    origFilePath, destFilePath, address, e);
+            throw new UserException("Broker rename file exception. origin path=" + origFilePath +
+                    ", dest path=" + destFilePath + ", broker=" + address);
+        } finally {
+            returnClient(client, address, failed);
+        }
+    }
+
+    public static Pair<TPaloBrokerService.Client, TNetworkAddress> getBrokerAddressAndClient(BrokerDesc brokerDesc) throws UserException {
+        Pair<TPaloBrokerService.Client, TNetworkAddress> pair = new Pair<TPaloBrokerService.Client, TNetworkAddress>(null, null);
+        TNetworkAddress address = getAddress(brokerDesc);
+        TPaloBrokerService.Client client = borrowClient(address);
+        pair.first = client;
+        pair.second = address;
+        return pair;
     }
 
     private static TNetworkAddress getAddress(BrokerDesc brokerDesc) throws UserException {

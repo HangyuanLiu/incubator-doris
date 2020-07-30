@@ -27,7 +27,7 @@ public class DorisKryoRegistrator implements KryoRegistrator {
 
     @Override
     public void registerClasses(Kryo kryo) {
-        kryo.register(org.apache.doris.load.loadv2.Roaring64Map.class);
-        kryo.register(org.apache.doris.load.loadv2.BitmapValue.class);
+        kryo.register(Roaring64Map.class);
+        kryo.register(BitmapValue.class);
     }
 }

@@ -509,11 +509,29 @@ public class Config extends ConfigBase {
     @ConfField(mutable = true, masterOnly = true)
     public static int hadoop_load_default_timeout_second = 86400 * 3; // 3 day
 
+    // Configurations for spark load
+    /**
+     * Default spark dpp version
+     */
+    @ConfField
+    public static String spark_dpp_version = "1.0.0";
     /**
      * Default spark load timeout
      */
     @ConfField(mutable = true, masterOnly = true)
     public static int spark_load_default_timeout_second = 86400; // 1 day
+
+    /**
+     * Default spark home dir
+     */
+    @ConfField(mutable = true, masterOnly = true)
+    public static String spark_home_default_dir = PaloFe.DORIS_HOME_DIR + "/lib/spark2x";
+
+    /**
+     * Default spark dependencies path
+     */
+    @ConfField
+    public static String spark_resource_path = "";
 
     /**
      * Default number of waiting jobs for routine load and version 2 of load
@@ -1131,5 +1149,47 @@ public class Config extends ConfigBase {
     @ConfField (mutable = true, masterOnly = true)
     public static long agent_task_resend_wait_time_ms = 5000;
 
-}
+    /**
+     * min_clone_task_timeout_sec and max_clone_task_timeout_sec is to limit the
+     * min and max timeout of a clone task.
+     * Under normal circumstances, the timeout of a clone task is estimated by
+     * the amount of data and the minimum transmission speed(5MB/s).
+     * But in special cases, you may need to manually set these two configs
+     * to ensure that the clone task will not fail due to timeout.
+     */
+    @ConfField(mutable = true, masterOnly = true)
+    public static long min_clone_task_timeout_sec = 3 * 60; // 3min
+    @ConfField(mutable = true, masterOnly = true)
+    public static long max_clone_task_timeout_sec = 2 * 60 * 60; // 2h
+    
+     
+    /** 
+     * If set to true, fe will enable sql result cache
+     * This option is suitable for offline data update scenarios
+     *                              case1   case2   case3   case4
+     * enable_sql_cache             false   true    true    false
+     * enable_partition_cache       false   false   true    true
+     */
+    @ConfField(mutable = true, masterOnly = false)
+    public static boolean cache_enable_sql_mode = true;
 
+    /**
+     * If set to true, fe will get data from be cache,
+     * This option is suitable for real-time updating of partial partitions.
+     */
+    @ConfField(mutable = true, masterOnly = false)
+    public static boolean cache_enable_partition_mode = true;
+
+    /**
+     *  Minimum interval between last version when caching results,
+     *  This parameter distinguishes between offline and real-time updates
+     */
+    @ConfField(mutable = true, masterOnly = false)
+    public static int cache_last_version_interval_second = 900;
+
+    /**
+     * Set the maximum number of rows that can be cached
+     */
+    @ConfField(mutable = true, masterOnly = false)
+    public static int cache_result_max_row_count = 3000;
+}

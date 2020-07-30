@@ -74,6 +74,11 @@ public class SessionVariable implements Serializable, Writable {
     public static final String PARALLEL_FRAGMENT_EXEC_INSTANCE_NUM = "parallel_fragment_exec_instance_num";
     public static final String ENABLE_INSERT_STRICT = "enable_insert_strict";
     public static final String ENABLE_SPILLING = "enable_spilling";
+    public static final String PREFER_JOIN_METHOD = "prefer_join_method";
+    
+    public static final String ENABLE_SQL_CACHE = "enable_sql_cache";
+    public static final String ENABLE_PARTITION_CACHE = "enable_partition_cache";
+
     public static final int MIN_EXEC_INSTANCE_NUM = 1;
     public static final int MAX_EXEC_INSTANCE_NUM = 32;
     // if set to true, some of stmt will be forwarded to master FE to get result
@@ -211,6 +216,9 @@ public class SessionVariable implements Serializable, Writable {
     @VariableMgr.VarAttr(name = DISABLE_COLOCATE_JOIN)
     private boolean disableColocateJoin = false;
 
+    @VariableMgr.VarAttr(name = PREFER_JOIN_METHOD)
+    private String preferJoinMethod = "broadcast";
+
     /*
      * the parallel exec instance num for one Fragment in one BE
      * 1 means disable this feature
@@ -220,6 +228,12 @@ public class SessionVariable implements Serializable, Writable {
 
     @VariableMgr.VarAttr(name = ENABLE_INSERT_STRICT)
     private boolean enableInsertStrict = false;
+
+    @VariableMgr.VarAttr(name = ENABLE_SQL_CACHE)
+    private boolean enableSqlCache = false;
+
+    @VariableMgr.VarAttr(name = ENABLE_PARTITION_CACHE)
+    private boolean enablePartitionCache = false;
 
     @VariableMgr.VarAttr(name = FORWARD_TO_MASTER)
     private boolean forwardToMaster = false;
@@ -406,6 +420,10 @@ public class SessionVariable implements Serializable, Writable {
         return disableColocateJoin;
     }
 
+    public String getPreferJoinMethod() {return preferJoinMethod; }
+
+    public void setPreferJoinMethod(String preferJoinMethod) {this.preferJoinMethod = preferJoinMethod; }
+
     public int getParallelExecInstanceNum() {
         return parallelExecInstanceNum;
     }
@@ -420,6 +438,23 @@ public class SessionVariable implements Serializable, Writable {
         this.enableInsertStrict = enableInsertStrict;
     }
 
+    public boolean isEnableSqlCache() {
+        return enableSqlCache;
+    }
+
+    public void setEnableSqlCache(boolean enableSqlCache) {
+        this.enableSqlCache = enableSqlCache;
+    }
+
+    public boolean isEnablePartitionCache() {
+        return enablePartitionCache;
+    }
+
+    public void setEnablePartitionCache(boolean enablePartitionCache) {
+        this.enablePartitionCache = enablePartitionCache;
+    }
+    
+    // Serialize to thrift object
     public boolean getForwardToMaster() {
         return forwardToMaster;
     }

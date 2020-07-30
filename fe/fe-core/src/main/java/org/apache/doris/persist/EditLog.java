@@ -145,8 +145,8 @@ public class EditLog {
                     break;
                 }
                 case OperationType.OP_DROP_DB: {
-                    String dbName = ((Text) journal.getData()).toString();
-                    catalog.replayDropDb(dbName);
+                    DropDbInfo dropDbInfo = (DropDbInfo) journal.getData();
+                    catalog.replayDropDb(dropDbInfo.getDbName(), dropDbInfo.isForceDrop());
                     break;
                 }
                 case OperationType.OP_ALTER_DB: {
@@ -189,7 +189,7 @@ public class EditLog {
                     }
                     LOG.info("Begin to unprotect drop table. db = "
                             + db.getFullName() + " table = " + info.getTableId());
-                    catalog.replayDropTable(db, info.getTableId());
+                    catalog.replayDropTable(db, info.getTableId(), info.isForceDrop());
                     break;
                 }
                 case OperationType.OP_ADD_PARTITION: {
@@ -297,7 +297,7 @@ public class EditLog {
                     BatchDropInfo batchDropInfo = (BatchDropInfo) journal.getData();
                     for (long indexId : batchDropInfo.getIndexIdSet()) {
                         catalog.getRollupHandler().replayDropRollup(
-                                new DropInfo(batchDropInfo.getDbId(), batchDropInfo.getTableId(), indexId), catalog);
+                                new DropInfo(batchDropInfo.getDbId(), batchDropInfo.getTableId(), indexId, false), catalog);
                     }
                     break;
                 }
@@ -845,7 +845,7 @@ public class EditLog {
         long end = System.currentTimeMillis();
         numTransactions++;
         totalTimeTransactions += (end - start);
-        if (MetricRepo.isInit.get()) {
+        if (MetricRepo.isInit) {
             MetricRepo.HISTO_EDIT_LOG_WRITE_LATENCY.update((end - start));
         }
 
@@ -861,7 +861,7 @@ public class EditLog {
             txId = 0;
         }
 
-        if (MetricRepo.isInit.get()) {
+        if (MetricRepo.isInit) {
             MetricRepo.COUNTER_EDIT_LOG_WRITE.increase(1L);
         }
     }
@@ -889,8 +889,8 @@ public class EditLog {
         logEdit(OperationType.OP_CREATE_DB, db);
     }
 
-    public void logDropDb(String dbName) {
-        logEdit(OperationType.OP_DROP_DB, new Text(dbName));
+    public void logDropDb(DropDbInfo dropDbInfo) {
+        logEdit(OperationType.OP_DROP_DB, dropDbInfo);
     }
 
     public void logEraseDb(long dbId) {

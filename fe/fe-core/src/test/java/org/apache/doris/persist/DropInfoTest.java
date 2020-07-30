@@ -17,6 +17,8 @@
 
 package org.apache.doris.persist;
 
+import org.apache.doris.common.FeMetaVersion;
+import org.apache.doris.meta.MetaContext;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -29,6 +31,10 @@ import java.io.FileOutputStream;
 public class DropInfoTest {
     @Test
     public void testSerialization() throws Exception {
+        MetaContext metaContext = new MetaContext();
+        metaContext.setMetaVersion(FeMetaVersion.VERSION_89);
+        metaContext.setThreadLocalInfo();
+
         // 1. Write objects to file
         File file = new File("./dropInfo");
         file.createNewFile();
@@ -37,7 +43,7 @@ public class DropInfoTest {
         DropInfo info1 = new DropInfo();
         info1.write(dos);
         
-        DropInfo info2 = new DropInfo(1, 2, -1);
+        DropInfo info2 = new DropInfo(1, 2, -1, true);
         info2.write(dos);
 
         dos.flush();
@@ -54,12 +60,14 @@ public class DropInfoTest {
         
         Assert.assertEquals(1, rInfo2.getDbId());
         Assert.assertEquals(2, rInfo2.getTableId());
+        Assert.assertTrue(rInfo2.isForceDrop());
         
         Assert.assertTrue(rInfo2.equals(rInfo2));
         Assert.assertFalse(rInfo2.equals(this));
-        Assert.assertFalse(info2.equals(new DropInfo(0, 2, -1L)));
-        Assert.assertFalse(info2.equals(new DropInfo(1, 0, -1L)));
-        Assert.assertTrue(info2.equals(new DropInfo(1, 2, -1L)));
+        Assert.assertFalse(info2.equals(new DropInfo(0, 2, -1L, true)));
+        Assert.assertFalse(info2.equals(new DropInfo(1, 0, -1L, true)));
+        Assert.assertFalse(info2.equals(new DropInfo(1, 2, -1L, false)));
+        Assert.assertTrue(info2.equals(new DropInfo(1, 2, -1L, true)));
 
         // 3. delete files
         dis.close();

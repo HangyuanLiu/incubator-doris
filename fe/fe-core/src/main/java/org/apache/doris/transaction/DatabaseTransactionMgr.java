@@ -296,7 +296,7 @@ public class DatabaseTransactionMgr {
             transactionState.setPrepareTime(System.currentTimeMillis());
             unprotectUpsertTransactionState(transactionState, false);
 
-            if (MetricRepo.isInit.get()) {
+            if (MetricRepo.isInit) {
                 MetricRepo.COUNTER_TXN_BEGIN.increase(1L);
             }
 
@@ -304,7 +304,7 @@ public class DatabaseTransactionMgr {
         } catch (DuplicatedRequestException e) {
             throw e;
         } catch (Exception e) {
-            if (MetricRepo.isInit.get()) {
+            if (MetricRepo.isInit) {
                 MetricRepo.COUNTER_TXN_REJECT.increase(1L);
             }
             throw e;
@@ -815,8 +815,8 @@ public class DatabaseTransactionMgr {
                 OlapTable table = (OlapTable) db.getTable(tableId);
                 Partition partition = table.getPartition(partitionId);
                 PartitionCommitInfo partitionCommitInfo = new PartitionCommitInfo(partitionId,
-                        partition.getNextVersion(),
-                        partition.getNextVersionHash());
+                        partition.getNextVersion(), partition.getNextVersionHash(),
+                        System.currentTimeMillis() /* use as partition visible time */);
                 tableCommitInfo.addPartitionCommitInfo(partitionCommitInfo);
             }
             transactionState.putIdToTableCommitInfo(tableId, tableCommitInfo);
@@ -1285,8 +1285,9 @@ public class DatabaseTransactionMgr {
                     }
                 } // end for indices
                 long version = partitionCommitInfo.getVersion();
+                long versionTime = partitionCommitInfo.getVersionTime();
                 long versionHash = partitionCommitInfo.getVersionHash();
-                partition.updateVisibleVersionAndVersionHash(version, versionHash);
+                partition.updateVisibleVersionAndVersionHash(version, versionTime, versionHash);
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("transaction state {} set partition {}'s version to [{}] and version hash to [{}]",
                             transactionState, partition.getId(), version, versionHash);
