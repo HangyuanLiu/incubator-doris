@@ -11,6 +11,7 @@ import org.apache.doris.sql.planner.cost.StatsCalculator;
 import org.apache.doris.sql.planner.cost.TaskCountEstimator;
 import org.apache.doris.sql.planner.iterative.IterativeOptimizer;
 import org.apache.doris.sql.planner.iterative.Rule;
+import org.apache.doris.sql.planner.iterative.rule.CanonicalizeExpressions;
 import org.apache.doris.sql.planner.iterative.rule.DetermineJoinDistributionType;
 import org.apache.doris.sql.planner.iterative.rule.DetermineSemiJoinDistributionType;
 import org.apache.doris.sql.planner.iterative.rule.EvaluateZeroLimit;
@@ -139,12 +140,12 @@ public class PlanOptimizers {
                                 .addAll(new DesugarTryExpression().rules())
                                 .addAll(new DesugarRowSubscript(metadata, sqlParser).rules())
                                 .build()),
+                 */
                 new IterativeOptimizer(
                         ruleStats,
                         statsCalculator,
                         estimatedExchangesCostCalculator,
                         new CanonicalizeExpressions().rules()),
-                         */
                 new IterativeOptimizer(
                         ruleStats,
                         statsCalculator,

@@ -10,6 +10,7 @@ import org.apache.doris.analysis.CompoundPredicate;
 import org.apache.doris.analysis.DateLiteral;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
+import org.apache.doris.analysis.FloatLiteral;
 import org.apache.doris.analysis.FunctionCallExpr;
 import org.apache.doris.analysis.FunctionName;
 import org.apache.doris.analysis.FunctionParams;
@@ -35,7 +36,7 @@ import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.RowExpressionVisitor;
 import org.apache.doris.sql.relation.SpecialFormExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
-import org.apache.doris.sql.type.BigintType;
+import org.apache.doris.sql.tree.DoubleLiteral;
 import org.apache.doris.sql.type.StandardTypes;
 import org.apache.doris.sql.type.TypeSignature;
 import org.apache.doris.thrift.TExprOpcode;
@@ -186,8 +187,14 @@ public class RowExpressionToExpr {
                         return new StringLiteral((String) node.getValue());
                     case StandardTypes.BOOLEAN:
                         return new BoolLiteral((Boolean) node.getValue());
+                    case StandardTypes.DOUBLE:
+                        return new FloatLiteral((double) node.getValue());
                     case "unknown":
                         return new NullLiteral();
+                    case "day":
+                    case "year":
+                    case "month":
+                        return new IntLiteral((long) node.getValue(), Type.INT);
                         /*
                     case DATE:
                         return new DateLiteral(Type.DATE,)

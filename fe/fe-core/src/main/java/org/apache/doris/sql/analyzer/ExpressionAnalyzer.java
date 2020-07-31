@@ -27,6 +27,7 @@ import org.apache.doris.sql.type.CharType;
 import org.apache.doris.sql.type.DecimalParseResult;
 import org.apache.doris.sql.type.Decimals;
 import org.apache.doris.sql.type.IntegerType;
+import org.apache.doris.sql.type.IntervalType;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.tree.*;
@@ -40,6 +41,7 @@ import java.util.*;
 import java.util.function.Function;
 
 import static com.google.common.collect.Iterables.getOnlyElement;
+import static com.google.common.collect.Iterables.transform;
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
@@ -636,13 +638,27 @@ public class ExpressionAnalyzer
         @Override
         protected Type visitIntervalLiteral(IntervalLiteral node, StackableAstVisitorContext<Context> context)
         {
-
+            //FIXME
+            /*
             Type type;
             if (node.isYearToMonth()) {
                 type = INTERVAL_YEAR_MONTH;
             }
             else {
                 type = INTERVAL_DAY_TIME;
+            }
+            return setExpressionType(node, type);
+             */
+            Type type;
+            switch (node.getStartField()) {
+                case DAY:
+                    type = IntervalType.INTERVAL_DAY; break;
+                case MONTH:
+                    type = IntervalType.INTERVAL_MONTH; break;
+                case YEAR:
+                    type = IntervalType.INTERVAL_YEAR; break;
+                default:
+                    throw new SemanticException(TYPE_MISMATCH, node, "Interval type error");
             }
             return setExpressionType(node, type);
         }

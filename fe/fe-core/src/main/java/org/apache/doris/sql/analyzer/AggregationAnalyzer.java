@@ -22,10 +22,13 @@ import org.apache.doris.sql.relational.FunctionResolution;
 import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.ArithmeticUnaryExpression;
 import org.apache.doris.sql.tree.AstVisitor;
+import org.apache.doris.sql.tree.BetweenPredicate;
 import org.apache.doris.sql.tree.Cast;
+import org.apache.doris.sql.tree.CoalesceExpression;
 import org.apache.doris.sql.tree.ComparisonExpression;
 import org.apache.doris.sql.tree.DereferenceExpression;
 import org.apache.doris.sql.tree.Expression;
+import org.apache.doris.sql.tree.Extract;
 import org.apache.doris.sql.tree.FieldReference;
 import org.apache.doris.sql.tree.FunctionCall;
 import org.apache.doris.sql.tree.GroupingOperation;
@@ -165,6 +168,26 @@ class AggregationAnalyzer
         protected Boolean visitCast(Cast node, Void context)
         {
             return process(node.getExpression(), context);
+        }
+
+        @Override
+        protected Boolean visitCoalesceExpression(CoalesceExpression node, Void context)
+        {
+            return node.getOperands().stream().allMatch(expression -> process(expression, context));
+        }
+
+        @Override
+        protected Boolean visitExtract(Extract node, Void context)
+        {
+            return process(node.getExpression(), context);
+        }
+
+        @Override
+        protected Boolean visitBetweenPredicate(BetweenPredicate node, Void context)
+        {
+            return process(node.getMin(), context) &&
+                    process(node.getValue(), context) &&
+                    process(node.getMax(), context);
         }
 
         @Override

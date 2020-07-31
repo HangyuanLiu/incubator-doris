@@ -26,10 +26,14 @@ import org.apache.doris.sql.tree.Cast;
 import org.apache.doris.sql.tree.CoalesceExpression;
 import org.apache.doris.sql.tree.ComparisonExpression;
 import org.apache.doris.sql.tree.Cube;
+import org.apache.doris.sql.tree.DecimalLiteral;
 import org.apache.doris.sql.tree.DereferenceExpression;
+import org.apache.doris.sql.tree.DoubleLiteral;
 import org.apache.doris.sql.tree.Expression;
+import org.apache.doris.sql.tree.Extract;
 import org.apache.doris.sql.tree.FieldReference;
 import org.apache.doris.sql.tree.FunctionCall;
+import org.apache.doris.sql.tree.GenericLiteral;
 import org.apache.doris.sql.tree.GroupingElement;
 import org.apache.doris.sql.tree.GroupingOperation;
 import org.apache.doris.sql.tree.GroupingSets;
@@ -124,6 +128,12 @@ public final class ExpressionFormatter
         }
 
         @Override
+        protected String visitExtract(Extract node, Void context)
+        {
+            return "EXTRACT(" + node.getField() + " FROM " + process(node.getExpression(), context) + ")";
+        }
+
+        @Override
         protected String visitBooleanLiteral(BooleanLiteral node, Void context)
         {
             return String.valueOf(node.getValue());
@@ -141,6 +151,24 @@ public final class ExpressionFormatter
             return Long.toString(node.getValue());
         }
 
+        @Override
+        protected String visitDoubleLiteral(DoubleLiteral node, Void context)
+        {
+            return doubleFormatter.get().format(node.getValue());
+        }
+
+        @Override
+        protected String visitDecimalLiteral(DecimalLiteral node, Void context)
+        {
+            // TODO return node value without "DECIMAL '..'" when FeaturesConfig#parseDecimalLiteralsAsDouble switch is removed
+            return "DECIMAL '" + node.getValue() + "'";
+        }
+
+        @Override
+        protected String visitGenericLiteral(GenericLiteral node, Void context)
+        {
+            return node.getType() + " " + formatStringLiteral(node.getValue());
+        }
 
         @Override
         protected String visitNullLiteral(NullLiteral node, Void context)

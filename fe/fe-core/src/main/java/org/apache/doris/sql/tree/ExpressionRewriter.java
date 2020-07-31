@@ -124,6 +124,11 @@ public class ExpressionRewriter<C> {
         return rewriteExpression(node, context, treeRewriter);
     }
 
+    public Expression rewriteExtract(Extract node, C context, ExpressionTreeRewriter<C> treeRewriter)
+    {
+        return rewriteExpression(node, context, treeRewriter);
+    }
+
     public Expression rewriteCast(Cast node, C context, ExpressionTreeRewriter<C> treeRewriter)
     {
         return rewriteExpression(node, context, treeRewriter);

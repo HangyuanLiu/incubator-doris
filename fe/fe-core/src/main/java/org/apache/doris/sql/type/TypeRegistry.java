@@ -45,6 +45,9 @@ import static org.apache.doris.sql.type.DateType.DATE;
 import static org.apache.doris.sql.type.DecimalType.createDecimalType;
 import static org.apache.doris.sql.type.IntegerType.INTEGER;
 import static org.apache.doris.sql.type.IntervalDayTimeType.INTERVAL_DAY_TIME;
+import static org.apache.doris.sql.type.IntervalType.INTERVAL_DAY;
+import static org.apache.doris.sql.type.IntervalType.INTERVAL_MONTH;
+import static org.apache.doris.sql.type.IntervalType.INTERVAL_YEAR;
 import static org.apache.doris.sql.type.IntervalYearMonthType.INTERVAL_YEAR_MONTH;
 import static org.apache.doris.sql.type.TimestampType.TIMESTAMP;
 import static org.apache.doris.sql.type.TinyintType.TINYINT;
@@ -82,6 +85,10 @@ public final class TypeRegistry
         addParametricType(VarcharParametricType.VARCHAR);
         addParametricType(CharParametricType.CHAR);
         addParametricType(DecimalParametricType.DECIMAL);
+
+        addType(INTERVAL_DAY);
+        addType(INTERVAL_MONTH);
+        addType(INTERVAL_YEAR);
 
         parametricTypeCache = CacheBuilder.newBuilder()
                 .maximumSize(1000)

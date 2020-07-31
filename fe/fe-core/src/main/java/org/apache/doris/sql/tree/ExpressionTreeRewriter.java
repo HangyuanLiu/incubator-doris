@@ -269,6 +269,25 @@ public class ExpressionTreeRewriter<C> {
         }
 
         @Override
+        protected Expression visitExtract(Extract node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteExtract(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            Expression expression = rewrite(node.getExpression(), context.get());
+
+            if (node.getExpression() != expression) {
+                return new Extract(expression, node.getField());
+            }
+
+            return node;
+        }
+
+        @Override
         public Expression visitCast(Cast node, Context<C> context)
         {
             if (!context.isDefaultRewrite()) {

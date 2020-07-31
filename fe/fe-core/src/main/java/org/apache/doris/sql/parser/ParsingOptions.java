@@ -37,7 +37,9 @@ public class ParsingOptions
     @Deprecated
     public ParsingOptions()
     {
-        this(DecimalLiteralTreatment.REJECT);
+        //FIXME
+        //this(DecimalLiteralTreatment.REJECT);
+        this(DecimalLiteralTreatment.AS_DOUBLE);
     }
 
     /**

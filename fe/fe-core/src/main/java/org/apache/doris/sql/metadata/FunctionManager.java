@@ -110,8 +110,12 @@ public class FunctionManager
             default:
                 throw new UnsupportedOperationException("not yet implemented");
         }
-        if (arguments.stream().map(TypeSignature::getBase).anyMatch(type -> type.equals(StandardTypes.INTERVAL_DAY_TO_SECOND))) {
+        if (arguments.stream().map(TypeSignature::getBase).anyMatch(type -> type.equalsIgnoreCase("day"))) {
             return resolveTimeUnitOperator(operatorType, argumentTypes, "DAY");
+        } else if (arguments.stream().map(TypeSignature::getBase).anyMatch(type -> type.equalsIgnoreCase("month"))) {
+            return resolveTimeUnitOperator(operatorType, argumentTypes, "month");
+        } else if (arguments.stream().map(TypeSignature::getBase).anyMatch(type -> type.equalsIgnoreCase("year"))) {
+            return resolveTimeUnitOperator(operatorType, argumentTypes, "year");
         }
 
         Optional<Type> retType = Optional.of(typeManager.getType(argumentTypes.get(0).getTypeSignature()));

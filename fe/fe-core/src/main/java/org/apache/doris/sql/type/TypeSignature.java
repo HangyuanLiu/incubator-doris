@@ -74,6 +74,11 @@ public class TypeSignature {
                 return ScalarType.DECIMALV2;
             case "unknown":
                 return ScalarType.NULL;
+
+            case "day":
+            case "month":
+            case "year":
+                return ScalarType.INT;
             default:
                 throw new UnsupportedOperationException(this.getBase() +" not yet implemented");
         }
