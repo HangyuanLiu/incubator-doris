@@ -22,6 +22,7 @@ import org.apache.doris.sql.planner.plan.OrderingScheme;
 import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
 import org.apache.doris.sql.planner.plan.ProjectNode;
 import org.apache.doris.sql.planner.plan.SortNode;
+import org.apache.doris.sql.planner.plan.ValuesNode;
 import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
@@ -168,13 +169,13 @@ public class QueryPlanner {
     {
         RelationPlan relationPlan;
 
-        //if (node.getFrom().isPresent()) {
+        if (node.getFrom().isPresent()) {
             relationPlan = new RelationPlanner(analysis, variableAllocator, idAllocator, metadata, session)
                     .process(node.getFrom().get(), null);
-        //}
-        //else {
-            //relationPlan = planImplicitTable();
-       // }
+        }
+        else {
+            relationPlan = planImplicitTable();
+       }
 
         return planBuilderFor(relationPlan);
     }
@@ -204,6 +205,15 @@ public class QueryPlanner {
         translations.setFieldMappings(relationPlan.getFieldMappings());
 
         return new PlanBuilder(translations, relationPlan.getRoot(), analysis.getParameters());
+    }
+
+    private RelationPlan planImplicitTable()
+    {
+        Scope scope = Scope.create();
+        return new RelationPlan(
+                new ValuesNode(idAllocator.getNextId(), ImmutableList.of(), ImmutableList.of(ImmutableList.of())),
+                scope,
+                ImmutableList.of());
     }
 
     private PlanBuilder filter(PlanBuilder subPlan, Expression predicate, Node node)

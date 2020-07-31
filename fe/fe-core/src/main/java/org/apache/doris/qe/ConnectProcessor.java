@@ -281,7 +281,6 @@ public class ConnectProcessor {
 
                 for (PlanFragment fragment : fragments) {
                     fragment.finalize(null, false);
-                    System.out.println("fragments : " + fragment.toThrift());
                 }
 
                 PlanFragment rootFragment = fragments.get(fragments.size() - 1);

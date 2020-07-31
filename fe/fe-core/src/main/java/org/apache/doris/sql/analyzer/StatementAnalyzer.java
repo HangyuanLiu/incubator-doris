@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getLast;
 import static java.lang.Math.toIntExact;
 import static java.util.Collections.emptyList;
@@ -395,6 +395,67 @@ public class StatementAnalyzer
             return node instanceof Unnest || node instanceof Lateral;
              */
             return false;
+        }
+
+        @Override
+        protected Scope visitValues(Values node, Optional<Scope> scope)
+        {
+            checkState(node.getRows().size() >= 1);
+
+            List<List<Type>> rowTypes = node.getRows().stream()
+                    .map(row -> analyzeExpression(row, createScope(scope)).getType(row))
+                    .map(type -> {
+                        /*
+                        if (type instanceof RowType) {
+                            return type.getTypeParameters();
+                        }
+                         */
+                        return ImmutableList.of(type);
+                    })
+                    .collect(toImmutableList());
+
+            // determine common super type of the rows
+            List<Type> fieldTypes = new ArrayList<>(rowTypes.iterator().next());
+            for (List<Type> rowType : rowTypes) {
+                // check field count consistency for rows
+                if (rowType.size() != fieldTypes.size()) {
+                    throw new SemanticException(MISMATCHED_SET_COLUMN_TYPES,
+                            node,
+                            "Values rows have mismatched types: %s vs %s",
+                            rowTypes.get(0),
+                            rowType);
+                }
+
+                for (int i = 0; i < rowType.size(); i++) {
+                    Type fieldType = rowType.get(i);
+                    Type superType = fieldTypes.get(i);
+
+                    Optional<Type> commonSuperType = metadata.getTypeManager().getCommonSuperType(fieldType, superType);
+                    if (!commonSuperType.isPresent()) {
+                        throw new SemanticException(MISMATCHED_SET_COLUMN_TYPES,
+                                node,
+                                "Values rows have mismatched types: %s vs %s",
+                                rowTypes.get(0),
+                                rowType);
+                    }
+                    fieldTypes.set(i, commonSuperType.get());
+                }
+            }
+
+            // add coercions for the rows
+            for (Expression row : node.getRows()) {
+                Type actualType = analysis.getType(row);
+                Type expectedType = fieldTypes.get(0);
+                if (!actualType.equals(expectedType)) {
+                    analysis.addCoercion(row, expectedType, metadata.getTypeManager().isTypeOnlyCoercion(actualType, expectedType));
+                }
+            }
+
+            List<Field> fields = fieldTypes.stream()
+                    .map(valueType -> Field.newUnqualified(Optional.empty(), valueType))
+                    .collect(toImmutableList());
+
+            return createAndAssignScope(node, scope, fields);
         }
 
         private void analyzeHaving(QuerySpecification node, Scope scope)

@@ -25,7 +25,7 @@ import org.apache.doris.thrift.TPlanNode;
 import org.apache.doris.thrift.TPlanNodeType;
 
 public class UnionNode extends SetOperationNode {
-    protected UnionNode(PlanNodeId id, TupleId tupleId) {
+    public UnionNode(PlanNodeId id, TupleId tupleId) {
         super(id, tupleId, "UNION");
     }
 

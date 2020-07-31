@@ -14,6 +14,7 @@
 package org.apache.doris.sql.planner.iterative.rule;
 
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.doris.sql.planner.iterative.Rule;
@@ -25,10 +26,12 @@ import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.JoinNode;
 import org.apache.doris.sql.planner.plan.ProjectNode;
+import org.apache.doris.sql.planner.plan.ValuesNode;
 import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -42,6 +45,7 @@ import static org.apache.doris.sql.planner.plan.Patterns.applyNode;
 import static org.apache.doris.sql.planner.plan.Patterns.filter;
 import static org.apache.doris.sql.planner.plan.Patterns.join;
 import static org.apache.doris.sql.planner.plan.Patterns.project;
+import static org.apache.doris.sql.planner.plan.Patterns.values;
 
 public class RowExpressionRewriteRuleSet
 {
@@ -60,11 +64,17 @@ public class RowExpressionRewriteRuleSet
     public Set<Rule<?>> rules()
     {
         return ImmutableSet.of(
+                valueRowExpressionRewriteRule(),
                 filterRowExpressionRewriteRule(),
                 projectRowExpressionRewriteRule(),
                 applyNodeRowExpressionRewriteRule(),
                 joinRowExpressionRewriteRule(),
                 aggregationRowExpressionRewriteRule());
+    }
+
+    public Rule<ValuesNode> valueRowExpressionRewriteRule()
+    {
+        return new ValuesRowExpressionRewrite();
     }
 
     public Rule<FilterNode> filterRowExpressionRewriteRule()
@@ -218,6 +228,38 @@ public class RowExpressionRewriteRuleSet
                 return Result.empty();
             }
             return Result.ofPlanNode(new FilterNode(filterNode.getId(), filterNode.getSource(), rewritten));
+        }
+    }
+
+    private final class ValuesRowExpressionRewrite
+            implements Rule<ValuesNode>
+    {
+        @Override
+        public Pattern<ValuesNode> getPattern()
+        {
+            return values();
+        }
+
+        @Override
+        public Result apply(ValuesNode valuesNode, Captures captures, Context context)
+        {
+            boolean anyRewritten = false;
+            ImmutableList.Builder<List<RowExpression>> rows = ImmutableList.builder();
+            for (List<RowExpression> row : valuesNode.getRows()) {
+                ImmutableList.Builder<RowExpression> newRow = ImmutableList.builder();
+                for (RowExpression rowExpression : row) {
+                    RowExpression rewritten = rewriter.rewrite(rowExpression, context);
+                    if (!rewritten.equals(rowExpression)) {
+                        anyRewritten = true;
+                    }
+                    newRow.add(rewritten);
+                }
+                rows.add(newRow.build());
+            }
+            if (anyRewritten) {
+                return Result.ofPlanNode(new ValuesNode(valuesNode.getId(), valuesNode.getOutputVariables(), rows.build()));
+            }
+            return Result.empty();
         }
     }
 

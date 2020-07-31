@@ -294,6 +294,10 @@ abstract public class Expr extends TreeNode<Expr> implements ParseNode, Cloneabl
         return opcode;
     }
 
+    public void setOpcode(TExprOpcode opcode) {
+        this.opcode = opcode;
+    }
+
     public double getSelectivity() {
         return selectivity;
     }

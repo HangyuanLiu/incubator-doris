@@ -446,6 +446,12 @@ under the License.
             <groupId>org.antlr</groupId>
             <artifactId>antlr4</artifactId>
             <version>4.8</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-lang</groupId>
+                    <artifactId>commons-lang</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>

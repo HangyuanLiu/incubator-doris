@@ -21,6 +21,7 @@ import org.apache.doris.sql.planner.iterative.Lookup;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
+import org.apache.doris.sql.tree.DefaultExpressionTraversalVisitor;
 import org.apache.doris.sql.tree.DefaultTraversalVisitor;
 import org.apache.doris.sql.tree.DereferenceExpression;
 import org.apache.doris.sql.tree.Expression;
@@ -126,6 +127,11 @@ public final class VariablesExtractor
         return builder.build();
     }
 
+    public static Set<VariableReferenceExpression> extractOutputVariables(LogicalPlanNode planNode)
+    {
+        return extractOutputVariables(planNode, noLookup());
+    }
+
     public static Set<VariableReferenceExpression> extractOutputVariables(LogicalPlanNode planNode, Lookup lookup)
     {
         return searchFrom(planNode, lookup)
@@ -144,7 +150,7 @@ public final class VariablesExtractor
     }
 
     private static class SymbolBuilderVisitor
-            extends DefaultTraversalVisitor<Void, ImmutableList.Builder<Symbol>>
+            extends DefaultExpressionTraversalVisitor<Void, ImmutableList.Builder<Symbol>>
     {
         @Override
         protected Void visitSymbolReference(SymbolReference node, ImmutableList.Builder<Symbol> builder)
@@ -155,7 +161,7 @@ public final class VariablesExtractor
     }
 
     private static class VariableFromExpressionBuilderVisitor
-            extends DefaultTraversalVisitor<Void, ImmutableList.Builder<VariableReferenceExpression>>
+            extends DefaultExpressionTraversalVisitor<Void, ImmutableList.Builder<VariableReferenceExpression>>
     {
         private final TypeProvider types;
 

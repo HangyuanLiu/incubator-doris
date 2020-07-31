@@ -20,6 +20,7 @@ import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.planner.SimplePlanRewriter;
 import org.apache.doris.sql.planner.VariableAllocator;
+import org.apache.doris.sql.planner.VariableResolver;
 import org.apache.doris.sql.planner.plan.AggregationNode;
 import org.apache.doris.sql.planner.plan.Assignments;
 import org.apache.doris.sql.planner.plan.FilterNode;
@@ -816,9 +817,12 @@ public class PredicatePushDown
                     emptyList(), /* parameters have already been replaced */
                     WarningCollector.NOOP);
             //FIXME
-            return Boolean.FALSE;
+            //return Boolean.FALSE;
+
             //return ExpressionInterpreter.expressionOptimizer(expression, metadata, session, expressionTypes)
             //        .optimize(variable -> nullVariableNames.contains(variable.getName()) ? null : new Symbol(variable.getName()).toSymbolReference());
+
+            return expression;
         }
 
         private Predicate<Expression> joinEqualityExpression(final Collection<VariableReferenceExpression> leftVariables)

@@ -51,6 +51,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.doris.sql.planner.iterative.matching.Capture.newCapture;
+import static org.apache.doris.sql.planner.optimizations.DistinctOutputQueryUtil.isDistinct;
 import static org.apache.doris.sql.planner.plan.AggregationNode.globalAggregation;
 import static org.apache.doris.sql.planner.plan.AggregationNode.singleGroupingSet;
 import static org.apache.doris.sql.planner.ExpressionVariableInliner.inlineVariables;
@@ -136,9 +137,8 @@ public class PushAggregationThroughOuterJoin
 
         if (join.getFilter().isPresent()
                 || !(join.getType() == JoinNode.Type.LEFT || join.getType() == JoinNode.Type.RIGHT)
-                || !groupsOnAllColumns(aggregation, getOuterTable(join).getOutputVariables())) {
-                //FIXME
-                //|| !isDistinct(context.getLookup().resolve(getOuterTable(join)), context.getLookup()::resolve)) {
+                || !groupsOnAllColumns(aggregation, getOuterTable(join).getOutputVariables())
+                || !isDistinct(context.getLookup().resolve(getOuterTable(join)), context.getLookup()::resolve)) {
             return Result.empty();
         }
 

@@ -51,8 +51,6 @@ public class DorisMetadata implements ConnectorMetadata{
                     typeManager.getType(TypeSignature.create(column.getType())), 0));
         }
 
-        System.out.println("getColumnHandles : " + columnHandles);
-
         return columnHandles;
     }
 

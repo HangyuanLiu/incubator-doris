@@ -94,7 +94,8 @@ public class PlanOptimizers {
                 new PruneSemiJoinFilteringSourceColumns(),
                 new PruneTopNColumns(),
                 new PruneLimitColumns(),
-                new PruneTableScanColumns());
+                new PruneTableScanColumns()
+        );
 
         //统一裁剪冗余project
         IterativeOptimizer inlineProjections = new IterativeOptimizer(

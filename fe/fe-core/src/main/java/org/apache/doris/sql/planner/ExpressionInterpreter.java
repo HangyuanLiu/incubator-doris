@@ -102,7 +102,7 @@ public class ExpressionInterpreter
     private static final long MAX_SERIALIZABLE_OBJECT_SIZE = 1000;
     private final Expression expression;
     private final Metadata metadata;
-    private final LiteralEncoder literalEncoder;
+    //private final LiteralEncoder literalEncoder;
     private final Session session;
     private final ConnectorSession connectorSession;
     // if optimize flag is on, we will ways return evaluated result or throw.
@@ -192,14 +192,14 @@ public class ExpressionInterpreter
     {
         this.expression = requireNonNull(expression, "expression is null");
         this.metadata = requireNonNull(metadata, "metadata is null");
-        this.literalEncoder = new LiteralEncoder(metadata.getBlockEncodingSerde());
+        //this.literalEncoder = new LiteralEncoder(metadata.getBlockEncodingSerde());
         this.session = requireNonNull(session, "session is null");
         this.connectorSession = session.toConnectorSession();
         this.expressionTypes = ImmutableMap.copyOf(requireNonNull(expressionTypes, "expressionTypes is null"));
         verify((expressionTypes.containsKey(NodeRef.of(expression))));
         this.optimize = optimize;
-        this.functionInvoker = new InterpretedFunctionInvoker(metadata.getFunctionManager());
-        this.legacyRowFieldOrdinalAccess = isLegacyRowFieldOrdinalAccessEnabled(session);
+        //this.functionInvoker = new InterpretedFunctionInvoker(metadata.getFunctionManager());
+        //this.legacyRowFieldOrdinalAccess = isLegacyRowFieldOrdinalAccessEnabled(session);
 
         this.visitor = new Visitor();
     }

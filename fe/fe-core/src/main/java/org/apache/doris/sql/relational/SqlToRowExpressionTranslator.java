@@ -500,6 +500,7 @@ public final class SqlToRowExpressionTranslator
         @Override
         protected RowExpression visitBetweenPredicate(BetweenPredicate node, Void context)
         {
+            //FIXME: rewrite between expression in other function?
             RowExpression value = process(node.getValue(), context);
             RowExpression min = process(node.getMin(), context);
             RowExpression max = process(node.getMax(), context);

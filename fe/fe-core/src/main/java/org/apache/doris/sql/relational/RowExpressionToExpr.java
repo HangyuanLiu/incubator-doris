@@ -17,6 +17,7 @@ import org.apache.doris.analysis.InPredicate;
 import org.apache.doris.analysis.IntLiteral;
 import org.apache.doris.analysis.IsNullPredicate;
 import org.apache.doris.analysis.LikePredicate;
+import org.apache.doris.analysis.NullLiteral;
 import org.apache.doris.analysis.SlotId;
 import org.apache.doris.analysis.SlotRef;
 import org.apache.doris.analysis.StringLiteral;
@@ -143,6 +144,8 @@ public class RowExpressionToExpr {
                     FunctionHandle fnHandle = node.getFunctionHandle();
                     if (fnName.startsWith("castto")) {
                         callExpr = new CastExpr(fnHandle.getReturnType().toDorisType(), formatRowExpression(node.getArguments().get(0), context));
+                    } else if (fnName.equalsIgnoreCase("not")) {
+                        callExpr = new CompoundPredicate(CompoundPredicate.Operator.NOT, formatRowExpression(node.getArguments().get(0), context), null);
                     } else {
                         callExpr = new FunctionCallExpr(fnHandle.getFunctionName(), new FunctionParams(false, arg));
                     }
@@ -183,6 +186,8 @@ public class RowExpressionToExpr {
                         return new StringLiteral((String) node.getValue());
                     case StandardTypes.BOOLEAN:
                         return new BoolLiteral((Boolean) node.getValue());
+                    case "unknown":
+                        return new NullLiteral();
                         /*
                     case DATE:
                         return new DateLiteral(Type.DATE,)
@@ -230,6 +235,17 @@ public class RowExpressionToExpr {
                 Function searchDesc = new Function(fnName, Lists.newArrayList(argDorisType), Type.INVALID, false);
                 Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_INDISTINGUISHABLE);
                 callExpr = new FunctionCallExpr(fnName, Lists.newArrayList(formatRowExpression(node.getArguments().get(0), context)));
+                callExpr.setFn(fn);
+            } else if (node.getForm().equals(SpecialFormExpression.Form.COALESCE)) {
+                FunctionName fnName = new FunctionName("coalesce");
+                List<org.apache.doris.catalog.Type> argDorisType = node.getArguments().stream().
+                        map(RowExpression::getType).
+                        map(org.apache.doris.sql.type.Type::getTypeSignature).
+                        map(TypeSignature::toDorisType).collect(Collectors.toList());
+                Function searchDesc = new Function(fnName, Lists.newArrayList(argDorisType), Type.INVALID, false);
+                Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_INDISTINGUISHABLE);
+                callExpr = new FunctionCallExpr(fnName,
+                        node.getArguments().stream().map(expr -> formatRowExpression(expr, context)).collect(Collectors.toList()));
                 callExpr.setFn(fn);
             }
             else {

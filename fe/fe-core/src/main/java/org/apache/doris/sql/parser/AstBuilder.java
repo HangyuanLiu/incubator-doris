@@ -213,6 +213,12 @@ public class AstBuilder
         return new TableSubquery(getLocation(context), (Query) visit(context.queryNoWith()));
     }
 
+    @Override
+    public Node visitInlineTable(SqlBaseParser.InlineTableContext context)
+    {
+        return new Values(getLocation(context), visit(context.expression(), Expression.class));
+    }
+
     // ***************** boolean expressions ******************
 
     @Override
@@ -461,6 +467,12 @@ public class AstBuilder
 
 
     // ********************* primary expressions **********************
+
+    @Override
+    public Node visitRowConstructor(SqlBaseParser.RowConstructorContext context)
+    {
+        return new Row(getLocation(context), visit(context.expression(), Expression.class));
+    }
 
     @Override
     public Node visitCast(SqlBaseParser.CastContext context)

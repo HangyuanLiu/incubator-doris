@@ -11,6 +11,7 @@ import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.planner.optimizations.JoinNodeUtils;
 import org.apache.doris.sql.planner.plan.*;
+import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.analyzer.Analysis;
 import org.apache.doris.sql.analyzer.Field;
@@ -285,6 +286,28 @@ class RelationPlanner
     {
         return new QueryPlanner(analysis, variableAllocator, idAllocator, metadata, session)
                 .plan(node);
+    }
+
+    @Override
+    protected RelationPlan visitValues(Values node, Void context)
+    {
+        Scope scope = analysis.getScope(node);
+        ImmutableList.Builder<VariableReferenceExpression> outputVariablesBuilder = ImmutableList.builder();
+        for (Field field : scope.getRelationType().getVisibleFields()) {
+            outputVariablesBuilder.add(variableAllocator.newVariable(field));
+        }
+
+        ImmutableList.Builder<List<RowExpression>> rowsBuilder = ImmutableList.builder();
+        for (Expression row : node.getRows()) {
+            ImmutableList.Builder<RowExpression> values = ImmutableList.builder();
+            Expression expression = Coercer.addCoercions(row, analysis);
+            //values.add(castToRowExpression(ExpressionTreeRewriter.rewriteWith(new ParameterRewriter(analysis.getParameters(), analysis), expression)));
+            values.add(castToRowExpression(expression));
+            rowsBuilder.add(values.build());
+        }
+
+        ValuesNode valuesNode = new ValuesNode(idAllocator.getNextId(), outputVariablesBuilder.build(), rowsBuilder.build());
+        return new RelationPlan(valuesNode, scope, outputVariablesBuilder.build());
     }
 
     private PlanBuilder initializePlanBuilder(RelationPlan relationPlan)

@@ -17,6 +17,18 @@ public abstract class DefaultTraversalVisitor<R, C>
         extends AstVisitor<R, C>
 {
     @Override
+    protected R visitExtract(Extract node, C context)
+    {
+        return process(node.getExpression(), context);
+    }
+
+    @Override
+    protected R visitCast(Cast node, C context)
+    {
+        return process(node.getExpression(), context);
+    }
+
+    @Override
     protected R visitArithmeticBinary(ArithmeticBinaryExpression node, C context)
     {
         process(node.getLeft(), context);
@@ -143,6 +155,23 @@ public abstract class DefaultTraversalVisitor<R, C>
     }
 
     @Override
+    protected R visitGroupingOperation(GroupingOperation node, C context)
+    {
+        for (Expression columnArgument : node.getGroupingColumns()) {
+            process(columnArgument, context);
+        }
+
+        return null;
+    }
+
+    @Override
+    protected R visitDereferenceExpression(DereferenceExpression node, C context)
+    {
+        process(node.getBase(), context);
+        return null;
+    }
+
+    @Override
     protected R visitSimpleCaseExpression(SimpleCaseExpression node, C context)
     {
         process(node.getOperand(), context);
@@ -167,6 +196,13 @@ public abstract class DefaultTraversalVisitor<R, C>
     }
 
     @Override
+    protected R visitTryExpression(TryExpression node, C context)
+    {
+        process(node.getInnerExpression(), context);
+        return null;
+    }
+
+    @Override
     protected R visitArithmeticUnary(ArithmeticUnaryExpression node, C context)
     {
         return process(node.getValue(), context);
@@ -176,6 +212,18 @@ public abstract class DefaultTraversalVisitor<R, C>
     protected R visitNotExpression(NotExpression node, C context)
     {
         return process(node.getValue(), context);
+    }
+
+    @Override
+    protected R visitSearchedCaseExpression(SearchedCaseExpression node, C context)
+    {
+        for (WhenClause clause : node.getWhenClauses()) {
+            process(clause, context);
+        }
+        node.getDefaultValue()
+                .ifPresent(value -> process(value, context));
+
+        return null;
     }
 
     @Override
@@ -292,6 +340,34 @@ public abstract class DefaultTraversalVisitor<R, C>
             process(groupingElement, context);
         }
 
+        return null;
+    }
+
+    @Override
+    protected R visitCube(Cube node, C context)
+    {
+        return null;
+    }
+
+    @Override
+    protected R visitRollup(Rollup node, C context)
+    {
+        return null;
+    }
+
+    @Override
+    protected R visitSimpleGroupBy(SimpleGroupBy node, C context)
+    {
+        for (Expression expression : node.getExpressions()) {
+            process(expression, context);
+        }
+
+        return null;
+    }
+
+    @Override
+    protected R visitGroupingSets(GroupingSets node, C context)
+    {
         return null;
     }
 

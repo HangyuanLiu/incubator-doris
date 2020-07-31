@@ -72,6 +72,8 @@ public class TypeSignature {
                 return ScalarType.DATETIME;
             case "decimal":
                 return ScalarType.DECIMALV2;
+            case "unknown":
+                return ScalarType.NULL;
             default:
                 throw new UnsupportedOperationException(this.getBase() +" not yet implemented");
         }

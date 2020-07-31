@@ -218,6 +218,10 @@ public class FunctionManager
     {
         List<TypeSignature> arguments = parameterTypes.stream().map(TypeSignatureProvider::getTypeSignature).collect(Collectors.toList());
 
+        if (name.equalsIgnoreCase("not")) {
+            return new FunctionHandle("not", BooleanType.BOOLEAN.getTypeSignature(), null, arguments, FunctionHandle.FunctionKind.SCALAR, null);
+        }
+
         Function searchDesc = new Function(
                 new FunctionName(name),
                 arguments.stream().map(TypeSignature::toDorisType).collect(Collectors.toList()),

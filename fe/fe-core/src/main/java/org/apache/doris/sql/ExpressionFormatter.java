@@ -16,15 +16,14 @@ package org.apache.doris.sql;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
-import org.apache.doris.analysis.BetweenPredicate;
-import org.apache.doris.analysis.ExistsPredicate;
-import org.apache.doris.analysis.LikePredicate;
 import org.apache.doris.sql.tree.AllColumns;
 import org.apache.doris.sql.tree.ArithmeticBinaryExpression;
 import org.apache.doris.sql.tree.ArithmeticUnaryExpression;
 import org.apache.doris.sql.tree.AstVisitor;
+import org.apache.doris.sql.tree.BetweenPredicate;
 import org.apache.doris.sql.tree.BooleanLiteral;
 import org.apache.doris.sql.tree.Cast;
+import org.apache.doris.sql.tree.CoalesceExpression;
 import org.apache.doris.sql.tree.ComparisonExpression;
 import org.apache.doris.sql.tree.Cube;
 import org.apache.doris.sql.tree.DereferenceExpression;
@@ -49,11 +48,14 @@ import org.apache.doris.sql.tree.OrderBy;
 import org.apache.doris.sql.tree.QualifiedName;
 import org.apache.doris.sql.tree.QuantifiedComparisonExpression;
 import org.apache.doris.sql.tree.Rollup;
+import org.apache.doris.sql.tree.SearchedCaseExpression;
+import org.apache.doris.sql.tree.SimpleCaseExpression;
 import org.apache.doris.sql.tree.SimpleGroupBy;
 import org.apache.doris.sql.tree.SortItem;
 import org.apache.doris.sql.tree.StringLiteral;
 import org.apache.doris.sql.tree.SubqueryExpression;
 import org.apache.doris.sql.tree.SymbolReference;
+import org.apache.doris.sql.tree.WhenClause;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -264,6 +266,12 @@ public final class ExpressionFormatter
         }
 
         @Override
+        protected String visitCoalesceExpression(CoalesceExpression node, Void context)
+        {
+            return "COALESCE(" + joinExpressions(node.getOperands()) + ")";
+        }
+
+        @Override
         protected String visitArithmeticUnary(ArithmeticUnaryExpression node, Void context)
         {
             String value = process(node.getValue(), context);
@@ -301,6 +309,56 @@ public final class ExpressionFormatter
         {
             return (node.isSafe() ? "TRY_CAST" : "CAST") +
                     "(" + process(node.getExpression(), context) + " AS " + node.getType() + ")";
+        }
+
+        @Override
+        protected String visitSearchedCaseExpression(SearchedCaseExpression node, Void context)
+        {
+            ImmutableList.Builder<String> parts = ImmutableList.builder();
+            parts.add("CASE");
+            for (WhenClause whenClause : node.getWhenClauses()) {
+                parts.add(process(whenClause, context));
+            }
+
+            node.getDefaultValue()
+                    .ifPresent((value) -> parts.add("ELSE").add(process(value, context)));
+
+            parts.add("END");
+
+            return "(" + Joiner.on(' ').join(parts.build()) + ")";
+        }
+
+        @Override
+        protected String visitSimpleCaseExpression(SimpleCaseExpression node, Void context)
+        {
+            ImmutableList.Builder<String> parts = ImmutableList.builder();
+
+            parts.add("CASE")
+                    .add(process(node.getOperand(), context));
+
+            for (WhenClause whenClause : node.getWhenClauses()) {
+                parts.add(process(whenClause, context));
+            }
+
+            node.getDefaultValue()
+                    .ifPresent((value) -> parts.add("ELSE").add(process(value, context)));
+
+            parts.add("END");
+
+            return "(" + Joiner.on(' ').join(parts.build()) + ")";
+        }
+
+        @Override
+        protected String visitWhenClause(WhenClause node, Void context)
+        {
+            return "WHEN " + process(node.getOperand(), context) + " THEN " + process(node.getResult(), context);
+        }
+
+        @Override
+        protected String visitBetweenPredicate(BetweenPredicate node, Void context)
+        {
+            return "(" + process(node.getValue(), context) + " BETWEEN " +
+                    process(node.getMin(), context) + " AND " + process(node.getMax(), context) + ")";
         }
 
         @Override

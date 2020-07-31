@@ -23,6 +23,7 @@ import org.apache.doris.sql.planner.plan.JoinNode;
 import org.apache.doris.sql.planner.plan.LogicalPlanNode;
 import org.apache.doris.sql.planner.plan.OrderingScheme;
 import org.apache.doris.sql.planner.plan.ProjectNode;
+import org.apache.doris.sql.planner.plan.ValuesNode;
 import org.apache.doris.sql.relation.RowExpression;
 
 import java.util.List;
@@ -121,6 +122,13 @@ public class ExpressionExtractor
         {
             node.getFilter().ifPresent(context::add);
             return super.visitJoin(node, context);
+        }
+
+        @Override
+        public Void visitValues(ValuesNode node, ImmutableList.Builder<RowExpression> context)
+        {
+            node.getRows().forEach(context::addAll);
+            return super.visitValues(node, context);
         }
 
         @Override
