@@ -57,7 +57,7 @@ public class HashJoinNode extends PlanNode {
     // predicates of the form 'a=b' or 'a<=>b'
     private List<BinaryPredicate> eqJoinConjuncts = Lists.newArrayList();
     // join conjuncts from the JOIN clause that aren't equi-join predicates
-    private  List<Expr> otherJoinConjuncts;
+    private List<Expr> otherJoinConjuncts;
     private boolean isPushDown;
     private DistributionMode distrMode;
     private boolean isColocate = false; //the flag for colocate join
