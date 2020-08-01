@@ -29,6 +29,11 @@ public class Patterns
 {
     private Patterns() {}
 
+    public static Pattern<AssignUniqueId> assignUniqueId()
+    {
+        return typeOf(AssignUniqueId.class);
+    }
+
     public static Pattern<AggregationNode> aggregation()
     {
         return typeOf(AggregationNode.class);
@@ -39,9 +44,9 @@ public class Patterns
         return typeOf(ApplyNode.class);
     }
 
-    public static Pattern<ProjectNode> project()
+    public static Pattern<EnforceSingleRowNode> enforceSingleRow()
     {
-        return typeOf(ProjectNode.class);
+        return typeOf(EnforceSingleRowNode.class);
     }
 
     public static Pattern<SemiJoinNode> semiJoin()
@@ -67,6 +72,11 @@ public class Patterns
     public static Pattern<LimitNode> limit()
     {
         return typeOf(LimitNode.class);
+    }
+
+    public static Pattern<ProjectNode> project()
+    {
+        return typeOf(ProjectNode.class);
     }
 
     public static Pattern<SortNode> sort()

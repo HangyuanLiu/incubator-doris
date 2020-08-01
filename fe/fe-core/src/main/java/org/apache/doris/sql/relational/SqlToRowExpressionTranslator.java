@@ -97,6 +97,7 @@ import static org.apache.doris.sql.relational.Expressions.constant;
 import static org.apache.doris.sql.relational.Expressions.constantNull;
 import static org.apache.doris.sql.relational.Expressions.field;
 import static org.apache.doris.sql.relational.Expressions.specialForm;
+import static org.apache.doris.sql.tree.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
 import static org.apache.doris.sql.tree.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 import static org.apache.doris.sql.type.BigintType.BIGINT;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
@@ -195,9 +196,12 @@ public final class SqlToRowExpressionTranslator
         @Override
         protected RowExpression visitLongLiteral(LongLiteral node, Void context)
         {
+            //FIXME
+            /*
             if (node.getValue() >= Integer.MIN_VALUE && node.getValue() <= Integer.MAX_VALUE) {
                 return constant(node.getValue(), INTEGER);
             }
+             */
             return constant(node.getValue(), BIGINT);
         }
 
@@ -505,8 +509,8 @@ public final class SqlToRowExpressionTranslator
             RowExpression min = process(node.getMin(), context);
             RowExpression max = process(node.getMax(), context);
 
-            Expression upperBound = new ComparisonExpression(ComparisonExpression.Operator.LESS_THAN, node.getValue(), node.getMax());
-            Expression lowerBound = new ComparisonExpression(ComparisonExpression.Operator.GREATER_THAN, node.getValue(), node.getMin());
+            Expression upperBound = new ComparisonExpression(LESS_THAN_OR_EQUAL, node.getValue(), node.getMax());
+            Expression lowerBound = new ComparisonExpression(GREATER_THAN_OR_EQUAL, node.getValue(), node.getMin());
 
             return specialForm(AND, BOOLEAN, process(lowerBound), process(upperBound));
             /*

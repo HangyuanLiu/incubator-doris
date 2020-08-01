@@ -18,10 +18,13 @@
 package org.apache.doris.analysis;
 
 
+import org.apache.doris.common.AnalysisException;
+import org.apache.doris.thrift.TExprNode;
+
 /**
  * captures info of a single WHEN expr THEN expr clause.
  */
-public class CaseWhenClause {
+public class CaseWhenClause extends Expr{
     private final Expr whenExpr;
     private final Expr thenExpr;
 
@@ -37,5 +40,25 @@ public class CaseWhenClause {
 
     public Expr getThenExpr() {
         return thenExpr;
+    }
+
+    @Override
+    protected void analyzeImpl(Analyzer analyzer) throws AnalysisException {
+
+    }
+
+    @Override
+    protected String toSqlImpl() {
+        return null;
+    }
+
+    @Override
+    protected void toThrift(TExprNode msg) {
+
+    }
+
+    @Override
+    public Expr clone() {
+        return null;
     }
 }

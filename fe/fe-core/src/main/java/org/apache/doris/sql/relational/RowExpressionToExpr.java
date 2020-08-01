@@ -5,6 +5,7 @@ import org.apache.doris.analysis.ArithmeticExpr;
 import org.apache.doris.analysis.BinaryPredicate;
 import org.apache.doris.analysis.BoolLiteral;
 import org.apache.doris.analysis.CaseExpr;
+import org.apache.doris.analysis.CaseWhenClause;
 import org.apache.doris.analysis.CastExpr;
 import org.apache.doris.analysis.CompoundPredicate;
 import org.apache.doris.analysis.DateLiteral;
@@ -180,7 +181,6 @@ public class RowExpressionToExpr {
                 switch (node.getType().getTypeSignature().getBase().toLowerCase()) {
                     case StandardTypes.INTEGER:
                     case INTERVAL_DAY_TO_SECOND:
-                        return new IntLiteral((long) node.getValue(), Type.INT);
                     case StandardTypes.BIGINT:
                         return new IntLiteral((long) node.getValue(), Type.BIGINT);
                     case "varchar":
@@ -188,7 +188,7 @@ public class RowExpressionToExpr {
                     case StandardTypes.BOOLEAN:
                         return new BoolLiteral((Boolean) node.getValue());
                     case StandardTypes.DOUBLE:
-                        return new FloatLiteral((double) node.getValue());
+                        return new FloatLiteral((double) node.getValue(), Type.DOUBLE);
                     case "unknown":
                         return new NullLiteral();
                     case "day":
@@ -254,8 +254,20 @@ public class RowExpressionToExpr {
                 callExpr = new FunctionCallExpr(fnName,
                         node.getArguments().stream().map(expr -> formatRowExpression(expr, context)).collect(Collectors.toList()));
                 callExpr.setFn(fn);
-            }
-            else {
+            } else if (node.getForm().equals(SpecialFormExpression.Form.SWITCH)) {
+                List<CaseWhenClause> caseWhens = new ArrayList<>();
+                for (int caseIpos = 1; caseIpos < node.getArguments().size() - 1; caseIpos++) {
+                    caseWhens.add((CaseWhenClause) formatRowExpression(node.getArguments().get(caseIpos), context));
+                }
+                callExpr = new CaseExpr(
+                        null,
+                        caseWhens,
+                        formatRowExpression(node.getArguments().get(2), context));
+            } else if (node.getForm().equals(SpecialFormExpression.Form.WHEN)) {
+                callExpr = new CaseWhenClause(
+                        formatRowExpression(node.getArguments().get(0), context),
+                        formatRowExpression(node.getArguments().get(1), context));
+            } else {
                 return null;
             }
             callExpr.setType(node.getType().getTypeSignature().toDorisType());

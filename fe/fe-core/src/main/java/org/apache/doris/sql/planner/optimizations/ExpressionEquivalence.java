@@ -61,22 +61,19 @@ import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 import static org.apache.doris.sql.type.OperatorType.LESS_THAN;
 import static org.apache.doris.sql.type.OperatorType.LESS_THAN_OR_EQUAL;
 
-public class ExpressionEquivalence
-{
+public class ExpressionEquivalence {
     private static final Ordering<RowExpression> ROW_EXPRESSION_ORDERING = Ordering.from(new RowExpressionComparator());
     private final Metadata metadata;
     private final SqlParser sqlParser;
     private final CanonicalizationVisitor canonicalizationVisitor;
 
-    public ExpressionEquivalence(Metadata metadata, SqlParser sqlParser)
-    {
+    public ExpressionEquivalence(Metadata metadata, SqlParser sqlParser) {
         this.metadata = requireNonNull(metadata, "metadata is null");
         this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
         this.canonicalizationVisitor = new CanonicalizationVisitor(metadata.getFunctionManager());
     }
 
-    public boolean areExpressionsEquivalent(Session session, Expression leftExpression, Expression rightExpression, TypeProvider types)
-    {
+    public boolean areExpressionsEquivalent(Session session, Expression leftExpression, Expression rightExpression, TypeProvider types) {
         Map<VariableReferenceExpression, Integer> variableInput = new HashMap<>();
         int inputId = 0;
         for (VariableReferenceExpression variable : types.allVariables()) {
@@ -92,16 +89,14 @@ public class ExpressionEquivalence
         return canonicalizedLeft.equals(canonicalizedRight);
     }
 
-    public boolean areExpressionsEquivalent(RowExpression leftExpression, RowExpression rightExpression)
-    {
+    public boolean areExpressionsEquivalent(RowExpression leftExpression, RowExpression rightExpression) {
         RowExpression canonicalizedLeft = leftExpression.accept(canonicalizationVisitor, null);
         RowExpression canonicalizedRight = rightExpression.accept(canonicalizationVisitor, null);
 
         return canonicalizedLeft.equals(canonicalizedRight);
     }
 
-    private RowExpression toRowExpression(Session session, Expression expression, Map<VariableReferenceExpression, Integer> variableInput, TypeProvider types)
-    {
+    private RowExpression toRowExpression(Session session, Expression expression, Map<VariableReferenceExpression, Integer> variableInput, TypeProvider types) {
         // replace qualified names with input references since row expressions do not support these
 
         // determine the type of every expression
@@ -119,18 +114,15 @@ public class ExpressionEquivalence
     }
 
     private static class CanonicalizationVisitor
-            implements RowExpressionVisitor<RowExpression, Void>
-    {
+            implements RowExpressionVisitor<RowExpression, Void> {
         private final FunctionManager functionManager;
 
-        public CanonicalizationVisitor(FunctionManager functionManager)
-        {
+        public CanonicalizationVisitor(FunctionManager functionManager) {
             this.functionManager = requireNonNull(functionManager, "functionManager is null");
         }
 
         @Override
-        public RowExpression visitCall(CallExpression call, Void context)
-        {
+        public RowExpression visitCall(CallExpression call, Void context) {
             call = new CallExpression(
                     call.getDisplayName(),
                     call.getFunctionHandle(),
@@ -162,9 +154,7 @@ public class ExpressionEquivalence
                         call.getType(),
                         swapPair(call.getArguments()));
             }
-
-             */
-
+            */
             return call;
         }
 
@@ -176,8 +166,7 @@ public class ExpressionEquivalence
                 if (argument instanceof SpecialFormExpression && form.equals(((SpecialFormExpression) argument).getForm())) {
                     // same special form type, so flatten the args
                     newArguments.addAll(flattenNestedSpecialForms((SpecialFormExpression) argument));
-                }
-                else {
+                } else {
                     newArguments.add(argument);
                 }
             }
@@ -185,26 +174,22 @@ public class ExpressionEquivalence
         }
 
         @Override
-        public RowExpression visitConstant(ConstantExpression constant, Void context)
-        {
+        public RowExpression visitConstant(ConstantExpression constant, Void context) {
             return constant;
         }
 
         @Override
-        public RowExpression visitInputReference(InputReferenceExpression node, Void context)
-        {
+        public RowExpression visitInputReference(InputReferenceExpression node, Void context) {
             return node;
         }
 
         @Override
-        public RowExpression visitVariableReference(VariableReferenceExpression reference, Void context)
-        {
+        public RowExpression visitVariableReference(VariableReferenceExpression reference, Void context) {
             return reference;
         }
 
         @Override
-        public RowExpression visitSpecialForm(SpecialFormExpression specialForm, Void context)
-        {
+        public RowExpression visitSpecialForm(SpecialFormExpression specialForm, Void context) {
             specialForm = new SpecialFormExpression(
                     specialForm.getForm(),
                     specialForm.getType(),
@@ -227,20 +212,17 @@ public class ExpressionEquivalence
 
                 return new SpecialFormExpression(specialForm.getForm(), BOOLEAN, sortedArguments);
             }
-
             return specialForm;
         }
     }
 
     private static class RowExpressionComparator
-            implements Comparator<RowExpression>
-    {
+            implements Comparator<RowExpression> {
         private final Comparator<Object> classComparator = Ordering.arbitrary();
         private final ListComparator<RowExpression> argumentComparator = new ListComparator<>(this);
 
         @Override
-        public int compare(RowExpression left, RowExpression right)
-        {
+        public int compare(RowExpression left, RowExpression right) {
             int result = classComparator.compare(left.getClass(), right.getClass());
             if (result != 0) {
                 return result;
@@ -270,12 +252,10 @@ public class ExpressionEquivalence
                 if (leftValue == null) {
                     if (rightValue == null) {
                         return 0;
-                    }
-                    else {
+                    } else {
                         return -1;
                     }
-                }
-                else if (rightValue == null) {
+                } else if (rightValue == null) {
                     return 1;
                 }
                 /*
@@ -328,18 +308,15 @@ public class ExpressionEquivalence
     }
 
     private static class ListComparator<T>
-            implements Comparator<List<T>>
-    {
+            implements Comparator<List<T>> {
         private final Comparator<T> elementComparator;
 
-        public ListComparator(Comparator<T> elementComparator)
-        {
+        public ListComparator(Comparator<T> elementComparator) {
             this.elementComparator = requireNonNull(elementComparator, "elementComparator is null");
         }
 
         @Override
-        public int compare(List<T> left, List<T> right)
-        {
+        public int compare(List<T> left, List<T> right) {
             int compareLength = min(left.size(), right.size());
             for (int i = 0; i < compareLength; i++) {
                 int result = elementComparator.compare(left.get(i), right.get(i));
@@ -351,8 +328,7 @@ public class ExpressionEquivalence
         }
     }
 
-    private static <T> List<T> swapPair(List<T> pair)
-    {
+    private static <T> List<T> swapPair(List<T> pair) {
         requireNonNull(pair, "pair is null");
         checkArgument(pair.size() == 2, "Expected pair to have two elements");
         return ImmutableList.of(pair.get(1), pair.get(0));

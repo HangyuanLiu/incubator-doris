@@ -43,6 +43,7 @@ import org.apache.doris.sql.tree.InPredicate;
 import org.apache.doris.sql.tree.IntervalLiteral;
 import org.apache.doris.sql.tree.IsNotNullPredicate;
 import org.apache.doris.sql.tree.IsNullPredicate;
+import org.apache.doris.sql.tree.LikePredicate;
 import org.apache.doris.sql.tree.LogicalBinaryExpression;
 import org.apache.doris.sql.tree.LongLiteral;
 import org.apache.doris.sql.tree.Node;
@@ -320,6 +321,26 @@ public final class ExpressionFormatter
         protected String visitArithmeticBinary(ArithmeticBinaryExpression node, Void context)
         {
             return formatBinaryExpression(node.getOperator().getValue(), node.getLeft(), node.getRight());
+        }
+
+        @Override
+        protected String visitLikePredicate(LikePredicate node, Void context)
+        {
+            StringBuilder builder = new StringBuilder();
+
+            builder.append('(')
+                    .append(process(node.getValue(), context))
+                    .append(" LIKE ")
+                    .append(process(node.getPattern(), context));
+
+            node.getEscape().ifPresent(escape -> {
+                builder.append(" ESCAPE ")
+                        .append(process(escape, context));
+            });
+
+            builder.append(')');
+
+            return builder.toString();
         }
 
         @Override

@@ -29,19 +29,16 @@ public class DecimalParametricType
     }
 
     @Override
-    public Type createType(TypeManager typeManager, List<TypeParameter> parameters)
-    {
-
-            switch (parameters.size()) {
-                case 0:
-                    return DecimalType.createDecimalType();
-                case 1:
-                    return DecimalType.createDecimalType(parameters.get(0).getLongLiteral().intValue());
-                case 2:
-                    return DecimalType.createDecimalType(parameters.get(0).getLongLiteral().intValue(), parameters.get(1).getLongLiteral().intValue());
-                default:
-                    throw new IllegalArgumentException("Expected 0, 1 or 2 parameters for DECIMAL type constructor.");
-            }
-
+    public Type createType(TypeManager typeManager, List<TypeParameter> parameters) {
+        switch (parameters.size()) {
+            case 0:
+                return DecimalType.createDecimalType();
+            case 1:
+                return DecimalType.createDecimalType(parameters.get(0).getLongLiteral().intValue());
+            case 2:
+                return DecimalType.createDecimalType(parameters.get(0).getLongLiteral().intValue(), parameters.get(1).getLongLiteral().intValue());
+            default:
+                throw new IllegalArgumentException("Expected 0, 1 or 2 parameters for DECIMAL type constructor.");
+        }
     }
 }

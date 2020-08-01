@@ -373,10 +373,12 @@ public class ExpressionAnalyzer
         @Override
         protected Type visitLongLiteral(LongLiteral node, StackableAstVisitorContext<Context> context)
         {
+            //FIXME
+            /*
             if (node.getValue() >= Integer.MIN_VALUE && node.getValue() <= Integer.MAX_VALUE) {
                 return setExpressionType(node, INTEGER);
             }
-
+            */
             return setExpressionType(node, BIGINT);
         }
 

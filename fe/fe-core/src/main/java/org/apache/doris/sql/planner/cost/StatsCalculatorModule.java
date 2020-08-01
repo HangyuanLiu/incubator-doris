@@ -28,26 +28,17 @@ public class StatsCalculatorModule
         ImmutableList.Builder<ComposableStatsCalculator.Rule<?>> rules = ImmutableList.builder();
         //rules.add(new OutputStatsRule());
         rules.add(new TableScanStatsRule(metadata, normalizer));
-        /*
-        rules.add(new SimpleFilterProjectSemiJoinStatsRule(normalizer, filterStatsCalculator, metadata.getFunctionManager())); // this must be before FilterStatsRule
         rules.add(new FilterStatsRule(normalizer, filterStatsCalculator));
         rules.add(new ValuesStatsRule(metadata));
         rules.add(new LimitStatsRule(normalizer));
         rules.add(new EnforceSingleRowStatsRule(normalizer));
         rules.add(new ProjectStatsRule(scalarStatsCalculator, normalizer));
-        rules.add(new ExchangeStatsRule(normalizer));
         rules.add(new JoinStatsRule(filterStatsCalculator, normalizer));
-        rules.add(new SpatialJoinStatsRule(filterStatsCalculator, normalizer));
         rules.add(new AggregationStatsRule(normalizer));
-        rules.add(new UnionStatsRule(normalizer));
         rules.add(new AssignUniqueIdStatsRule());
         rules.add(new SemiJoinStatsRule());
-        rules.add(new RowNumberStatsRule(normalizer));
-        rules.add(new UnnestStatsRule());
         rules.add(new SortStatsRule());
-        rules.add(new SampleStatsRule(normalizer));
-        rules.add(new IntersectStatsRule(normalizer));
-        */
+
         return new ComposableStatsCalculator(rules.build());
     }
 }

@@ -149,6 +149,7 @@ public class FilterStatsCalculator
     private Expression simplifyExpression(Session session, Expression predicate, TypeProvider types)
     {
         // TODO reuse org.apache.doris.sql.planner.iterative.rule.SimplifyExpressions.rewrite
+        //FIXME
         /*
         Map<NodeRef<Expression>, Type> expressionTypes = getExpressionTypes(session, predicate, types);
         ExpressionInterpreter interpreter = ExpressionInterpreter.expressionOptimizer(predicate, metadata, session, expressionTypes);
@@ -159,9 +160,8 @@ public class FilterStatsCalculator
             value = false;
         }
         return literalEncoder.toExpression(value, BOOLEAN);
-
          */
-        return null;
+        return predicate;
     }
 
     private RowExpression simplifyExpression(ConnectorSession session, RowExpression predicate)
