@@ -40,6 +40,7 @@ import org.apache.doris.sql.planner.iterative.rule.RemoveRedundantIdentityProjec
 import org.apache.doris.sql.planner.iterative.rule.RemoveTrivialFilters;
 import org.apache.doris.sql.planner.iterative.rule.RemoveUnreferencedScalarApplyNodes;
 import org.apache.doris.sql.planner.iterative.rule.RemoveUnreferencedScalarLateralNodes;
+import org.apache.doris.sql.planner.iterative.rule.ReorderJoins;
 import org.apache.doris.sql.planner.iterative.rule.SimplifyCountOverConstant;
 import org.apache.doris.sql.planner.iterative.rule.SimplifyExpressions;
 import org.apache.doris.sql.planner.iterative.rule.SimplifyRowExpressions;
@@ -313,7 +314,7 @@ public class PlanOptimizers {
         */
         builder.add(rowExpressionPredicatePushDown); // Run predicate push down one more time in case we can leverage new information from layouts' effective predicate
         builder.add(simplifyRowExpressionOptimizer); // Should be always run after PredicatePushDown
-        /*
+
         builder.add(new IterativeOptimizer(
                 // Because ReorderJoins runs only once,
                 // PredicatePushDown, PruneUnreferenedOutputpus and RemoveRedundantIdentityProjections
@@ -323,7 +324,7 @@ public class PlanOptimizers {
                 statsCalculator,
                 estimatedExchangesCostCalculator,
                 ImmutableSet.of(new ReorderJoins(costComparator, metadata))));
-        */
+
         //builder.add(new OptimizeMixedDistinctAggregations(metadata));
         /*
         builder.add(new IterativeOptimizer(

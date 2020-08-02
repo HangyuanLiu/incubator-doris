@@ -53,7 +53,7 @@ public class HashJoinNode extends PlanNode {
     private final static Logger LOG = LogManager.getLogger(HashJoinNode.class);
 
     private final TableRef     innerRef;
-    private final JoinOperator joinOp;
+    private JoinOperator joinOp;
     // predicates of the form 'a=b' or 'a<=>b'
     private List<BinaryPredicate> eqJoinConjuncts = Lists.newArrayList();
     // join conjuncts from the JOIN clause that aren't equi-join predicates
@@ -139,6 +139,10 @@ public class HashJoinNode extends PlanNode {
 
     public JoinOperator getJoinOp() {
         return joinOp;
+    }
+
+    public void setJoinOp(JoinOperator joinOp) {
+        this.joinOp = joinOp;
     }
 
     public TableRef getInnerRef() {

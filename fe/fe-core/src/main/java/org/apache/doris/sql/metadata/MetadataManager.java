@@ -86,9 +86,9 @@ public class MetadataManager implements Metadata {
     @Override
     public TableStatistics getTableStatistics(Session session, TableHandle tableHandle, List<ColumnHandle> columnHandles) {
         Map<ColumnHandle, ColumnStatistics> columnStatisticsMap = Maps.newHashMap();
-
         OlapTable olapTable = (OlapTable)(((DorisTableHandle)tableHandle.getConnectorHandle()).getTable());
-        int rowCount = new Random().nextInt(10000);
+        long rowCount = olapTable.getRowCount();
+        //rowCount = new Random().nextInt(10000);
         System.out.println(rowCount);
         return new TableStatistics(Estimate.of(rowCount), columnStatisticsMap);
     }
