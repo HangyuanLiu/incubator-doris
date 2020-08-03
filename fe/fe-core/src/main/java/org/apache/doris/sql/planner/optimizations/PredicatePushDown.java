@@ -18,6 +18,7 @@ import org.apache.doris.sql.TypeProvider;
 import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.metadata.WarningCollector;
+import org.apache.doris.sql.planner.NoOpVariableResolver;
 import org.apache.doris.sql.planner.SimplePlanRewriter;
 import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.VariableResolver;
@@ -103,14 +104,14 @@ public class PredicatePushDown
         implements PlanOptimizer
 {
     private final Metadata metadata;
-    //private final LiteralEncoder literalEncoder;
+    private final LiteralEncoder literalEncoder;
     private final EffectivePredicateExtractor effectivePredicateExtractor;
     private final SqlParser sqlParser;
 
     public PredicatePushDown(Metadata metadata, SqlParser sqlParser)
     {
         this.metadata = requireNonNull(metadata, "metadata is null");
-        //this.literalEncoder = new LiteralEncoder(metadata.getBlockEncodingSerde());
+        this.literalEncoder = new LiteralEncoder();
         this.effectivePredicateExtractor = new EffectivePredicateExtractor();
         this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
     }
@@ -124,7 +125,7 @@ public class PredicatePushDown
         requireNonNull(idAllocator, "idAllocator is null");
 
         return SimplePlanRewriter.rewriteWith(
-                new Rewriter(variableAllocator, idAllocator, metadata, effectivePredicateExtractor, sqlParser, session, types),
+                new Rewriter(variableAllocator, idAllocator, metadata, literalEncoder, effectivePredicateExtractor, sqlParser, session, types),
                 plan,
                 TRUE_LITERAL);
     }
@@ -135,6 +136,7 @@ public class PredicatePushDown
         private final VariableAllocator variableAllocator;
         private final PlanNodeIdAllocator idAllocator;
         private final Metadata metadata;
+        private final LiteralEncoder literalEncoder;
         private final EffectivePredicateExtractor effectivePredicateExtractor;
         private final SqlParser sqlParser;
         private final Session session;
@@ -145,6 +147,7 @@ public class PredicatePushDown
                 VariableAllocator variableAllocator,
                 PlanNodeIdAllocator idAllocator,
                 Metadata metadata,
+                LiteralEncoder literalEncoder,
                 EffectivePredicateExtractor effectivePredicateExtractor,
                 SqlParser sqlParser,
                 Session session,
@@ -153,6 +156,7 @@ public class PredicatePushDown
             this.variableAllocator = requireNonNull(variableAllocator, "variableAllocator is null");
             this.idAllocator = requireNonNull(idAllocator, "idAllocator is null");
             this.metadata = requireNonNull(metadata, "metadata is null");
+            this.literalEncoder = requireNonNull(literalEncoder, "literalEncoder is null");
             this.effectivePredicateExtractor = requireNonNull(effectivePredicateExtractor, "effectivePredicateExtractor is null");
             this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
             this.session = requireNonNull(session, "session is null");

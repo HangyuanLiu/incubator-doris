@@ -77,9 +77,7 @@ public class SimplifyExpressions
     {
         requireNonNull(metadata, "metadata is null");
         requireNonNull(sqlParser, "sqlParser is null");
-        //LiteralEncoder literalEncoder = new LiteralEncoder(metadata.getBlockEncodingSerde());
-        //FIXME
-        LiteralEncoder literalEncoder = null;
+        LiteralEncoder literalEncoder = new LiteralEncoder();
 
         return (expression, context) -> rewrite(expression, context.getSession(), context.getVariableAllocator(), metadata, literalEncoder, sqlParser);
     }

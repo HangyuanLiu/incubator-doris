@@ -23,6 +23,7 @@ import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.planner.LiteralEncoder;
 import org.apache.doris.sql.planner.LiteralInterpreter;
+import org.apache.doris.sql.planner.NoOpVariableResolver;
 import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.ConstantExpression;
 import org.apache.doris.sql.relation.InputReferenceExpression;
@@ -149,8 +150,6 @@ public class FilterStatsCalculator
     private Expression simplifyExpression(Session session, Expression predicate, TypeProvider types)
     {
         // TODO reuse org.apache.doris.sql.planner.iterative.rule.SimplifyExpressions.rewrite
-        //FIXME
-        /*
         Map<NodeRef<Expression>, Type> expressionTypes = getExpressionTypes(session, predicate, types);
         ExpressionInterpreter interpreter = ExpressionInterpreter.expressionOptimizer(predicate, metadata, session, expressionTypes);
         Object value = interpreter.optimize(NoOpVariableResolver.INSTANCE);
@@ -160,8 +159,6 @@ public class FilterStatsCalculator
             value = false;
         }
         return literalEncoder.toExpression(value, BOOLEAN);
-         */
-        return predicate;
     }
 
     private RowExpression simplifyExpression(ConnectorSession session, RowExpression predicate)

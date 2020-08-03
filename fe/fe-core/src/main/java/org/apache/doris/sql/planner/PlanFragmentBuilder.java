@@ -343,7 +343,7 @@ public class PlanFragmentBuilder {
                     } else if (node.getType().equals(JoinNode.Type.INNER)) {
                         joinOperator = JoinOperator.INNER_JOIN;
                     } else {
-                        System.out.println("not implement");
+                        System.out.println("broadcost join type not implement : " + node.getType());
                         return null;
                     }
 
@@ -429,8 +429,10 @@ public class PlanFragmentBuilder {
                     joinOperator = JoinOperator.LEFT_OUTER_JOIN;
                 } else if (node.getType().equals(JoinNode.Type.INNER)) {
                     joinOperator = JoinOperator.INNER_JOIN;
+                } else if (node.getType().equals(JoinNode.Type.RIGHT)) {
+                    joinOperator = JoinOperator.RIGHT_OUTER_JOIN;
                 } else {
-                    System.out.println("not implement");
+                    System.out.println("shuffle join type not implement : " + node.getType());
                     return null;
                 }
 

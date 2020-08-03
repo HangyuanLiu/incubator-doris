@@ -14,6 +14,7 @@ import org.apache.doris.sql.planner.iterative.Rule;
 import org.apache.doris.sql.planner.iterative.rule.CanonicalizeExpressions;
 import org.apache.doris.sql.planner.iterative.rule.DetermineJoinDistributionType;
 import org.apache.doris.sql.planner.iterative.rule.DetermineSemiJoinDistributionType;
+import org.apache.doris.sql.planner.iterative.rule.EliminateCrossJoins;
 import org.apache.doris.sql.planner.iterative.rule.EvaluateZeroLimit;
 import org.apache.doris.sql.planner.iterative.rule.InlineProjections;
 import org.apache.doris.sql.planner.iterative.rule.MergeFilters;
@@ -146,7 +147,7 @@ public class PlanOptimizers {
                         ruleStats,
                         statsCalculator,
                         estimatedExchangesCostCalculator,
-                        new CanonicalizeExpressions().rules()),
+                        new CanonicalizeExpressions(metadata.getFunctionManager()).rules()),
                 new IterativeOptimizer(
                         ruleStats,
                         statsCalculator,
@@ -274,13 +275,13 @@ public class PlanOptimizers {
                         statsCalculator,
                         estimatedExchangesCostCalculator,
                         ImmutableSet.of(new RemoveRedundantIdentityProjections())),
-                /*
+
                 new IterativeOptimizer(
                         ruleStats,
                         statsCalculator,
                         estimatedExchangesCostCalculator,
                         ImmutableSet.of(new EliminateCrossJoins())), // This can pull up Filter and Project nodes from between Joins, so we need to push them down again
-                 */
+
                 predicatePushDown,
                 simplifyOptimizer); // Should be always run after PredicatePushDown
                 /*

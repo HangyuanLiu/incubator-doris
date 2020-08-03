@@ -100,7 +100,7 @@ public enum ExpressionFunctions {
         return constExpr;
     }
 
-    private FEFunctionInvoker getFunction(FEFunctionSignature signature) {
+    public FEFunctionInvoker getFunction(FEFunctionSignature signature) {
         Collection<FEFunctionInvoker> functionInvokers = functions.get(signature.getName());
         if (functionInvokers == null) {
             return null;

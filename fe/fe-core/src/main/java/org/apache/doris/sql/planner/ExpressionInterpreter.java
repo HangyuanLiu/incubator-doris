@@ -13,7 +13,11 @@
  */
 package org.apache.doris.sql.planner;
 
+import org.apache.doris.analysis.ExpressionFunctions;
+import org.apache.doris.catalog.ScalarType;
+import org.apache.doris.common.NotImplementedException;
 import org.apache.doris.sql.ExpressionDeterminismEvaluator;
+import org.apache.doris.sql.InterpretedFunctionInvoker;
 import org.apache.doris.sql.analyzer.ExpressionAnalyzer;
 import org.apache.doris.sql.analyzer.Scope;
 import org.apache.doris.sql.analyzer.SemanticErrorCode;
@@ -60,9 +64,14 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Primitives;
+import org.apache.doris.sql.type.BigintType;
+import org.apache.doris.sql.type.DateType;
+import org.apache.doris.sql.type.IntegerType;
 import org.apache.doris.sql.type.OperatorType;
+import org.apache.doris.sql.type.TimestampType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.type.TypeManager;
+import org.apache.doris.sql.type.TypeSignature;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -75,6 +84,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -86,35 +96,42 @@ import static com.google.common.base.Throwables.throwIfInstanceOf;
 import static com.google.common.base.Verify.verify;
 
 import static com.google.common.collect.Iterables.getOnlyElement;
+import static com.google.common.collect.Iterables.toArray;
 import static java.lang.Math.toIntExact;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.doris.sql.ExpressionDeterminismEvaluator.isDeterministic;
+import static org.apache.doris.sql.analyzer.ConstantExpressionVerifier.verifyExpressionIsConstant;
+import static org.apache.doris.sql.analyzer.ExpressionAnalyzer.createConstantAnalyzer;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
+import static org.apache.doris.sql.planner.LiteralEncoder.isSupportedLiteralType;
+import static org.apache.doris.sql.planner.iterative.rule.CanonicalizeExpressionRewriter.canonicalizeExpression;
 import static org.apache.doris.sql.relational.Expressions.variable;
+import static org.apache.doris.sql.type.IntegerType.INTEGER;
+import static org.apache.doris.sql.type.OperatorType.CAST;
 
 @Deprecated
 public class ExpressionInterpreter
 {
-    /*
+
     private static final long MAX_SERIALIZABLE_OBJECT_SIZE = 1000;
     private final Expression expression;
     private final Metadata metadata;
-    //private final LiteralEncoder literalEncoder;
+    private final LiteralEncoder literalEncoder;
     private final Session session;
     private final ConnectorSession connectorSession;
     // if optimize flag is on, we will ways return evaluated result or throw.
     private final boolean optimize;
     private final Map<NodeRef<Expression>, Type> expressionTypes;
-    //private final InterpretedFunctionInvoker functionInvoker;
-    private final boolean legacyRowFieldOrdinalAccess;
+    private final InterpretedFunctionInvoker functionInvoker;
+    //private final boolean legacyRowFieldOrdinalAccess;
 
     private final Visitor visitor;
 
     // identity-based cache for LIKE expressions with constant pattern and escape char
-    private final IdentityHashMap<LikePredicate, Regex> likePatternCache = new IdentityHashMap<>();
+    //private final IdentityHashMap<LikePredicate, Regex> likePatternCache = new IdentityHashMap<>();
     private final IdentityHashMap<InListExpression, Set<?>> inListCache = new IdentityHashMap<>();
 
     public static ExpressionInterpreter expressionInterpreter(Expression expression, Metadata metadata, Session session, Map<NodeRef<Expression>, Type> expressionTypes)
@@ -171,7 +188,7 @@ public class ExpressionInterpreter
         analyzer.analyze(rewrite, Scope.create());
 
         // remove syntax sugar
-        rewrite = DesugarAtTimeZoneRewriter.rewrite(rewrite, analyzer.getExpressionTypes());
+        //rewrite = DesugarAtTimeZoneRewriter.rewrite(rewrite, analyzer.getExpressionTypes());
 
         // expressionInterpreter/optimizer only understands a subset of expression types
         // TODO: remove this when the new expression tree is implemented
@@ -192,13 +209,13 @@ public class ExpressionInterpreter
     {
         this.expression = requireNonNull(expression, "expression is null");
         this.metadata = requireNonNull(metadata, "metadata is null");
-        //this.literalEncoder = new LiteralEncoder(metadata.getBlockEncodingSerde());
+        this.literalEncoder = new LiteralEncoder();
         this.session = requireNonNull(session, "session is null");
         this.connectorSession = session.toConnectorSession();
         this.expressionTypes = ImmutableMap.copyOf(requireNonNull(expressionTypes, "expressionTypes is null"));
         verify((expressionTypes.containsKey(NodeRef.of(expression))));
         this.optimize = optimize;
-        //this.functionInvoker = new InterpretedFunctionInvoker(metadata.getFunctionManager());
+        this.functionInvoker = new InterpretedFunctionInvoker(metadata.getFunctionManager());
         //this.legacyRowFieldOrdinalAccess = isLegacyRowFieldOrdinalAccessEnabled(session);
 
         this.visitor = new Visitor();
@@ -403,7 +420,7 @@ public class ExpressionInterpreter
             }
             return new CoalesceExpression(expressions);
         }
-
+        /*
         @Override
         protected Object visitInPredicate(InPredicate node, Object context)
         {
@@ -493,7 +510,7 @@ public class ExpressionInterpreter
             }
             return false;
         }
-
+        */
         @Override
         protected Object visitExists(ExistsPredicate node, Object context)
         {
@@ -511,7 +528,7 @@ public class ExpressionInterpreter
             }
             return node;
         }
-
+        /*
         @Override
         protected Object visitArithmeticUnary(ArithmeticUnaryExpression node, Object context)
         {
@@ -545,7 +562,7 @@ public class ExpressionInterpreter
 
             throw new UnsupportedOperationException("Unsupported unary operator: " + node.getSign());
         }
-
+        */
         @Override
         protected Object visitArithmeticBinary(ArithmeticBinaryExpression node, Object context)
         {
@@ -693,23 +710,46 @@ public class ExpressionInterpreter
         {
             return node.equals(BooleanLiteral.TRUE_LITERAL);
         }
-
+        /*
         @Override
         protected Object visitFunctionCall(FunctionCall node, Object context)
         {
             List<Type> argumentTypes = new ArrayList<>();
             List<Object> argumentValues = new ArrayList<>();
             for (Expression expression : node.getArguments()) {
-                Object value = process(expression, context);
+                //Object value = process(expression, context);
                 Type type = type(expression);
-                argumentValues.add(value);
+                //argumentValues.add(value);
                 argumentTypes.add(type);
             }
-            FunctionHandle functionHandle = metadata.getFunctionManager().resolveFunction(
-                    session.getTransactionId(),
-                    qualifyFunctionName(node.getName()),
-                    fromTypes(argumentTypes));
+            FunctionHandle functionHandle = metadata.getFunctionManager().resolveFunction(node.getName(), fromTypes(argumentTypes));
+
+            ScalarType[] scalarTypes = new ScalarType[node.getArguments().size()];
+            for (int i = 0;i < node.getArguments().size(); ++i) {
+                scalarTypes[i] = argumentTypes.get(i).getTypeSignature().toDorisType();
+            }
+
+            if (ExpressionFunctions.INSTANCE.getFunction(new ExpressionFunctions.FEFunctionSignature(node.getName().toString(),
+                    scalarTypes,
+                    org.apache.doris.catalog.Type.DATE)) == null){
+                return node;
+            }
+
+            for (int i = 0; i < node.getArguments().size(); ++i) {
+                if (!type(node.getArguments().get(i)).equals(
+                        metadata.getTypeManager().getType(functionHandle.getArgumentTypes().get(i)))) {
+                    Expression expr =
+                            new Cast(node.getArguments().get(i), metadata.getTypeManager().getType(functionHandle.getArgumentTypes().get(i)).getDisplayName());
+                    Object value = process(expr, context);
+                    argumentValues.add(value);
+                } else {
+                    Object value = process(node.getArguments().get(i), context);
+                    argumentValues.add(value);
+                }
+            }
+
             FunctionMetadata functionMetadata = metadata.getFunctionManager().getFunctionMetadata(functionHandle);
+
             if (!functionMetadata.isCalledOnNullInput()) {
                 for (int i = 0; i < argumentValues.size(); i++) {
                     Object value = argumentValues.get(i);
@@ -725,7 +765,7 @@ public class ExpressionInterpreter
             }
 
             Object result;
-
+            /*
             switch (functionMetadata.getImplementationType()) {
                 case BUILTIN:
                     result = functionInvoker.invoke(functionHandle, session.getSqlFunctionProperties(), argumentValues);
@@ -744,12 +784,15 @@ public class ExpressionInterpreter
                     throw new IllegalArgumentException(format("Unsupported function implementation type: %s", functionMetadata.getImplementationType()));
             }
 
+            result = functionInvoker.invoke(functionHandle, argumentValues);
             if (optimize && !isSerializable(result, type(node))) {
                 return new FunctionCall(node.getName(), node.getWindow(), node.isDistinct(), node.isIgnoreNulls(), toExpressions(argumentValues, argumentTypes));
             }
             return result;
         }
 
+         */
+        /*
         @Override
         protected Object visitLikePredicate(LikePredicate node, Object context)
         {
@@ -846,12 +889,13 @@ public class ExpressionInterpreter
 
             return result;
         }
+        */
 
         @Override
         public Object visitCast(Cast node, Object context)
         {
             Object value = process(node.getExpression(), context);
-            Type targetType = metadata.getType(parseTypeSignature(node.getType()));
+            Type targetType = metadata.getTypeManager().getType(new TypeSignature(node.getType()));
             if (targetType == null) {
                 throw new IllegalArgumentException("Unsupported type: " + node.getType());
             }
@@ -878,13 +922,13 @@ public class ExpressionInterpreter
                 return new Cast(toExpression(value, sourceType), node.getType(), node.isSafe(), node.isTypeOnly());
             }
 
-            FunctionHandle operator = metadata.getFunctionManager().lookupCast(CAST, sourceType.getTypeSignature(), targetType.getTypeSignature());
+            FunctionHandle operator = metadata.getFunctionManager().lookupCast(sourceType.getTypeSignature(), targetType.getTypeSignature());
 
             try {
-                Object castedValue = functionInvoker.invoke(operator, session.getSqlFunctionProperties(), ImmutableList.of(value));
-                if (optimize && !isSerializable(castedValue, type(node))) {
-                    return new Cast(toExpression(value, sourceType), node.getType(), node.isSafe(), node.isTypeOnly());
-                }
+                Object castedValue = functionInvoker.invoke(operator, ImmutableList.of(value));
+                //if (optimize && !isSerializable(castedValue, type(node))) {
+                //    return new Cast(toExpression(value, sourceType), node.getType(), node.isSafe(), node.isTypeOnly());
+                //}
                 return castedValue;
             }
             catch (RuntimeException e) {
@@ -907,7 +951,9 @@ public class ExpressionInterpreter
         @Override
         protected Object visitExpression(Expression node, Object context)
         {
-            throw new PrestoException(NOT_SUPPORTED, "not yet implemented: " + node.getClass().getName());
+            //throw new NotImplementedException("not yet implemented: " + node.getClass().getName());
+            System.out.println("visitExpression not implement");
+            return null;
         }
 
         @Override
@@ -937,7 +983,7 @@ public class ExpressionInterpreter
         private Object invokeOperator(OperatorType operatorType, List<? extends Type> argumentTypes, List<Object> argumentValues)
         {
             FunctionHandle operatorHandle = metadata.getFunctionManager().resolveOperator(operatorType, fromTypes(argumentTypes));
-            return functionInvoker.invoke(operatorHandle, session.getSqlFunctionProperties(), argumentValues);
+            return functionInvoker.invoke(operatorHandle, argumentValues);
         }
 
         private Expression toExpression(Object base, Type type)
@@ -949,7 +995,7 @@ public class ExpressionInterpreter
         {
             requireNonNull(type, "type is null");
             // If value is already Expression, literal values contained inside should already have been made serializable. Otherwise, we make sure the object is small and serializable.
-            return value instanceof Expression || (isSupportedLiteralType(type) && estimatedSizeInBytes(value) <= MAX_SERIALIZABLE_OBJECT_SIZE);
+            return value instanceof Expression || (isSupportedLiteralType(type));
         }
 
         private List<Expression> toExpressions(List<Object> values, List<Type> types)
@@ -962,9 +1008,9 @@ public class ExpressionInterpreter
     {
         requireNonNull(exception, "Exception is null");
 
-        String failureInfo = JsonCodec.jsonCodec(FailureInfo.class).toJson(Failures.toFailure(exception).toFailureInfo());
-        if (exception instanceof PrestoException) {
-            long errorCode = ((PrestoException) exception).getErrorCode().getCode();
+        String failureInfo = "";
+        if (exception instanceof RuntimeException) {
+            long errorCode = -1;
             FunctionCall jsonParse = new FunctionCall(QualifiedName.of("json_parse"), ImmutableList.of(new StringLiteral(failureInfo)));
             FunctionCall failureFunction = new FunctionCall(QualifiedName.of("fail"), ImmutableList.of(literalEncoder.toExpression(errorCode, INTEGER), jsonParse));
 
@@ -975,5 +1021,4 @@ public class ExpressionInterpreter
 
         return new Cast(failureFunction, type.getTypeSignature().toString());
     }
-     */
 }

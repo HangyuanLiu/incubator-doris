@@ -46,6 +46,7 @@ import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.analyzer.SemanticErrorCode.EXPRESSION_NOT_CONSTANT;
 import static org.apache.doris.sql.analyzer.SemanticErrorCode.MULTIPLE_FIELDS_FROM_SUBQUERY;
 import static org.apache.doris.sql.analyzer.SemanticErrorCode.TYPE_MISMATCH;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
@@ -967,6 +968,40 @@ public class ExpressionAnalyzer
                 analysis.getParameters(),
                 warningCollector,
                 analysis.isDescribe());
+    }
+
+    public static ExpressionAnalyzer createConstantAnalyzer(Metadata metadata, Session session, List<Expression> parameters, WarningCollector warningCollector)
+    {
+        return createWithoutSubqueries(
+                metadata.getFunctionManager(),
+                metadata.getTypeManager(),
+                session,
+                parameters,
+                EXPRESSION_NOT_CONSTANT,
+                "Constant expression cannot contain a subquery",
+                warningCollector,
+                false);
+    }
+
+    public static ExpressionAnalyzer createWithoutSubqueries(
+            FunctionManager functionManager,
+            TypeManager typeManager,
+            Session session,
+            List<Expression> parameters,
+            SemanticErrorCode errorCode,
+            String message,
+            WarningCollector warningCollector,
+            boolean isDescribe)
+    {
+        return createWithoutSubqueries(
+                functionManager,
+                typeManager,
+                session,
+                TypeProvider.empty(),
+                parameters,
+                node -> new SemanticException(errorCode, node, message),
+                warningCollector,
+                isDescribe);
     }
 
     public static ExpressionAnalyzer createWithoutSubqueries(

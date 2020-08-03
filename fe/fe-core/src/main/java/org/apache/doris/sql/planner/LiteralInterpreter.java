@@ -13,7 +13,9 @@
  */
 package org.apache.doris.sql.planner;
 
+import org.apache.doris.sql.InterpretedFunctionInvoker;
 import org.apache.doris.sql.metadata.ConnectorSession;
+import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.relation.ConstantExpression;
 import org.apache.doris.sql.type.BigintType;
@@ -28,6 +30,7 @@ import org.apache.doris.sql.type.SmallintType;
 import org.apache.doris.sql.type.TimestampType;
 import org.apache.doris.sql.type.TinyintType;
 import org.apache.doris.sql.type.Type;
+import org.apache.doris.sql.type.TypeSignature;
 import org.apache.doris.sql.type.VarcharType;
 import org.apache.doris.sql.analyzer.SemanticException;
 import org.apache.doris.sql.tree.AstVisitor;
@@ -53,7 +56,6 @@ import static org.apache.doris.sql.analyzer.SemanticErrorCode.INVALID_LITERAL;
 import static org.apache.doris.sql.analyzer.SemanticErrorCode.TYPE_MISMATCH;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
 import static com.google.common.base.Preconditions.checkState;
-import static java.lang.Float.intBitsToFloat;
 import static java.lang.String.format;
 
 public final class LiteralInterpreter
@@ -65,14 +67,13 @@ public final class LiteralInterpreter
         if (!(node instanceof Literal)) {
             throw new IllegalArgumentException("node must be a Literal");
         }
-        //return new LiteralVisitor(metadata).process(node, session);
-        return null;
+        return new LiteralVisitor(metadata).process(node, session);
     }
-    /*
+
     public static Object evaluate(ConnectorSession session, ConstantExpression node)
     {
         Type type = node.getType();
-        SqlFunctionProperties properties = session.getSqlFunctionProperties();
+        //SqlFunctionProperties properties = session.getSqlFunctionProperties();
 
         if (node.getValue() == null) {
             return null;
@@ -86,6 +87,7 @@ public final class LiteralInterpreter
         if (type instanceof DoubleType) {
             return node.getValue();
         }
+                /*
         if (type instanceof DecimalType) {
             DecimalType decimalType = (DecimalType) type;
             if (decimalType.isShort()) {
@@ -105,12 +107,6 @@ public final class LiteralInterpreter
         if (type instanceof DateType) {
             return new SqlDate(((Long) node.getValue()).intValue());
         }
-        if (type instanceof TimeType) {
-            if (properties.isLegacyTimestamp()) {
-                return new SqlTime((long) node.getValue(), properties.getTimeZoneKey());
-            }
-            return new SqlTime((long) node.getValue());
-        }
         if (type instanceof TimestampType) {
             try {
                 if (properties.isLegacyTimestamp()) {
@@ -122,17 +118,20 @@ public final class LiteralInterpreter
                 throw new PrestoException(GENERIC_USER_ERROR, format("'%s' is not a valid timestamp literal", (String) node.getValue()));
             }
         }
+
         if (type instanceof IntervalDayTimeType) {
             return new SqlIntervalDayTime((long) node.getValue());
         }
         if (type instanceof IntervalYearMonthType) {
             return new SqlIntervalYearMonth(((Long) node.getValue()).intValue());
         }
+
+
         if (type.getJavaType().equals(Slice.class)) {
             // DO NOT ever remove toBase64. Calling toString directly on Slice whose base is not byte[] will cause JVM to crash.
             return "'" + VarbinaryFunctions.toBase64((Slice) node.getValue()).toStringUtf8() + "'";
         }
-
+         */
         // We should not fail at the moment; just return the raw value (block, regex, etc) to the user
         return node.getValue();
     }
@@ -185,36 +184,49 @@ public final class LiteralInterpreter
         }
 
         @Override
-        protected Slice visitStringLiteral(StringLiteral node, ConnectorSession session)
+        protected Object visitStringLiteral(StringLiteral node, ConnectorSession session)
         {
-            return node.getSlice();
+            return node.getValue();
         }
 
         @Override
         protected Object visitCharLiteral(CharLiteral node, ConnectorSession context)
         {
-            return node.getSlice();
+            return node.getValue();
         }
 
         @Override
         protected Object visitGenericLiteral(GenericLiteral node, ConnectorSession session)
         {
-            Type type = metadata.getType(parseTypeSignature(node.getType()));
+            Type type = metadata.getTypeManager().getType(new TypeSignature(node.getType()));
             if (type == null) {
                 throw new SemanticException(TYPE_MISMATCH, node, "Unknown type: " + node.getType());
             }
 
-            if (JSON.equals(type)) {
-                FunctionHandle functionHandle = metadata.getFunctionManager().lookupFunction("json_parse", fromTypes(VARCHAR));
-                return functionInvoker.invoke(functionHandle, session.getSqlFunctionProperties(), ImmutableList.of(utf8Slice(node.getValue())));
-            }
-
             try {
-                FunctionHandle functionHandle = metadata.getFunctionManager().lookupCast(CAST, VARCHAR.getTypeSignature(), type.getTypeSignature());
-                return functionInvoker.invoke(functionHandle, session.getSqlFunctionProperties(), ImmutableList.of(utf8Slice(node.getValue())));
+                FunctionHandle functionHandle = metadata.getFunctionManager().lookupCast(VARCHAR.getTypeSignature(), type.getTypeSignature());
+                return functionInvoker.invoke(functionHandle, ImmutableList.of(String.valueOf(node.getValue())));
             }
             catch (IllegalArgumentException e) {
                 throw new SemanticException(TYPE_MISMATCH, node, "No literal form for type %s", type);
+            }
+        }
+        /*
+        @Override
+        protected Long visitTimestampLiteral(TimestampLiteral node, ConnectorSession session)
+        {
+            SqlFunctionProperties properties = session.getSqlFunctionProperties();
+
+            try {
+                if (properties.isLegacyTimestamp()) {
+                    return parseTimestampLiteral(properties.getTimeZoneKey(), node.getValue());
+                }
+                else {
+                    return parseTimestampLiteral(node.getValue());
+                }
+            }
+            catch (RuntimeException e) {
+                throw new SemanticException(INVALID_LITERAL, node, "'%s' is not a valid timestamp literal", node.getValue());
             }
         }
 
@@ -228,13 +240,12 @@ public final class LiteralInterpreter
                 return node.getSign().multiplier() * parseDayTimeInterval(node.getValue(), node.getStartField(), node.getEndField());
             }
         }
-
+        */
         @Override
         protected Object visitNullLiteral(NullLiteral node, ConnectorSession session)
         {
             return null;
         }
     }
-
-     */
 }
+

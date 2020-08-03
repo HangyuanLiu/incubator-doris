@@ -68,7 +68,6 @@ public final class TypeRegistry
 
     public TypeRegistry()
     {
-
         // Manually register UNKNOWN type without a verifyTypeClass call since it is a special type that can not be used by functions
         this.types.put(UNKNOWN.getTypeSignature(), UNKNOWN);
 

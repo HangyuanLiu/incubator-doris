@@ -11,17 +11,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.doris.sql.planner.iterative.rule;
+package org.apache.doris.sql.planner;
 
-import org.apache.doris.sql.metadata.FunctionManager;
+import org.apache.doris.sql.relation.VariableReferenceExpression;
 
-import static org.apache.doris.sql.planner.iterative.rule.CanonicalizeExpressionRewriter.canonicalizeExpression;
-
-public class CanonicalizeExpressions
-        extends ExpressionRewriteRuleSet
+public class NoOpVariableResolver
+        implements VariableResolver
 {
-    public CanonicalizeExpressions(FunctionManager functionManager)
+    public static final NoOpVariableResolver INSTANCE = new NoOpVariableResolver();
+
+    @Override
+    public Object getValue(VariableReferenceExpression variable)
     {
-        super((expression, context) -> canonicalizeExpression(expression, functionManager));
+        return new Symbol(variable.getName()).toSymbolReference();
     }
 }

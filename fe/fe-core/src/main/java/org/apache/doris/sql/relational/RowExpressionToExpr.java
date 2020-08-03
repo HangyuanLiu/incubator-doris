@@ -195,13 +195,10 @@ public class RowExpressionToExpr {
                     case "year":
                     case "month":
                         return new IntLiteral((long) node.getValue(), Type.INT);
-                        /*
                     case DATE:
-                        return new DateLiteral(Type.DATE,)
+                        return new DateLiteral((String) node.getValue(), Type.DATE);
                     case TIMESTAMP:
-                        return new DateLiteral(Type.DATETIME, )
-
-                         */
+                        return new DateLiteral((String) node.getValue(), Type.DATETIME);
                     default:
                         throw new UnsupportedOperationException("not yet implemented type : " + node.getType().getTypeSignature().getBase() + "," + node.getValue());
                 }

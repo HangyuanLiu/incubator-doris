@@ -30,22 +30,6 @@ public final class ConstantExpression
         this.type = type;
     }
 
-    /*
-    public static ConstantExpression createConstantExpression(
-            Block valueBlock,
-            Type type)
-    {
-        return new ConstantExpression(Utils.blockToNativeValue(type, valueBlock), type);
-    }
-
-    
-    public Block getValueBlock()
-    {
-        return Utils.nativeValueToBlock(type, value);
-    }
-
-     */
-
     public Object getValue()
     {
         return value;

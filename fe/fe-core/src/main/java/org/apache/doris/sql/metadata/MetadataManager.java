@@ -3,6 +3,7 @@ package org.apache.doris.sql.metadata;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.doris.catalog.Catalog;
+import org.apache.doris.catalog.ColumnStats;
 import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.sql.planner.statistics.ColumnStatistics;
 import org.apache.doris.sql.planner.statistics.Estimate;
@@ -87,7 +88,20 @@ public class MetadataManager implements Metadata {
     public TableStatistics getTableStatistics(Session session, TableHandle tableHandle, List<ColumnHandle> columnHandles) {
         Map<ColumnHandle, ColumnStatistics> columnStatisticsMap = Maps.newHashMap();
         OlapTable olapTable = (OlapTable)(((DorisTableHandle)tableHandle.getConnectorHandle()).getTable());
+
         long rowCount = olapTable.getRowCount();
+        for (ColumnHandle columnHandle : columnHandles) {
+
+            ColumnStats columnStats = olapTable.getColumn(((DorisColumnHandle)columnHandle).getColumnName()).getStats();
+            System.out.println("columnStats " + columnStats);
+            ColumnStatistics statistics = new ColumnStatistics(
+                    Estimate.zero(),
+                    Estimate.of(rowCount),
+                    Estimate.of(olapTable.getColumn(((DorisColumnHandle)columnHandle).getColumnName()).getDataType().getSlotSize()),
+                    Optional.empty());
+            columnStatisticsMap.put(columnHandle, statistics);
+        }
+
         //rowCount = new Random().nextInt(10000);
         System.out.println(rowCount);
         return new TableStatistics(Estimate.of(rowCount), columnStatisticsMap);
