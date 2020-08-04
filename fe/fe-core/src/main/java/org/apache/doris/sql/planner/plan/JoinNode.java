@@ -17,6 +17,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.sql.metadata.FunctionManager;
+import org.apache.doris.sql.planner.SortExpressionContext;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 
@@ -27,6 +28,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.apache.doris.sql.planner.SortExpressionExtractor.extractSortExpression;
 import static org.apache.doris.sql.planner.plan.JoinNode.DistributionType.PARTITIONED;
 import static org.apache.doris.sql.planner.plan.JoinNode.DistributionType.REPLICATED;
 import static org.apache.doris.sql.planner.plan.JoinNode.Type.*;
@@ -217,13 +219,13 @@ public class JoinNode
         return filter;
     }
 
-    /*
+
     public Optional<SortExpressionContext> getSortExpressionContext(FunctionManager functionManager)
     {
         return filter
                 .flatMap(filter -> extractSortExpression(ImmutableSet.copyOf(right.getOutputVariables()), filter, functionManager));
     }
-    */
+
 
     public Optional<VariableReferenceExpression> getLeftHashVariable()
     {

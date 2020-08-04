@@ -87,9 +87,19 @@ public abstract class AstVisitor<R, C>
         return visitStatement(node, context);
     }
 
+    protected R visitExplain(Explain node, C context)
+    {
+        return visitStatement(node, context);
+    }
+
     protected R visitGenericLiteral(GenericLiteral node, C context)
     {
         return visitLiteral(node, context);
+    }
+
+    protected R visitExplainOption(ExplainOption node, C context)
+    {
+        return visitNode(node, context);
     }
 
     protected R visitWith(With node, C context)

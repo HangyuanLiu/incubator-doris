@@ -79,6 +79,8 @@ public class TypeSignature {
             case "month":
             case "year":
                 return ScalarType.INT;
+            case StandardTypes.ROW:
+                return ScalarType.VARCHAR;
             default:
                 throw new UnsupportedOperationException(this.getBase() +" not yet implemented");
         }

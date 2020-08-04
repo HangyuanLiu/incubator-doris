@@ -202,6 +202,9 @@ public final class TypeRegistry
                 Type commonSuperType = getCommonSuperTypeForChar((CharType) fromType, (CharType) toType);
                 return TypeCompatibility.compatible(commonSuperType, commonSuperType.equals(toType));
             }
+            if (fromTypeBaseName.equals(StandardTypes.ROW)) {
+                return typeCompatibilityForRow((RowType) fromType, (RowType) toType);
+            }
             return TypeCompatibility.incompatible();
         }
 
@@ -243,6 +246,37 @@ public final class TypeRegistry
     private static Type getCommonSuperTypeForChar(CharType firstType, CharType secondType)
     {
         return createCharType(Math.max(firstType.getLength(), secondType.getLength()));
+    }
+
+    private TypeCompatibility typeCompatibilityForRow(RowType firstType, RowType secondType)
+    {
+        List<RowType.Field> firstFields = firstType.getFields();
+        List<RowType.Field> secondFields = secondType.getFields();
+        if (firstFields.size() != secondFields.size()) {
+            return TypeCompatibility.incompatible();
+        }
+
+        ImmutableList.Builder<RowType.Field> fields = ImmutableList.builder();
+        boolean coercible = true;
+        for (int i = 0; i < firstFields.size(); i++) {
+            Type firstFieldType = firstFields.get(i).getType();
+            Type secondFieldType = secondFields.get(i).getType();
+            TypeCompatibility typeCompatibility = compatibility(firstFieldType, secondFieldType);
+            if (!typeCompatibility.isCompatible()) {
+                return TypeCompatibility.incompatible();
+            }
+            Type commonParameterType = typeCompatibility.getCommonSuperType();
+
+            Optional<String> firstParameterName = firstFields.get(i).getName();
+            Optional<String> secondParameterName = secondFields.get(i).getName();
+            Optional<String> commonName = firstParameterName.equals(secondParameterName) ? firstParameterName : Optional.empty();
+
+            // ignore parameter name for coercible
+            coercible &= typeCompatibility.isCoercible();
+            fields.add(new RowType.Field(commonName, commonParameterType));
+        }
+
+        return TypeCompatibility.compatible(RowType.from(fields.build()), coercible);
     }
 
     public void addType(Type type)

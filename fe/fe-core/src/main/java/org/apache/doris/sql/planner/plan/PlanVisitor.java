@@ -19,6 +19,11 @@ public abstract class PlanVisitor<R, C>
         return visitPlan(node, context);
     }
 
+    public R visitExplainAnalyze(ExplainAnalyzeNode node, C context)
+    {
+        return visitPlan(node, context);
+    }
+
     public R visitProject(ProjectNode node, C context)
     {
         return visitPlan(node, context);

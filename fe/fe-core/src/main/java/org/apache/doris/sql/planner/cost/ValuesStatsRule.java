@@ -85,7 +85,6 @@ public class ValuesStatsRule
                 .map(row -> row.get(symbolId))
                 .map(rowExpression -> {
                     if (isExpression(rowExpression)) {
-                        System.out.println("not implement");
                         //return evaluateConstantExpression(castToExpression(rowExpression), type, metadata, session, ImmutableList.of());
                     }
                     return evaluateConstantRowExpression(rowExpression, metadata, session.toConnectorSession());

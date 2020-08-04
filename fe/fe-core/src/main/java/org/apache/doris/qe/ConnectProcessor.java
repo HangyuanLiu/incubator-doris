@@ -52,7 +52,10 @@ import org.apache.doris.plugin.AuditEvent.EventType;
 import org.apache.doris.proto.PQueryStatistics;
 import org.apache.doris.service.FrontendOptions;
 import org.apache.doris.sql.analyzer.Analysis;
+import org.apache.doris.sql.analyzer.Analyzer;
+import org.apache.doris.sql.analyzer.QueryExplainer;
 import org.apache.doris.sql.analyzer.StatementAnalyzer;
+import org.apache.doris.sql.metadata.AccessControl;
 import org.apache.doris.sql.metadata.FunctionManager;
 import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.metadata.MetadataManager;
@@ -75,6 +78,7 @@ import org.apache.doris.sql.planner.cost.StatsCalculator;
 import org.apache.doris.sql.planner.cost.StatsNormalizer;
 import org.apache.doris.sql.planner.cost.TaskCountEstimator;
 import org.apache.doris.sql.planner.plan.PlanNodeIdAllocator;
+import org.apache.doris.sql.planner.plan.ValuesNode;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Node;
@@ -245,13 +249,7 @@ public class ConnectProcessor {
                 //DorisMetadata
                 Metadata metadata = new MetadataManager(new TypeRegistry(), new FunctionManager(new TypeRegistry(),ctx.getCatalog()), ctx.getCatalog());
 
-                //analyzer
-                ArrayList<Expression> parameters = new ArrayList<>();
-                Analysis analysis = new Analysis((Statement) stmt, parameters, true);
-                StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, session);
-                analyzer.analyze(stmt, Optional.empty());
-
-                //logical planner
+                //统计信息和优化器
                 StatsNormalizer statsNormalizer = new StatsNormalizer();
                 ScalarStatsCalculator scalarStatsCalculator = new ScalarStatsCalculator(metadata);
                 FilterStatsCalculator filterStatsCalculator = new FilterStatsCalculator(metadata, scalarStatsCalculator, statsNormalizer);
@@ -261,7 +259,24 @@ public class ConnectProcessor {
                 CostCalculatorUsingExchanges costCalculator = new CostCalculatorUsingExchanges(taskCountEstimator);
                 PlanOptimizers optimizers = new PlanOptimizers(
                         metadata, parser, statsCalculator,new CostCalculatorWithEstimatedExchanges(costCalculator, taskCountEstimator), new CostComparator(), taskCountEstimator);
-                LogicalPlanner logicalPlanner = new LogicalPlanner(session, optimizers.get(), new PlanNodeIdAllocator(PlanNodeId.createGenerator()), metadata);
+
+                //analyzer
+                ArrayList<Expression> parameters = new ArrayList<>();
+                QueryExplainer queryExplainer = new QueryExplainer(
+                        optimizers,
+                        metadata,
+                        null,
+                        parser,
+                        statsCalculator,
+                        costCalculator);
+                Analyzer analyzer = new Analyzer(session, metadata,parser, null, Optional.of(queryExplainer),  parameters, null);
+                Analysis analysis = analyzer.analyze((Statement) stmt, false);
+
+                //logical planner
+
+                LogicalPlanner logicalPlanner = new LogicalPlanner(
+                        false, session, optimizers.get(),
+                        new PlanNodeIdAllocator(PlanNodeId.createGenerator()), metadata, statsCalculator, costCalculator, null);
                 Plan plan = logicalPlanner.plan(analysis);
 
                 TQueryOptions tQueryOptions = new TQueryOptions();
@@ -272,7 +287,15 @@ public class ConnectProcessor {
                 PlannerContext plannerContext = new PlannerContext(null, null, tQueryOptions, null);
                 Map<VariableReferenceExpression, Expr> variableToSlotRef = new HashMap<>();
 
-                QuerySpecification specification = (QuerySpecification) ((Query) stmt).getQueryBody();
+                List<String> colNames = new ArrayList<>();
+                String explainString = "";
+                if (stmt instanceof Query) {
+                    QuerySpecification specification = (QuerySpecification) ((Query) stmt).getQueryBody();
+                    colNames = analysis.getOutputExpressions(specification).stream().map(Expression::toString).collect(Collectors.toList());
+                } else {
+                    colNames.add("plan");
+                    explainString = ((ValuesNode) plan.getRoot().getSources().get(0)).getRows().toString();
+                }
 
                 PlanFragmentBuilder fragmentBuilder = new PlanFragmentBuilder();
                 PlanFragmentBuilder.PhysicalPlan physicalPlan =
@@ -303,7 +326,9 @@ public class ConnectProcessor {
                         physicalPlan.getScanNodes(),
                         descTbl.toThrift(),
                         outputExprs,
-                        analysis.getOutputExpressions(specification).stream().map(Expression::toString).collect(Collectors.toList()));
+                        colNames,
+                        explainString
+                        );
                 System.out.println("Query success");
                 return;
             } catch (Exception ex) {

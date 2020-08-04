@@ -53,6 +53,8 @@ public class InterpretedFunctionInvoker {
             }
             if (literal instanceof DateLiteral) {
                 return ((DateLiteral) literal).getStringValue();
+            } else if (literal instanceof FloatLiteral) {
+                return ((FloatLiteral) literal).getValue();
             }
             return ((LiteralExpr) literal).getRealValue();
         }

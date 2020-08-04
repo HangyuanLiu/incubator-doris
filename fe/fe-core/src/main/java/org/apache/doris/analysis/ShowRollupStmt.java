@@ -37,6 +37,8 @@ import com.google.common.base.Strings;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.doris.system.SystemInfoService.DEFAULT_CLUSTER;
+
 // Show rollup statement, used to show rollup information of one table.
 //
 // Syntax:
@@ -50,21 +52,14 @@ public class ShowRollupStmt extends ShowStmt {
                     .addColumn(new Column("text", ScalarType.createVarchar(1024)))
                     .addColumn(new Column("rows", ScalarType.createVarchar(50)))
                     .build();
-    private TableName tbl;
     private String db;
-    private List<List<String>> result;
 
-    public ShowRollupStmt(TableName tbl, String db) {
-        this.tbl = tbl;
-        this.db = db;
+    public ShowRollupStmt(String db) {
+        this.db = DEFAULT_CLUSTER + ":" + db;
     }
 
     public String getDb() {
-        return tbl.getDb();
-    }
-
-    public String getTbl() {
-        return tbl.getTbl();
+        return db;
     }
 
     @Override
@@ -84,25 +79,18 @@ public class ShowRollupStmt extends ShowStmt {
         tbl.analyze(analyzer);
         */
 
-        tbl.analyze(analyzer);
-
-        if (!Catalog.getCurrentCatalog().getAuth().checkTblPriv(ConnectContext.get(), tbl.getDb(),
-                tbl.getTbl(), PrivPredicate.SHOW)) {
-            ErrorReport.reportAnalysisException(ErrorCode.ERR_TABLEACCESS_DENIED_ERROR, "SHOW MATERIALIZED VIEW",
+        if (!Catalog.getCurrentCatalog().getAuth().checkDbPriv(ConnectContext.get(), db, PrivPredicate.SHOW)) {
+            ErrorReport.reportAnalysisException(ErrorCode.ERR_DB_ACCESS_DENIED, "SHOW MATERIALIZED VIEW",
                     ConnectContext.get().getQualifiedUser(),
                     ConnectContext.get().getRemoteIP(),
-                    tbl.getTbl());
+                    db);
         }
-    }
-
-    public List<List<String>> getResultRows() {
-        return result;
     }
 
     @Override
     public String toSql() {
         StringBuilder sb = new StringBuilder();
-        sb.append("SHOW ROLLUP FROM ").append(tbl.toSql());
+        sb.append("SHOW MATERIALIZED VIEW ON ").append(db);
         return sb.toString();
     }
 

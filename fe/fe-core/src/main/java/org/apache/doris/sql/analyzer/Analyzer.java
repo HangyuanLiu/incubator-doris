@@ -21,6 +21,7 @@ import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.parser.SqlParser;
+import org.apache.doris.sql.rewrite.StatementRewrite;
 import org.apache.doris.sql.tree.Expression;
 import org.apache.doris.sql.tree.Statement;
 
@@ -34,24 +35,27 @@ public class Analyzer
 {
     private final Metadata metadata;
     private final SqlParser sqlParser;
-    private final AccessControl accessControl;
+    private AccessControl accessControl;
     private final Session session;
+    private final Optional<QueryExplainer> queryExplainer;
     private final List<Expression> parameters;
-    private final WarningCollector warningCollector;
+    private WarningCollector warningCollector;
 
     public Analyzer(Session session,
                     Metadata metadata,
                     SqlParser sqlParser,
                     AccessControl accessControl,
+                    Optional<QueryExplainer> queryExplainer,
                     List<Expression> parameters,
                     WarningCollector warningCollector)
     {
         this.session = requireNonNull(session, "session is null");
         this.metadata = requireNonNull(metadata, "metadata is null");
         this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
+        //this.accessControl = requireNonNull(accessControl, "accessControl is null");
+        this.queryExplainer = requireNonNull(queryExplainer, "query explainer is null");
         this.parameters = parameters;
-        this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
-        this.accessControl = requireNonNull(accessControl, "accessControl is null");
+        //this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     }
 
     public Analysis analyze(Statement statement)
@@ -61,10 +65,10 @@ public class Analyzer
 
     public Analysis analyze(Statement statement, boolean isDescribe)
     {
-        //Statement rewrittenStatement = StatementRewrite.rewrite(session, metadata, sqlParser, queryExplainer, statement, parameters, accessControl, warningCollector);
-        Analysis analysis = new Analysis(statement, parameters, isDescribe);
+        Statement rewrittenStatement = StatementRewrite.rewrite(session, metadata, sqlParser, queryExplainer, statement, parameters, accessControl, warningCollector);
+        Analysis analysis = new Analysis(rewrittenStatement, parameters, isDescribe);
         StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, sqlParser, accessControl, session, warningCollector);
-        analyzer.analyze(statement, Optional.empty());
+        analyzer.analyze(rewrittenStatement, Optional.empty());
 
         // check column access permissions for each table
         /*

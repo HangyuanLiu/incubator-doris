@@ -113,7 +113,6 @@ public class FilterStatsCalculator
         this.metadata = requireNonNull(metadata, "metadata is null");
         this.scalarStatsCalculator = requireNonNull(scalarStatsCalculator, "scalarStatsCalculator is null");
         this.normalizer = requireNonNull(normalizer, "normalizer is null");
-        //this.literalEncoder = new LiteralEncoder(metadata.getBlockEncodingSerde());
         this.literalEncoder = new LiteralEncoder();
         this.functionResolution = new FunctionResolution(metadata.getFunctionManager());
     }

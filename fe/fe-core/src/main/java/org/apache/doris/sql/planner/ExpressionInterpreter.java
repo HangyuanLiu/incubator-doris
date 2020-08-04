@@ -710,80 +710,38 @@ public class ExpressionInterpreter
         {
             return node.equals(BooleanLiteral.TRUE_LITERAL);
         }
-        /*
+
         @Override
         protected Object visitFunctionCall(FunctionCall node, Object context)
         {
             List<Type> argumentTypes = new ArrayList<>();
             List<Object> argumentValues = new ArrayList<>();
             for (Expression expression : node.getArguments()) {
-                //Object value = process(expression, context);
+                Object value = process(expression, context);
                 Type type = type(expression);
-                //argumentValues.add(value);
+                argumentValues.add(value);
                 argumentTypes.add(type);
             }
+
             FunctionHandle functionHandle = metadata.getFunctionManager().resolveFunction(node.getName(), fromTypes(argumentTypes));
 
+
+            //找函数
             ScalarType[] scalarTypes = new ScalarType[node.getArguments().size()];
             for (int i = 0;i < node.getArguments().size(); ++i) {
                 scalarTypes[i] = argumentTypes.get(i).getTypeSignature().toDorisType();
+                if (scalarTypes[i].equals(ScalarType.DATE)) {
+                    scalarTypes[i] = ScalarType.DATETIME;
+                } else if (scalarTypes[i].equals(ScalarType.BIGINT)) {
+                    scalarTypes[i] = ScalarType.INT;
+                }
             }
-
             if (ExpressionFunctions.INSTANCE.getFunction(new ExpressionFunctions.FEFunctionSignature(node.getName().toString(),
-                    scalarTypes,
-                    org.apache.doris.catalog.Type.DATE)) == null){
+                    scalarTypes, null)) == null){
                 return node;
             }
 
-            for (int i = 0; i < node.getArguments().size(); ++i) {
-                if (!type(node.getArguments().get(i)).equals(
-                        metadata.getTypeManager().getType(functionHandle.getArgumentTypes().get(i)))) {
-                    Expression expr =
-                            new Cast(node.getArguments().get(i), metadata.getTypeManager().getType(functionHandle.getArgumentTypes().get(i)).getDisplayName());
-                    Object value = process(expr, context);
-                    argumentValues.add(value);
-                } else {
-                    Object value = process(node.getArguments().get(i), context);
-                    argumentValues.add(value);
-                }
-            }
-
-            FunctionMetadata functionMetadata = metadata.getFunctionManager().getFunctionMetadata(functionHandle);
-
-            if (!functionMetadata.isCalledOnNullInput()) {
-                for (int i = 0; i < argumentValues.size(); i++) {
-                    Object value = argumentValues.get(i);
-                    if (value == null) {
-                        return null;
-                    }
-                }
-            }
-
-            // do not optimize non-deterministic functions
-            if (optimize && (!functionMetadata.isDeterministic() || hasUnresolvedValue(argumentValues) || node.getName().equals(QualifiedName.of("fail")))) {
-                return new FunctionCall(node.getName(), node.getWindow(), node.isDistinct(), node.isIgnoreNulls(), toExpressions(argumentValues, argumentTypes));
-            }
-
             Object result;
-            /*
-            switch (functionMetadata.getImplementationType()) {
-                case BUILTIN:
-                    result = functionInvoker.invoke(functionHandle, session.getSqlFunctionProperties(), argumentValues);
-                    break;
-                case SQL:
-                    Expression function = getSqlFunctionExpression(functionMetadata, (SqlInvokedScalarFunctionImplementation) metadata.getFunctionManager().getScalarFunctionImplementation(functionHandle), session.getSqlFunctionProperties(), node.getArguments());
-                    ExpressionInterpreter functionInterpreter = new ExpressionInterpreter(
-                            function,
-                            metadata,
-                            session,
-                            getExpressionTypes(session, metadata, new SqlParser(), TypeProvider.empty(), function, emptyList(), WarningCollector.NOOP),
-                            optimize);
-                    result = functionInterpreter.visitor.process(function, context);
-                    break;
-                default:
-                    throw new IllegalArgumentException(format("Unsupported function implementation type: %s", functionMetadata.getImplementationType()));
-            }
-
             result = functionInvoker.invoke(functionHandle, argumentValues);
             if (optimize && !isSerializable(result, type(node))) {
                 return new FunctionCall(node.getName(), node.getWindow(), node.isDistinct(), node.isIgnoreNulls(), toExpressions(argumentValues, argumentTypes));
@@ -791,7 +749,6 @@ public class ExpressionInterpreter
             return result;
         }
 
-         */
         /*
         @Override
         protected Object visitLikePredicate(LikePredicate node, Object context)

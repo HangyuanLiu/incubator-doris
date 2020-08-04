@@ -68,6 +68,25 @@ public class ExpressionTreeRewriter<C> {
         }
 
         @Override
+        protected Expression visitRow(Row node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteRow(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            List<Expression> items = rewrite(node.getItems(), context);
+
+            if (!sameElements(node.getItems(), items)) {
+                return new Row(items);
+            }
+
+            return node;
+        }
+
+        @Override
         protected Expression visitArithmeticUnary(ArithmeticUnaryExpression node, Context<C> context)
         {
             if (!context.isDefaultRewrite()) {

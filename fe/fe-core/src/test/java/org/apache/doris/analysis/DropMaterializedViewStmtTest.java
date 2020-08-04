@@ -35,7 +35,7 @@ public class DropMaterializedViewStmtTest {
     Analyzer analyzer;
     @Mocked
     PaloAuth paloAuth;
-
+    /*
     @Test
     public void testEmptyMVName(@Injectable TableName tableName) {
         DropMaterializedViewStmt stmt = new DropMaterializedViewStmt(false, "", tableName);
@@ -65,4 +65,6 @@ public class DropMaterializedViewStmtTest {
         }
 
     }
+
+     */
 }

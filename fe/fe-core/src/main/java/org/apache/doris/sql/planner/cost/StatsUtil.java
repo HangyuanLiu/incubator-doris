@@ -13,6 +13,7 @@
  */
 package org.apache.doris.sql.planner.cost;
 
+import org.apache.doris.sql.InterpretedFunctionInvoker;
 import org.apache.doris.sql.metadata.ConnectorSession;
 import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.FunctionManager;
@@ -48,14 +49,14 @@ final class StatsUtil
     static OptionalDouble toStatsRepresentation(FunctionManager functionManager, ConnectorSession session, Type type, Object value)
     {
         requireNonNull(value, "value is null");
-        /*
+
         if (convertibleToDoubleWithCast(type)) {
             InterpretedFunctionInvoker functionInvoker = new InterpretedFunctionInvoker(functionManager);
-            FunctionHandle cast = functionManager.lookupCast(CAST, type.getTypeSignature(), DoubleType.DOUBLE.getTypeSignature());
+            FunctionHandle cast = functionManager.lookupCast(type.getTypeSignature(), DoubleType.DOUBLE.getTypeSignature());
 
-            return OptionalDouble.of((double) functionInvoker.invoke(cast, session.getSqlFunctionProperties(), singletonList(value)));
+            return OptionalDouble.of((double) functionInvoker.invoke(cast, singletonList(value)));
         }
-        */
+
         if (DateType.DATE.equals(type)) {
             return OptionalDouble.of(((Long) value).doubleValue());
         }

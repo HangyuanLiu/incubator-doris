@@ -106,9 +106,9 @@ public enum ExpressionFunctions {
             return null;
         }
         for (FEFunctionInvoker invoker : functionInvokers) {
-            if (!invoker.getSignature().returnType.equals(signature.getReturnType())) {
-                continue;
-            }
+            //if (!invoker.getSignature().returnType.equals(signature.getReturnType())) {
+            //    continue;
+            //}
 
             ScalarType[] argTypes1 = invoker.getSignature().getArgTypes();
             ScalarType[] argTypes2 = signature.getArgTypes();

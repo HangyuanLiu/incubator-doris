@@ -19,6 +19,7 @@ import org.apache.doris.sql.metadata.FunctionMetadata;
 import org.apache.doris.sql.metadata.Metadata;
 import org.apache.doris.sql.metadata.Session;
 import org.apache.doris.sql.metadata.WarningCollector;
+import org.apache.doris.sql.planner.NoOpVariableResolver;
 import org.apache.doris.sql.relation.CallExpression;
 import org.apache.doris.sql.relation.ConstantExpression;
 import org.apache.doris.sql.relation.InputReferenceExpression;
@@ -54,6 +55,7 @@ import javax.inject.Inject;
 import java.util.Map;
 import java.util.OptionalDouble;
 
+import static org.apache.doris.sql.planner.LiteralInterpreter.evaluate;
 import static org.apache.doris.sql.planner.cost.StatsUtil.toStatsRepresentation;
 import static org.apache.doris.sql.relation.ExpressionOptimizer.Level.OPTIMIZED;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.COALESCE;
@@ -345,7 +347,7 @@ public class ScalarStatsCalculator
         @Override
         protected VariableStatsEstimate visitLiteral(Literal node, Void context)
         {
-            /*
+
             Object value = evaluate(metadata, session.toConnectorSession(), node);
             Type type = ExpressionAnalyzer.createConstantAnalyzer(metadata, session, ImmutableList.of(), WarningCollector.NOOP).analyze(node, Scope.create());
             OptionalDouble doubleValue = toStatsRepresentation(metadata, session, type, value);
@@ -358,14 +360,11 @@ public class ScalarStatsCalculator
                 estimate.setHighValue(doubleValue.getAsDouble());
             }
             return estimate.build();
-            */
-            return VariableStatsEstimate.zero();
         }
 
         @Override
         protected VariableStatsEstimate visitFunctionCall(FunctionCall node, Void context)
         {
-            /*
             Map<NodeRef<Expression>, Type> expressionTypes = getExpressionTypes(session, node, types);
             ExpressionInterpreter interpreter = ExpressionInterpreter.expressionOptimizer(node, metadata, session, expressionTypes);
             Object value = interpreter.optimize(NoOpVariableResolver.INSTANCE);
@@ -384,8 +383,6 @@ public class ScalarStatsCalculator
                     .setNullsFraction(0)
                     .setDistinctValuesCount(1)
                     .build();
-             */
-            return VariableStatsEstimate.zero();
         }
 
         private Map<NodeRef<Expression>, Type> getExpressionTypes(Session session, Expression expression, TypeProvider types)
@@ -406,9 +403,8 @@ public class ScalarStatsCalculator
         @Override
         protected VariableStatsEstimate visitCast(Cast node, Void context)
         {
-            /*
             VariableStatsEstimate sourceStats = process(node.getExpression());
-            TypeSignature targetType = TypeSignature.parseTypeSignature(node.getType());
+            TypeSignature targetType = new TypeSignature(node.getType());
 
             // todo - make this general postprocessing rule.
             double distinctValuesCount = sourceStats.getDistinctValuesCount();
@@ -437,8 +433,6 @@ public class ScalarStatsCalculator
                     .setHighValue(highValue)
                     .setDistinctValuesCount(distinctValuesCount)
                     .build();
-            */
-            return VariableStatsEstimate.zero();
         }
 
         @Override

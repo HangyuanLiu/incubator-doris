@@ -271,7 +271,6 @@ public class ShowExecutor {
         // TODO: not implemented yet
         ShowRollupStmt showRollupStmt = (ShowRollupStmt) stmt;
         String dbName = ((ShowRollupStmt) stmt).getDb();
-        String tblName = ((ShowRollupStmt) stmt).getTbl();
         List<List<String>> rowSets = Lists.newArrayList();
 
         Database db = Catalog.getCurrentCatalog().getDb(dbName);
@@ -280,24 +279,29 @@ public class ShowExecutor {
         }
         db.readLock();
         try {
-            Table table = db.getTable(tblName);
-            if (table.getType() == Table.TableType.OLAP) {
-                OlapTable olapTable = (OlapTable) table;
-                List<MaterializedIndex> visibleMaterializedViews = olapTable.getVisibleIndex();
-                long baseIdx = olapTable.getBaseIndexId();
+            for (Table table : db.getTables()) {
+                if (table.getType() == Table.TableType.OLAP) {
+                    OlapTable olapTable = (OlapTable) table;
+                    List<MaterializedIndex> visibleMaterializedViews = olapTable.getVisibleIndex();
+                    long baseIdx = olapTable.getBaseIndexId();
 
-                for (MaterializedIndex mvIdx : visibleMaterializedViews) {
-                    if (baseIdx == mvIdx.getId()) {
-                        continue;
+                    for (MaterializedIndex mvIdx : visibleMaterializedViews) {
+                        if (baseIdx == mvIdx.getId()) {
+                            continue;
+                        }
+                        ArrayList<String> resultRow = new ArrayList<>();
+                        MaterializedIndexMeta mvMeta = olapTable.getVisibleIndexIdToMeta().get(mvIdx.getId());
+                        resultRow.add(String.valueOf(mvIdx.getId()));
+                        if (mvMeta.isMaterializedView()) {
+                            resultRow.add(olapTable.getIndexNameById(mvIdx.getId()));
+                        } else {
+                            resultRow.add(olapTable.getName() + "." + olapTable.getIndexNameById(mvIdx.getId()));
+                        }
+                        resultRow.add(dbName);
+                        resultRow.add(mvMeta.getOriginStmt());
+                        resultRow.add(String.valueOf(mvIdx.getRowCount()));
+                        rowSets.add(resultRow);
                     }
-                    ArrayList<String> resultRow = new ArrayList<>();
-                    MaterializedIndexMeta mvMeta = olapTable.getVisibleIndexIdToMeta().get(mvIdx.getId());
-                    resultRow.add(String.valueOf(mvIdx.getId()));
-                    resultRow.add(String.valueOf(olapTable.getIndexNameById(mvIdx.getId())));
-                    resultRow.add(dbName);
-                    resultRow.add(mvMeta.getOriginStmt());
-                    resultRow.add(String.valueOf(mvIdx.getRowCount()));
-                    rowSets.add(resultRow);
                 }
             }
         } finally {

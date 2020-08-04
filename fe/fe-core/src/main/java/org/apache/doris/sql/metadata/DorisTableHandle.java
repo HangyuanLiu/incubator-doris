@@ -30,4 +30,9 @@ public final class DorisTableHandle implements ConnectorTableHandle {
     public Table getTable() {
         return table;
     }
+
+    @Override
+    public String toString() {
+        return tableName;
+    }
 }

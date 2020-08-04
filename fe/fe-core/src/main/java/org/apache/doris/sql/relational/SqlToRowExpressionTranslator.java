@@ -55,6 +55,7 @@ import org.apache.doris.sql.tree.NodeRef;
 import org.apache.doris.sql.tree.NotExpression;
 import org.apache.doris.sql.tree.NullLiteral;
 import org.apache.doris.sql.tree.QualifiedName;
+import org.apache.doris.sql.tree.Row;
 import org.apache.doris.sql.tree.SearchedCaseExpression;
 import org.apache.doris.sql.tree.SimpleCaseExpression;
 import org.apache.doris.sql.tree.StringLiteral;
@@ -81,6 +82,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
@@ -90,6 +92,7 @@ import static org.apache.doris.sql.relation.SpecialFormExpression.Form.IN;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.IS_NULL;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.NULL_IF;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.OR;
+import static org.apache.doris.sql.relation.SpecialFormExpression.Form.ROW_CONSTRUCTOR;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.SWITCH;
 import static org.apache.doris.sql.relation.SpecialFormExpression.Form.WHEN;
 import static org.apache.doris.sql.relational.Expressions.call;
@@ -522,6 +525,16 @@ public final class SqlToRowExpressionTranslator
                     min,
                     max);
              */
+        }
+
+        @Override
+        protected RowExpression visitRow(Row node, Void context)
+        {
+            List<RowExpression> arguments = node.getItems().stream()
+                    .map(value -> process(value, context))
+                    .collect(toImmutableList());
+            Type returnType = getType(node);
+            return specialForm(ROW_CONSTRUCTOR, returnType, arguments);
         }
     }
 }

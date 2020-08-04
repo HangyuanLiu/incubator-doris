@@ -5,7 +5,9 @@ import com.google.common.collect.Maps;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.ColumnStats;
 import org.apache.doris.catalog.OlapTable;
+import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.sql.planner.statistics.ColumnStatistics;
+import org.apache.doris.sql.planner.statistics.DoubleRange;
 import org.apache.doris.sql.planner.statistics.Estimate;
 import org.apache.doris.sql.planner.statistics.TableStatistics;
 import org.apache.doris.sql.type.TypeManager;
@@ -91,6 +93,7 @@ public class MetadataManager implements Metadata {
 
         long rowCount = olapTable.getRowCount();
         for (ColumnHandle columnHandle : columnHandles) {
+            DoubleRange range = new DoubleRange(Integer.MIN_VALUE, Integer.MAX_VALUE);
 
             ColumnStats columnStats = olapTable.getColumn(((DorisColumnHandle)columnHandle).getColumnName()).getStats();
             System.out.println("columnStats " + columnStats);
@@ -98,7 +101,7 @@ public class MetadataManager implements Metadata {
                     Estimate.zero(),
                     Estimate.of(rowCount),
                     Estimate.of(olapTable.getColumn(((DorisColumnHandle)columnHandle).getColumnName()).getDataType().getSlotSize()),
-                    Optional.empty());
+                    Optional.of(range));
             columnStatisticsMap.put(columnHandle, statistics);
         }
 

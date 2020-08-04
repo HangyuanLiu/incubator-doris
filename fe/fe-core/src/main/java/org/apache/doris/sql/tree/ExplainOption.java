@@ -11,31 +11,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.doris.sql.metadata;
+package org.apache.doris.sql.tree;
 
-public final class TableHandle
+import java.util.Optional;
+
+public abstract class ExplainOption
+        extends Node
 {
-    private final ConnectorId connectorId;
-    private final ConnectorTableHandle connectorHandle;
-
-
-    public TableHandle(ConnectorId connectorId, ConnectorTableHandle connectorHandle) {
-        this.connectorId = connectorId;
-        this.connectorHandle = connectorHandle;
-    }
-
-    public ConnectorId getConnectorId()
+    protected ExplainOption(Optional<NodeLocation> location)
     {
-        return connectorId;
-    }
-
-    public ConnectorTableHandle getConnectorHandle()
-    {
-        return connectorHandle;
+        super(location);
     }
 
     @Override
-    public String toString() {
-        return connectorHandle.toString();
+    public <R, C> R accept(AstVisitor<R, C> visitor, C context)
+    {
+        return visitor.visitExplainOption(this, context);
     }
 }

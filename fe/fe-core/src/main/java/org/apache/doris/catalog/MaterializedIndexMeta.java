@@ -59,6 +59,9 @@ public class MaterializedIndexMeta implements Writable, GsonPostProcessable {
     @SerializedName(value = "defineStmt")
     private OriginStatement defineStmt;
 
+    @SerializedName(value = "isMaterializedView")
+    private boolean isMaterializedView;
+
     public MaterializedIndexMeta(long indexId, List<Column> schema, int schemaVersion, int schemaHash,
             short shortKeyColumnCount, TStorageType storageType, KeysType keysType, OriginStatement defineStmt) {
         this.indexId = indexId;
@@ -72,7 +75,9 @@ public class MaterializedIndexMeta implements Writable, GsonPostProcessable {
         this.storageType = storageType;
         Preconditions.checkState(keysType != null);
         this.keysType = keysType;
+
         this.defineStmt = defineStmt;
+        this.isMaterializedView = true;
     }
 
     public long getIndexId() {
@@ -120,6 +125,10 @@ public class MaterializedIndexMeta implements Writable, GsonPostProcessable {
                 }
             }
         }
+    }
+
+    public boolean isMaterializedView() {
+        return isMaterializedView;
     }
 
     @Override

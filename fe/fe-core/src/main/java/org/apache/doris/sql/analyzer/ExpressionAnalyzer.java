@@ -29,6 +29,7 @@ import org.apache.doris.sql.type.Decimals;
 import org.apache.doris.sql.type.IntegerType;
 import org.apache.doris.sql.type.IntervalType;
 import org.apache.doris.sql.type.OperatorType;
+import org.apache.doris.sql.type.RowType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.tree.*;
 import org.apache.doris.sql.type.TypeManager;
@@ -40,6 +41,7 @@ import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Function;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.collect.Iterables.transform;
 import static java.lang.String.format;
@@ -205,6 +207,17 @@ public class ExpressionAnalyzer
                 }
             }
             return super.process(node, context);
+        }
+
+        @Override
+        protected Type visitRow(Row node, StackableAstVisitorContext<Context> context)
+        {
+            List<Type> types = node.getItems().stream()
+                    .map((child) -> process(child, context))
+                    .collect(toImmutableList());
+
+            Type type = RowType.anonymous(types);
+            return setExpressionType(node, type);
         }
 
         @Override

@@ -231,7 +231,7 @@ public class StmtExecutor {
     }
 
     public void executeV2(ArrayList<PlanFragment> fragments, List<ScanNode> scanNodes,
-                          TDescriptorTable descTable, List<Expr> outputExprs, List<String> colNames) throws Exception {
+                          TDescriptorTable descTable, List<Expr> outputExprs, List<String> colNames, String explainString) throws Exception {
         context.getState().setIsQuery(true);
         int retryTime = Config.max_query_retry_time;
         for (int i = 0; i < retryTime; i ++) {
@@ -243,14 +243,13 @@ public class StmtExecutor {
                 // assign query id before explain query return
                 UUID uuid = UUID.randomUUID();
                 context.setQueryId(new TUniqueId(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits()));
-                /*
-                if (queryStmt.isExplain()) {
-                    String explainString = planner.getExplainString(planner.getFragments(), TExplainLevel.VERBOSE);
+
+                if (!explainString.isEmpty()) {
                     handleExplainStmt(explainString);
                     return;
                 }
 
-                 */
+
                 //coord = new Coordinator(context, analyzer, planner);
                 coord = new Coordinator(context, fragments, scanNodes, descTable);
 

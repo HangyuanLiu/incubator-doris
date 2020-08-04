@@ -19,6 +19,7 @@ import com.google.common.collect.Iterables;
 import org.apache.doris.sql.metadata.*;
 import org.apache.doris.sql.parser.SqlParser;
 import org.apache.doris.sql.tree.*;
+import org.apache.doris.sql.type.RowType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.util.AstUtils;
 
@@ -41,8 +42,10 @@ import static org.apache.doris.sql.analyzer.ExpressionTreeUtils.extractExpressio
 import static org.apache.doris.sql.analyzer.ScopeReferenceExtractor.hasReferencesToScope;
 import static org.apache.doris.sql.analyzer.SemanticErrorCode.*;
 import static org.apache.doris.sql.metadata.MetadataUtil.createQualifiedObjectName;
+import static org.apache.doris.sql.tree.ExplainType.Type.DISTRIBUTED;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 import static org.apache.doris.sql.type.UnknownType.UNKNOWN;
+import static org.apache.doris.sql.type.VarcharType.VARCHAR;
 
 public class StatementAnalyzer
 {
@@ -126,6 +129,19 @@ public class StatementAnalyzer
         private Scope process(Node node, Scope scope)
         {
             return process(node, Optional.of(scope));
+        }
+
+        @Override
+        protected Scope visitExplain(Explain node, Optional<Scope> scope)
+                throws SemanticException
+        {
+            checkState(node.isAnalyze(), "Non analyze explain should be rewritten to Query");
+            if (node.getOptions().stream().anyMatch(option -> !option.equals(new ExplainType(DISTRIBUTED)))) {
+                throw new SemanticException(NOT_SUPPORTED, node, "EXPLAIN ANALYZE only supports TYPE DISTRIBUTED option");
+            }
+            process(node.getStatement(), scope);
+            analysis.setUpdateType(null);
+            return createAndAssignScope(node, scope, Field.newUnqualified("Query Plan", VARCHAR));
         }
 
         @Override
@@ -405,11 +421,9 @@ public class StatementAnalyzer
             List<List<Type>> rowTypes = node.getRows().stream()
                     .map(row -> analyzeExpression(row, createScope(scope)).getType(row))
                     .map(type -> {
-                        /*
                         if (type instanceof RowType) {
-                            return type.getTypeParameters();
+                            return ((RowType)type).getTypeParameters();
                         }
-                         */
                         return ImmutableList.of(type);
                     })
                     .collect(toImmutableList());

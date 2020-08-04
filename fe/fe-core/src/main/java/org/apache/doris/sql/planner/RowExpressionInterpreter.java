@@ -30,6 +30,7 @@ import com.google.common.primitives.Primitives;
 import org.apache.doris.sql.relational.FunctionResolution;
 import org.apache.doris.sql.relational.RowExpressionDeterminismEvaluator;
 import org.apache.doris.sql.type.OperatorType;
+import org.apache.doris.sql.type.RowType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.type.TypeManager;
 
@@ -167,6 +168,13 @@ public class RowExpressionInterpreter
         @Override
         public Object visitCall(CallExpression node, Object context)
         {
+            if (node.getDisplayName().equalsIgnoreCase("casttovarchar(*)") &&
+                node.getArguments().get(0) instanceof SpecialFormExpression) {
+                SpecialFormExpression expression = (SpecialFormExpression) node.getArguments().get(0);
+                if (expression.getForm().equals(ROW_CONSTRUCTOR)) {
+                    return expression.getArguments().get(0).toString();
+                }
+            }
             return node;
         }
 
@@ -240,6 +248,25 @@ public class RowExpressionInterpreter
                             toRowExpressions(
                                     asList(left, right),
                                     node.getArguments().subList(0, 2)));
+                }
+                case ROW_CONSTRUCTOR: {
+                    RowType rowType = (RowType) node.getType();
+                    List<Type> parameterTypes = rowType.getTypeParameters();
+                    List<RowExpression> arguments = node.getArguments();
+                    checkArgument(parameterTypes.size() == arguments.size(), "RowConstructor does not contain all fields");
+                    for (int i = 0; i < parameterTypes.size(); i++) {
+                        checkArgument(parameterTypes.get(i).equals(arguments.get(i).getType()), "RowConstructor has field with incorrect type");
+                    }
+
+                    int cardinality = arguments.size();
+                    List<Object> values = new ArrayList<>(cardinality);
+                    arguments.forEach(argument -> values.add(argument.accept(this, context)));
+                    if (hasUnresolvedValue(values)) {
+                        return new SpecialFormExpression(ROW_CONSTRUCTOR, node.getType(), toRowExpressions(values, node.getArguments()));
+                    }
+                    else {
+                        return null;
+                    }
                 }
                 case COALESCE: {
                     Type type = node.getType();

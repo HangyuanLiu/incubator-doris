@@ -219,6 +219,44 @@ public class AstBuilder
         return new Values(getLocation(context), visit(context.expression(), Expression.class));
     }
 
+    @Override
+    public Node visitExplain(SqlBaseParser.ExplainContext context)
+    {
+        return new Explain(getLocation(context), context.ANALYZE() != null, context.VERBOSE() != null, (Statement) visit(context.statement()), visit(context.explainOption(), ExplainOption.class));
+    }
+
+    @Override
+    public Node visitExplainFormat(SqlBaseParser.ExplainFormatContext context)
+    {
+        switch (context.value.getType()) {
+            case SqlBaseLexer.GRAPHVIZ:
+                return new ExplainFormat(getLocation(context), ExplainFormat.Type.GRAPHVIZ);
+            case SqlBaseLexer.TEXT:
+                return new ExplainFormat(getLocation(context), ExplainFormat.Type.TEXT);
+            case SqlBaseLexer.JSON:
+                return new ExplainFormat(getLocation(context), ExplainFormat.Type.JSON);
+        }
+
+        throw new IllegalArgumentException("Unsupported EXPLAIN format: " + context.value.getText());
+    }
+
+    @Override
+    public Node visitExplainType(SqlBaseParser.ExplainTypeContext context)
+    {
+        switch (context.value.getType()) {
+            case SqlBaseLexer.LOGICAL:
+                return new ExplainType(getLocation(context), ExplainType.Type.LOGICAL);
+            case SqlBaseLexer.DISTRIBUTED:
+                return new ExplainType(getLocation(context), ExplainType.Type.DISTRIBUTED);
+            case SqlBaseLexer.VALIDATE:
+                return new ExplainType(getLocation(context), ExplainType.Type.VALIDATE);
+            case SqlBaseLexer.IO:
+                return new ExplainType(getLocation(context), ExplainType.Type.IO);
+        }
+
+        throw new IllegalArgumentException("Unsupported EXPLAIN type: " + context.value.getText());
+    }
+
     // ***************** boolean expressions ******************
 
     @Override
