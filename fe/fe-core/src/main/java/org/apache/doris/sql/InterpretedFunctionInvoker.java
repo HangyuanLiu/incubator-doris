@@ -1,10 +1,12 @@
 package org.apache.doris.sql;
 
+import javassist.compiler.ast.StringL;
 import org.apache.doris.analysis.DateLiteral;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.FloatLiteral;
 import org.apache.doris.analysis.FunctionName;
 import org.apache.doris.analysis.LiteralExpr;
+import org.apache.doris.analysis.StringLiteral;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Function;
 import org.apache.doris.sql.metadata.FunctionHandle;
@@ -44,6 +46,7 @@ public class InterpretedFunctionInvoker {
     public Object invoke(FunctionHandle functionHandle, List<Object> arguments) {
         //FIXME
         if (functionHandle.getFunctionName().startsWith("cast")) {
+            /*
             Expr literal = RowExpressionToExpr.formatRowExpression(
                     new ConstantExpression(arguments.get(0), typeManager.getType(functionHandle.getArgumentTypes().get(0))), null);
             try {
@@ -55,19 +58,29 @@ public class InterpretedFunctionInvoker {
                 return ((DateLiteral) literal).getStringValue();
             } else if (literal instanceof FloatLiteral) {
                 return ((FloatLiteral) literal).getValue();
+            } else if (literal instanceof StringLiteral) {
+                return ((StringLiteral) literal).getStringValue();
             }
             return ((LiteralExpr) literal).getRealValue();
+
+             */
+            if (arguments.get(0) instanceof java.lang.Boolean) {
+                if (((java.lang.Boolean)arguments.get(0)).equals(java.lang.Boolean.TRUE)) {
+                    return 1;
+                } else return 0;
+            }
+            return arguments.get(0);
         }
 
         int argSize = arguments.size();
         List<RowExpression> arg = new ArrayList<>();
         for (int i = 0; i < argSize; ++i) {
-            if (functionHandle.getArgumentTypes().get(i).equals(DateType.DATE.getTypeSignature())) {
-                arg.add(LiteralEncoder.toRowExpression(arguments.get(i), TimestampType.TIMESTAMP));
-            } else {
+            //if (functionHandle.getArgumentTypes().get(i).equals(DateType.DATE.getTypeSignature())) {
+            //    arg.add(LiteralEncoder.toRowExpression(arguments.get(i), TimestampType.TIMESTAMP));
+            //} else {
                 arg.add(LiteralEncoder.toRowExpression(arguments.get(i),
                         typeManager.getType(functionHandle.getArgumentTypes().get(i))));
-            }
+            //}
         }
 
         Function searchDesc = new Function(
@@ -90,6 +103,8 @@ public class InterpretedFunctionInvoker {
             Object value;
             if (resultExpr instanceof FloatLiteral) {
                 value = ((FloatLiteral) resultExpr).getValue();
+            } else if (resultExpr instanceof DateLiteral) {
+                value = ((DateLiteral) resultExpr).getStringValue();
             } else {
                 value = ((LiteralExpr) resultExpr).getRealValue();
             }

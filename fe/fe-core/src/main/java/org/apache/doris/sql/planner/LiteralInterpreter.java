@@ -87,20 +87,17 @@ public final class LiteralInterpreter
         if (type instanceof DoubleType) {
             return node.getValue();
         }
-                /*
+        if (type instanceof VarcharType || type instanceof CharType) {
+            return node.getValue();
+        }
+
         if (type instanceof DecimalType) {
             DecimalType decimalType = (DecimalType) type;
-            if (decimalType.isShort()) {
-                checkState(node.getValue() instanceof Long);
-                return decodeDecimal(BigInteger.valueOf((long) node.getValue()), decimalType);
-            }
-            checkState(node.getValue() instanceof Slice);
-            Slice value = (Slice) node.getValue();
-            return decodeDecimal(decodeUnscaledValue(value), decimalType);
+
+            checkState(node.getValue() instanceof Long);
+            return decodeDecimal(BigInteger.valueOf((long) node.getValue()), decimalType);
         }
-        if (type instanceof VarcharType || type instanceof CharType) {
-            return ((Slice) node.getValue()).toStringUtf8();
-        }
+                /*
         if (type instanceof VarbinaryType) {
             return new SqlVarbinary(((Slice) node.getValue()).getBytes());
         }

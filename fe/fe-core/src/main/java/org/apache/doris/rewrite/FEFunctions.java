@@ -77,12 +77,18 @@ public class FEFunctions {
         return daysAdd(date, day);
     }
 
+    @FEFunction(name = "years_add", argTypes = { "DATE", "BIGINT" }, returnType = "DATE")
+    public static DateLiteral yearsAdd(LiteralExpr date, LiteralExpr year) throws AnalysisException {
+        DateLiteral dateLiteral = (DateLiteral) date;
+        return dateLiteral.plusYears((int) year.getLongValue());
+    }
+    /*
     @FEFunction(name = "years_add", argTypes = { "DATETIME", "INT" }, returnType = "DATETIME")
     public static DateLiteral yearsAdd(LiteralExpr date, LiteralExpr year) throws AnalysisException {
         DateLiteral dateLiteral = (DateLiteral) date;
         return dateLiteral.plusYears((int) year.getLongValue());
     }
-
+    */
     @FEFunction(name = "months_add", argTypes = { "DATETIME", "INT" }, returnType = "DATETIME")
     public static DateLiteral monthsAdd(LiteralExpr date, LiteralExpr month) throws AnalysisException {
         DateLiteral dateLiteral = (DateLiteral) date;

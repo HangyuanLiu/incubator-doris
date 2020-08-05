@@ -911,8 +911,22 @@ public class SelectStmt extends QueryStmt {
         // Gather the inline view substitution maps from the enclosed inline views
         for (TableRef tblRef : fromClause_) {
             if (tblRef instanceof InlineViewRef) {
-                InlineViewRef inlineViewRef = (InlineViewRef) tblRef;
-                baseTblSmap = ExprSubstitutionMap.combine(baseTblSmap, inlineViewRef.getBaseTblSmap());
+                if (!((InlineViewRef) tblRef).joinOp.isOuterJoin()) {
+                    InlineViewRef inlineViewRef = (InlineViewRef) tblRef;
+                    baseTblSmap = ExprSubstitutionMap.combine(baseTblSmap, inlineViewRef.getBaseTblSmap());
+                } else {
+                    InlineViewRef inlineViewRef = (InlineViewRef) tblRef;
+                    ExprSubstitutionMap smp = inlineViewRef.getBaseTblSmap();
+
+                    ExprSubstitutionMap newSmap = new ExprSubstitutionMap();
+                    for (int i = 0; i < smp.getLhs().size(); ++i) {
+                        if (smp.getRhs().get(i) instanceof SlotRef) {
+                            newSmap.getLhs().add(smp.getLhs().get(i));
+                            newSmap.getRhs().add(smp.getLhs().get(i));
+                        }
+                    }
+                    baseTblSmap = ExprSubstitutionMap.combine(baseTblSmap, newSmap);
+                }
             }
         }
 

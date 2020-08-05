@@ -9,6 +9,7 @@ import org.apache.doris.analysis.CaseWhenClause;
 import org.apache.doris.analysis.CastExpr;
 import org.apache.doris.analysis.CompoundPredicate;
 import org.apache.doris.analysis.DateLiteral;
+import org.apache.doris.analysis.DecimalLiteral;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.analysis.Expr;
 import org.apache.doris.analysis.FloatLiteral;
@@ -52,6 +53,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.doris.catalog.ScalarFunction.createBuiltinOperator;
 import static org.apache.doris.sql.type.StandardTypes.DATE;
+import static org.apache.doris.sql.type.StandardTypes.DECIMAL;
 import static org.apache.doris.sql.type.StandardTypes.INTERVAL_DAY_TO_SECOND;
 import static org.apache.doris.sql.type.StandardTypes.TIMESTAMP;
 
@@ -199,6 +201,9 @@ public class RowExpressionToExpr {
                         return new DateLiteral((String) node.getValue(), Type.DATE);
                     case TIMESTAMP:
                         return new DateLiteral((String) node.getValue(), Type.DATETIME);
+
+                    case DECIMAL:
+                        return new DecimalLiteral(node.getValue().toString());
                     default:
                         throw new UnsupportedOperationException("not yet implemented type : " + node.getType().getTypeSignature().getBase() + "," + node.getValue());
                 }

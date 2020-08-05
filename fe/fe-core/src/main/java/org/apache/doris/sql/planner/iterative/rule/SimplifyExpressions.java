@@ -22,6 +22,7 @@ import org.apache.doris.sql.metadata.WarningCollector;
 import org.apache.doris.sql.parser.SqlParser;
 import org.apache.doris.sql.planner.ExpressionInterpreter;
 import org.apache.doris.sql.planner.LiteralEncoder;
+import org.apache.doris.sql.planner.NoOpVariableResolver;
 import org.apache.doris.sql.planner.VariableAllocator;
 import org.apache.doris.sql.planner.iterative.Rule;
 import org.apache.doris.sql.tree.Expression;

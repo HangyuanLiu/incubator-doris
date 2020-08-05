@@ -55,6 +55,7 @@ import org.apache.doris.sql.tree.NotExpression;
 import org.apache.doris.sql.tree.NullLiteral;
 import org.apache.doris.sql.tree.QualifiedName;
 import org.apache.doris.sql.tree.QuantifiedComparisonExpression;
+import org.apache.doris.sql.tree.Row;
 import org.apache.doris.sql.tree.SimpleCaseExpression;
 import org.apache.doris.sql.tree.StringLiteral;
 import org.apache.doris.sql.tree.SubqueryExpression;
@@ -68,6 +69,7 @@ import org.apache.doris.sql.type.BigintType;
 import org.apache.doris.sql.type.DateType;
 import org.apache.doris.sql.type.IntegerType;
 import org.apache.doris.sql.type.OperatorType;
+import org.apache.doris.sql.type.RowType;
 import org.apache.doris.sql.type.TimestampType;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.type.TypeManager;
@@ -725,16 +727,18 @@ public class ExpressionInterpreter
 
             FunctionHandle functionHandle = metadata.getFunctionManager().resolveFunction(node.getName(), fromTypes(argumentTypes));
 
-
             //找函数
             ScalarType[] scalarTypes = new ScalarType[node.getArguments().size()];
             for (int i = 0;i < node.getArguments().size(); ++i) {
                 scalarTypes[i] = argumentTypes.get(i).getTypeSignature().toDorisType();
+                /*
                 if (scalarTypes[i].equals(ScalarType.DATE)) {
                     scalarTypes[i] = ScalarType.DATETIME;
                 } else if (scalarTypes[i].equals(ScalarType.BIGINT)) {
                     scalarTypes[i] = ScalarType.INT;
                 }
+
+                 */
             }
             if (ExpressionFunctions.INSTANCE.getFunction(new ExpressionFunctions.FEFunctionSignature(node.getName().toString(),
                     scalarTypes, null)) == null){
@@ -894,6 +898,38 @@ public class ExpressionInterpreter
                 }
                 throw e;
             }
+        }
+
+
+        @Override
+        protected Object visitRow(Row node, Object context)
+        {
+            return node;
+            /*
+            RowType rowType = (RowType) type(node);
+            List<Type> parameterTypes = rowType.getTypeParameters();
+            List<Expression> arguments = node.getItems();
+
+            int cardinality = arguments.size();
+            List<Object> values = new ArrayList<>(cardinality);
+            for (Expression argument : arguments) {
+                values.add(process(argument, context));
+            }
+            return new Row(toExpressions(values, parameterTypes));
+
+            if (hasUnresolvedValue(values)) {
+                return new Row(toExpressions(values, parameterTypes));
+            }
+            else {
+                BlockBuilder blockBuilder = new RowBlockBuilder(parameterTypes, null, 1);
+                BlockBuilder singleRowBlockWriter = blockBuilder.beginBlockEntry();
+                for (int i = 0; i < cardinality; ++i) {
+                    writeNativeValue(parameterTypes.get(i), singleRowBlockWriter, values.get(i));
+                }
+                blockBuilder.closeEntry();
+                return rowType.getObject(blockBuilder, 0);
+            }
+             */
         }
 
         @Override

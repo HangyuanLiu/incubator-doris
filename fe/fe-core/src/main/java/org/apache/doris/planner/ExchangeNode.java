@@ -90,7 +90,7 @@ public class ExchangeNode extends PlanNode {
 
     @Override
     public void init(Analyzer analyzer) throws UserException {
-        //super.init(analyzer);
+        super.init(analyzer);
         Preconditions.checkState(conjuncts.isEmpty());
     }
 

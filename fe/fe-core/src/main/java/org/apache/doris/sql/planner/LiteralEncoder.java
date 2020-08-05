@@ -20,7 +20,9 @@ import org.apache.doris.sql.type.DecimalType;
 import org.apache.doris.sql.type.Decimals;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.type.VarcharType;
+import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -127,6 +129,20 @@ public final class LiteralEncoder {
             }
             return new DoubleLiteral(object.toString());
         }
+
+        if (type.equals(DATE)) {
+            return new GenericLiteral("DATE", (String) object);
+        }
+        if (type instanceof DecimalType) {
+            if (object instanceof BigDecimal) {
+                String string = Decimals.toString(((BigDecimal) object).toString(), ((DecimalType) type).getScale());
+                return new DecimalLiteral(string);
+            } else {
+                return new DecimalLiteral(String.valueOf(object));
+            }
+        }
+
+
         /*
         if (type instanceof DecimalType) {
             String string;
@@ -139,29 +155,30 @@ public final class LiteralEncoder {
             return new Cast(new DecimalLiteral(string), type.getDisplayName());
         }
 
+         */
+
         if (type instanceof VarcharType) {
             VarcharType varcharType = (VarcharType) type;
-            Slice value = (Slice) object;
-            StringLiteral stringLiteral = new StringLiteral(value.toStringUtf8());
+            StringLiteral stringLiteral = new StringLiteral((String) object);
 
-            if (!varcharType.isUnbounded() && varcharType.getLengthSafe() == SliceUtf8.countCodePoints(value)) {
+            if (!varcharType.isUnbounded()) {
                 return stringLiteral;
             }
             return new Cast(stringLiteral, type.getDisplayName(), false, true);
         }
 
         if (type instanceof CharType) {
-            StringLiteral stringLiteral = new StringLiteral(((Slice) object).toStringUtf8());
+            StringLiteral stringLiteral = new StringLiteral((String) object);
             return new Cast(stringLiteral, type.getDisplayName(), false, true);
         }
 
         if (type.equals(BOOLEAN)) {
             return new BooleanLiteral(object.toString());
         }
+        /*
 
-        if (type.equals(DATE)) {
-            return new GenericLiteral("DATE", new SqlDate(toIntExact((Long) object)).toString());
-        }
+
+
 
         Signature signature = getMagicLiteralFunctionSignature(type);
         if (object instanceof Slice) {

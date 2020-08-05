@@ -72,4 +72,39 @@ public final class Decimals {
         }
         return groupValue;
     }
+
+    public static String toString(String unscaledValueString, int scale)
+    {
+        StringBuilder resultBuilder = new StringBuilder();
+        // add sign
+        if (unscaledValueString.startsWith("-")) {
+            resultBuilder.append("-");
+            unscaledValueString = unscaledValueString.substring(1);
+        }
+
+        // integral part
+        if (unscaledValueString.length() <= scale) {
+            resultBuilder.append("0");
+        }
+        else {
+            resultBuilder.append(unscaledValueString.substring(0, unscaledValueString.length() - scale));
+        }
+
+        // fractional part
+        if (scale > 0) {
+            resultBuilder.append(".");
+            if (unscaledValueString.length() < scale) {
+                // prepend zeros to fractional part if unscaled value length is shorter than scale
+                for (int i = 0; i < scale - unscaledValueString.length(); ++i) {
+                    resultBuilder.append("0");
+                }
+                resultBuilder.append(unscaledValueString);
+            }
+            else {
+                // otherwise just use scale last digits of unscaled value
+                resultBuilder.append(unscaledValueString.substring(unscaledValueString.length() - scale));
+            }
+        }
+        return resultBuilder.toString();
+    }
 }
