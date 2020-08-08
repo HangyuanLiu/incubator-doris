@@ -447,6 +447,7 @@ public class OlapScanNode extends ScanNode {
         // Step2: select best rollup
         long start = System.currentTimeMillis();
         if (olapTable.getKeysType() == KeysType.DUP_KEYS) {
+            selectedIndexId = olapTable.getBaseIndexId();
             LOG.debug("The best index will be selected later in mv selector");
             return;
         }

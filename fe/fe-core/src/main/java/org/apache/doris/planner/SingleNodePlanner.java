@@ -1022,6 +1022,8 @@ public class SingleNodePlanner {
                 }
                 unionNode.setTblRefIds(Lists.newArrayList(inlineViewRef.getId()));
                 unionNode.addConstExprList(selectStmt.getBaseTblResultExprs());
+                //set outputSmap to substitute literal in outputExpr
+                unionNode.setOutputSmap(inlineViewRef.getSmap());
                 unionNode.init(analyzer);
                 return unionNode;
             }
@@ -2034,6 +2036,9 @@ public class SingleNodePlanner {
                 Expr sourceExpr = slotDesc.getSourceExprs().get(0);
                 // if grouping set is given and column is not in all grouping set list
                 // we cannot push the predicate since the column value can be null
+                if (stmt.getGroupByClause() == null) {
+                    continue;
+                }
                 if (stmt.getGroupByClause().isGroupByExtension()
                         && stmt.getGroupByClause().getGroupingExprs().contains(sourceExpr)) {
                     // if grouping type is CUBE or ROLLUP will definitely produce null
