@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 package org.apache.doris.sql.type;
-/*
+
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Shorts;
 import com.google.common.primitives.SignedBytes;
@@ -240,10 +240,9 @@ public final class BigintOperators
     }
 
     @ScalarOperator(CAST)
-    @SqlType(StandardTypes.REAL)
-    public static long castToReal(@SqlType(StandardTypes.BIGINT) long value)
-    {
-        return (long) floatToRawIntBits((float) value);
+    @SqlType(StandardTypes.DECIMAL)
+    public static String castToDecimal(@SqlType(StandardTypes.DECIMAL) long value) {
+        return String.valueOf(value);
     }
 
     @ScalarOperator(CAST)
@@ -253,6 +252,7 @@ public final class BigintOperators
     {
         return String.valueOf(value);
     }
+
     /*
     @ScalarOperator(HASH_CODE)
     @SqlType(StandardTypes.BIGINT)
@@ -262,4 +262,4 @@ public final class BigintOperators
     }
 
      */
-//}
+}

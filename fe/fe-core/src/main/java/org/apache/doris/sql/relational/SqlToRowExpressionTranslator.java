@@ -107,6 +107,7 @@ import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 import static org.apache.doris.sql.type.DoubleType.DOUBLE;
 import static org.apache.doris.sql.type.IntegerType.INTEGER;
 import static org.apache.doris.sql.type.OperatorType.BETWEEN;
+import static org.apache.doris.sql.type.OperatorType.CAST;
 import static org.apache.doris.sql.type.OperatorType.EQUAL;
 import static org.apache.doris.sql.type.OperatorType.GREATER_THAN;
 import static org.apache.doris.sql.type.OperatorType.LESS_THAN;
@@ -254,7 +255,7 @@ public final class SqlToRowExpressionTranslator
             }
 
             return call(
-                    "CAST",
+                    CAST.name(),
                     functionManager.lookupCast(VARCHAR.getTypeSignature(), getType(node).getTypeSignature()),
                     getType(node),
                     constant(node.getValue(), VARCHAR));

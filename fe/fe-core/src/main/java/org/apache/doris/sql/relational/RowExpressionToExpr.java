@@ -39,6 +39,7 @@ import org.apache.doris.sql.relation.RowExpressionVisitor;
 import org.apache.doris.sql.relation.SpecialFormExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.DoubleLiteral;
+import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.StandardTypes;
 import org.apache.doris.sql.type.TypeSignature;
 import org.apache.doris.thrift.TExprOpcode;
@@ -146,7 +147,7 @@ public class RowExpressionToExpr {
                 default:
                     List<Expr> arg = node.getArguments().stream().map(expr -> formatRowExpression(expr, context)).collect(Collectors.toList());
                     FunctionHandle fnHandle = node.getFunctionHandle();
-                    if (fnName.startsWith("castto")) {
+                    if (fnName.equalsIgnoreCase(OperatorType.CAST.name())) {
                         callExpr = new CastExpr(fnHandle.getReturnType().toDorisType(), formatRowExpression(node.getArguments().get(0), context));
                     } else if (fnName.equalsIgnoreCase("not")) {
                         callExpr = new CompoundPredicate(CompoundPredicate.Operator.NOT, formatRowExpression(node.getArguments().get(0), context), null);
@@ -185,7 +186,8 @@ public class RowExpressionToExpr {
                     case INTERVAL_DAY_TO_SECOND:
                     case StandardTypes.BIGINT:
                         return new IntLiteral((long) node.getValue(), Type.BIGINT);
-                    case "varchar":
+                    case StandardTypes.CHAR:
+                    case StandardTypes.VARCHAR:
                         return new StringLiteral((String) node.getValue());
                     case StandardTypes.BOOLEAN:
                         return new BoolLiteral((Boolean) node.getValue());
@@ -201,7 +203,6 @@ public class RowExpressionToExpr {
                         return new DateLiteral((String) node.getValue(), Type.DATE);
                     case TIMESTAMP:
                         return new DateLiteral((String) node.getValue(), Type.DATETIME);
-
                     case DECIMAL:
                         return new DecimalLiteral(node.getValue().toString());
                     default:

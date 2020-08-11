@@ -152,6 +152,20 @@ public final class TypeRegistry
             return false;
         }
 
+        if (source instanceof VarcharType && result instanceof VarcharType) {
+            return true;
+        }
+        /*
+        if (source instanceof DecimalType && result instanceof DecimalType) {
+            DecimalType sourceDecimal = (DecimalType) source;
+            DecimalType resultDecimal = (DecimalType) result;
+            boolean sameDecimalSubtype = (sourceDecimal.isShort() && resultDecimal.isShort())
+                    || (!sourceDecimal.isShort() && !resultDecimal.isShort());
+            boolean sameScale = sourceDecimal.getScale() == resultDecimal.getScale();
+            boolean sourcePrecisionIsLessOrEqualToResultPrecision = sourceDecimal.getPrecision() <= resultDecimal.getPrecision();
+            return sameDecimalSubtype && sameScale && sourcePrecisionIsLessOrEqualToResultPrecision;
+        }
+        */
         return false;
     }
 
@@ -375,7 +389,6 @@ public final class TypeRegistry
     public MethodHandle resolveOperator(OperatorType operatorType, List<? extends Type> argumentTypes) {
         return null;
     }
-
 
     public static class TypeCompatibility
     {

@@ -53,6 +53,12 @@ public class FunctionManager
                     functionHandle.getArgumentTypes(),
                     functionHandle.getReturnType(),
                     functionHandle.getFunctionKind(), OperatorType.EQUAL);
+        } else if (functionHandle.getFunctionName().equalsIgnoreCase("cast")) {
+            return new FunctionMetadata(
+                    new QualifiedFunctionName(null, functionHandle.getFunctionName()),
+                    functionHandle.getArgumentTypes(),
+                    functionHandle.getReturnType(),
+                    functionHandle.getFunctionKind(), OperatorType.CAST);
         }
 
         return new FunctionMetadata(
@@ -198,21 +204,14 @@ public class FunctionManager
                 null, arguments, FunctionHandle.FunctionKind.SCALAR, null);
     }
 
-    public FunctionHandle lookupCast(TypeSignature fromType, TypeSignature toType)
-    {
-        org.apache.doris.catalog.Type dorisToType = toType.toDorisType();
-        org.apache.doris.catalog.Type dorisFromType = fromType.toDorisType();
-        if (dorisToType.isNativeType() && dorisFromType.isNativeType()) {
-
-        }
-
+    public FunctionHandle lookupCast(TypeSignature fromType, TypeSignature toType) {
         Function searchDesc = new Function(new FunctionName("castto" + toType.toDorisType().getPrimitiveType().toString()),
                 Lists.newArrayList(fromType.toDorisType()),
                 org.apache.doris.catalog.Type.INVALID, false);
 
         Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
 
-        return new FunctionHandle("castto" + toType.toDorisType().toString(),
+        return new FunctionHandle(OperatorType.CAST.name(),
                 TypeSignature.create(fn.getReturnType()),
                 null,
                 Lists.newArrayList(fromType), FunctionHandle.FunctionKind.SCALAR, fn);

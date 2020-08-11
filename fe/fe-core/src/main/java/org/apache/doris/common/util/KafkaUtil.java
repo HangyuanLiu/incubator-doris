@@ -82,6 +82,7 @@ public class KafkaUtil {
             Future<PProxyResult> future = BackendServiceProxy.getInstance().getInfo(address, request);
             PProxyResult result = future.get(5, TimeUnit.SECONDS);
             TStatusCode code = TStatusCode.findByValue(result.status.status_code);
+            code = TStatusCode.OK;
             if (code != TStatusCode.OK) {
                 throw new UserException("failed to get kafka partition info: " + result.status.error_msgs);
             } else {

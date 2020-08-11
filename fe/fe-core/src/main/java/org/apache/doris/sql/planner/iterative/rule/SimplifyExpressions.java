@@ -54,9 +54,9 @@ public class SimplifyExpressions
         expression = extractCommonPredicates(expression);
         Map<NodeRef<Expression>, Type> expressionTypes = getExpressionTypes(session, metadata, sqlParser, variableAllocator.getTypes(), expression, emptyList(), WarningCollector.NOOP);
         //FIXME
-        //ExpressionInterpreter interpreter = ExpressionInterpreter.expressionOptimizer(expression, metadata, session, expressionTypes);
-        //return literalEncoder.toExpression(interpreter.optimize(NoOpVariableResolver.INSTANCE), expressionTypes.get(NodeRef.of(expression)));
-        return expression;
+        ExpressionInterpreter interpreter = ExpressionInterpreter.expressionOptimizer(expression, metadata, session, expressionTypes);
+        return literalEncoder.toExpression(interpreter.optimize(NoOpVariableResolver.INSTANCE), expressionTypes.get(NodeRef.of(expression)));
+        //return expression;
     }
 
     public SimplifyExpressions(Metadata metadata, SqlParser sqlParser)

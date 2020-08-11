@@ -12,8 +12,9 @@ import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
-public class ParametricScalarImplementation
-        implements ParametricImplementation {
+public class ParametricScalarImplementation {
+        //implements ParametricImplementation {
+    /*
     private final Signature signature;
     private final List<Optional<Class<?>>> argumentNativeContainerTypes; // argument native container type is Optional.empty() for function type
     private final Map<String, Class<?>> specializedTypeParameters;
@@ -79,4 +80,6 @@ public class ParametricScalarImplementation
             return new Parser(header, method, constructor).get();
         }
     }
+
+     */
 }

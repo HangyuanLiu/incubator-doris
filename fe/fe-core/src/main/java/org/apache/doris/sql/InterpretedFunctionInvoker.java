@@ -9,6 +9,7 @@ import org.apache.doris.analysis.LiteralExpr;
 import org.apache.doris.analysis.StringLiteral;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Function;
+import org.apache.doris.common.AnalysisException;
 import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.FunctionManager;
 import org.apache.doris.sql.planner.LiteralEncoder;
@@ -44,9 +45,21 @@ public class InterpretedFunctionInvoker {
     }
 
     public Object invoke(FunctionHandle functionHandle, List<Object> arguments) {
+        try {
+            return FunctionInvoker.INSTANCE.invoke(
+                    new FunctionInvoker.Signature(functionHandle.getFunctionName(),
+                            functionHandle.getArgumentTypes(),
+                            functionHandle.getReturnType()),
+                    arguments);
+        } catch (AnalysisException ex) {
+            ex.printStackTrace();
+            return null;
+        }
+
         //FIXME
+                    /*
         if (functionHandle.getFunctionName().startsWith("cast")) {
-            /*
+
             Expr literal = RowExpressionToExpr.formatRowExpression(
                     new ConstantExpression(arguments.get(0), typeManager.getType(functionHandle.getArgumentTypes().get(0))), null);
             try {
@@ -63,7 +76,7 @@ public class InterpretedFunctionInvoker {
             }
             return ((LiteralExpr) literal).getRealValue();
 
-             */
+
             if (arguments.get(0) instanceof java.lang.Boolean) {
                 if (((java.lang.Boolean)arguments.get(0)).equals(java.lang.Boolean.TRUE)) {
                     return 1;
@@ -113,5 +126,6 @@ public class InterpretedFunctionInvoker {
             ex.printStackTrace();
             return null;
         }
+                     */
     }
 }

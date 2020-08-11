@@ -15,6 +15,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public final class ScalarFromAnnotationsParser {
+    /*
     private ScalarFromAnnotationsParser() {
     }
 
@@ -126,4 +127,6 @@ public final class ScalarFromAnnotationsParser {
             return methods;
         }
     }
+
+     */
 }

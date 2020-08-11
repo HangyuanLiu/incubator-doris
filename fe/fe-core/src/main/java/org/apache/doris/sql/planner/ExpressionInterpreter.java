@@ -56,6 +56,7 @@ import org.apache.doris.sql.tree.NullLiteral;
 import org.apache.doris.sql.tree.QualifiedName;
 import org.apache.doris.sql.tree.QuantifiedComparisonExpression;
 import org.apache.doris.sql.tree.Row;
+import org.apache.doris.sql.tree.SearchedCaseExpression;
 import org.apache.doris.sql.tree.SimpleCaseExpression;
 import org.apache.doris.sql.tree.StringLiteral;
 import org.apache.doris.sql.tree.SubqueryExpression;
@@ -304,6 +305,37 @@ public class ExpressionInterpreter
             return value != null;
         }
 
+        @Override
+        protected Object visitSearchedCaseExpression(SearchedCaseExpression node, Object context)
+        {
+            Object defaultResult = processWithExceptionHandling(node.getDefaultValue().orElse(null), context);
+
+            List<WhenClause> whenClauses = new ArrayList<>();
+            for (WhenClause whenClause : node.getWhenClauses()) {
+                Object whenOperand = processWithExceptionHandling(whenClause.getOperand(), context);
+                Object result = processWithExceptionHandling(whenClause.getResult(), context);
+
+                if (whenOperand instanceof Expression) {
+                    // cannot fully evaluate, add updated whenClause
+                    whenClauses.add(new WhenClause(
+                            toExpression(whenOperand, type(whenClause.getOperand())),
+                            toExpression(result, type(whenClause.getResult()))));
+                }
+                else if (Boolean.TRUE.equals(whenOperand)) {
+                    // condition is true, use this as defaultResult
+                    defaultResult = result;
+                    break;
+                }
+            }
+
+            if (whenClauses.isEmpty()) {
+                return defaultResult;
+            }
+
+            Expression resultExpression = (defaultResult == null) ? null : toExpression(defaultResult, type(node));
+            return new SearchedCaseExpression(whenClauses, Optional.ofNullable(resultExpression));
+        }
+
         private Object processWithExceptionHandling(Expression expression, Object context)
         {
             if (expression == null) {
@@ -422,7 +454,7 @@ public class ExpressionInterpreter
             }
             return new CoalesceExpression(expressions);
         }
-        /*
+
         @Override
         protected Object visitInPredicate(InPredicate node, Object context)
         {
@@ -440,7 +472,7 @@ public class ExpressionInterpreter
             if (value == null) {
                 return null;
             }
-
+            /*
             Set<?> set = inListCache.get(valueList);
 
             // We use the presence of the node in the map to indicate that we've already done
@@ -458,7 +490,7 @@ public class ExpressionInterpreter
             if (set != null && !(value instanceof Expression)) {
                 return set.contains(value);
             }
-
+            */
             boolean hasUnresolvedValue = false;
             if (value instanceof Expression) {
                 hasUnresolvedValue = true;
@@ -512,7 +544,7 @@ public class ExpressionInterpreter
             }
             return false;
         }
-        */
+
         @Override
         protected Object visitExists(ExistsPredicate node, Object context)
         {
@@ -724,36 +756,29 @@ public class ExpressionInterpreter
                 argumentValues.add(value);
                 argumentTypes.add(type);
             }
-
             FunctionHandle functionHandle = metadata.getFunctionManager().resolveFunction(node.getName(), fromTypes(argumentTypes));
-
-            //找函数
-            ScalarType[] scalarTypes = new ScalarType[node.getArguments().size()];
-            for (int i = 0;i < node.getArguments().size(); ++i) {
-                scalarTypes[i] = argumentTypes.get(i).getTypeSignature().toDorisType();
-                /*
-                if (scalarTypes[i].equals(ScalarType.DATE)) {
-                    scalarTypes[i] = ScalarType.DATETIME;
-                } else if (scalarTypes[i].equals(ScalarType.BIGINT)) {
-                    scalarTypes[i] = ScalarType.INT;
+            FunctionMetadata functionMetadata = metadata.getFunctionManager().getFunctionMetadata(functionHandle);
+            /*
+            if (!functionMetadata.isCalledOnNullInput()) {
+                for (int i = 0; i < argumentValues.size(); i++) {
+                    Object value = argumentValues.get(i);
+                    if (value == null) {
+                        return null;
+                    }
                 }
-
-                 */
             }
-            if (ExpressionFunctions.INSTANCE.getFunction(new ExpressionFunctions.FEFunctionSignature(node.getName().toString(),
-                    scalarTypes, null)) == null){
-                return node;
+             */
+
+            // do not optimize non-deterministic functions
+            if (optimize && (!functionMetadata.isDeterministic() || hasUnresolvedValue(argumentValues) || node.getName().equals(QualifiedName.of("fail")))) {
+                return new FunctionCall(node.getName(), node.getWindow(), node.isDistinct(), node.isIgnoreNulls(), toExpressions(argumentValues, argumentTypes));
             }
 
             Object result;
             result = functionInvoker.invoke(functionHandle, argumentValues);
-            if (optimize && !isSerializable(result, type(node))) {
-                return new FunctionCall(node.getName(), node.getWindow(), node.isDistinct(), node.isIgnoreNulls(), toExpressions(argumentValues, argumentTypes));
-            }
             return result;
         }
 
-        /*
         @Override
         protected Object visitLikePredicate(LikePredicate node, Object context)
         {
@@ -762,13 +787,15 @@ public class ExpressionInterpreter
             if (value == null) {
                 return null;
             }
-
+            /*
             if (value instanceof Slice &&
                     node.getPattern() instanceof StringLiteral &&
                     (!node.getEscape().isPresent() || node.getEscape().get() instanceof StringLiteral)) {
                 // fast path when we know the pattern and escape are constant
                 return interpretLikePredicate(type(node.getValue()), (Slice) value, getConstantPattern(node));
             }
+
+             */
 
             Object pattern = process(node.getPattern(), context);
 
@@ -784,7 +811,7 @@ public class ExpressionInterpreter
                     return null;
                 }
             }
-
+            /*
             if (value instanceof Slice &&
                     pattern instanceof Slice &&
                     (escape == null || escape instanceof Slice)) {
@@ -798,7 +825,8 @@ public class ExpressionInterpreter
 
                 return interpretLikePredicate(type(node.getValue()), (Slice) value, regex);
             }
-
+            */
+            /*
             // if pattern is a constant without % or _ replace with a comparison
             if (pattern instanceof Slice && (escape == null || escape instanceof Slice) && !isLikePattern((Slice) pattern, (Slice) escape)) {
                 Slice unescapedPattern = unescapeLiteralLikePattern((Slice) pattern, (Slice) escape);
@@ -818,7 +846,7 @@ public class ExpressionInterpreter
                 }
                 return new ComparisonExpression(ComparisonExpression.Operator.EQUAL, valueExpression, patternExpression);
             }
-
+            */
             Optional<Expression> optimizedEscape = Optional.empty();
             if (node.getEscape().isPresent()) {
                 optimizedEscape = Optional.of(toExpression(escape, type(node.getEscape().get())));
@@ -829,7 +857,7 @@ public class ExpressionInterpreter
                     toExpression(pattern, type(node.getPattern())),
                     optimizedEscape);
         }
-
+        /*
         private Regex getConstantPattern(LikePredicate node)
         {
             Regex result = likePatternCache.get(node);
@@ -851,7 +879,6 @@ public class ExpressionInterpreter
             return result;
         }
         */
-
         @Override
         public Object visitCast(Cast node, Object context)
         {

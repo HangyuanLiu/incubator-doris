@@ -56,11 +56,12 @@ final class StatsUtil
 
             return OptionalDouble.of((double) functionInvoker.invoke(cast, singletonList(value)));
         }
-
+        //FIXME
+        /*
         if (DateType.DATE.equals(type)) {
             return OptionalDouble.of(((Long) value).doubleValue());
         }
-
+        */
         return OptionalDouble.empty();
     }
 

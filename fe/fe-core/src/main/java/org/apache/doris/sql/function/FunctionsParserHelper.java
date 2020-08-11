@@ -56,6 +56,7 @@ import static org.apache.doris.sql.type.OperatorType.EQUAL;
 
 public class FunctionsParserHelper
 {
+    /*
     private static final Set<OperatorType> COMPARABLE_TYPE_OPERATORS = ImmutableSet.of(EQUAL, NOT_EQUAL, HASH_CODE);
     private static final Set<OperatorType> ORDERABLE_TYPE_OPERATORS = ImmutableSet.of(LESS_THAN, LESS_THAN_OR_EQUAL, GREATER_THAN, GREATER_THAN_OR_EQUAL, BETWEEN);
 
@@ -264,4 +265,6 @@ public class FunctionsParserHelper
         }
         return specializedTypeParameters;
     }
+
+     */
 }

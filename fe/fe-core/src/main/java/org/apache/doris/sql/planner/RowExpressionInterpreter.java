@@ -13,6 +13,7 @@
  */
 package org.apache.doris.sql.planner;
 
+import org.apache.doris.sql.InterpretedFunctionInvoker;
 import org.apache.doris.sql.metadata.ConnectorSession;
 import org.apache.doris.sql.metadata.FunctionHandle;
 import org.apache.doris.sql.metadata.FunctionManager;
@@ -44,7 +45,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.doris.sql.analyzer.TypeSignatureProvider.fromTypes;
+import static org.apache.doris.sql.planner.LiteralEncoder.isSupportedLiteralType;
 import static org.apache.doris.sql.planner.RowExpressionInterpreter.SpecialCallResult.changed;
 import static org.apache.doris.sql.planner.RowExpressionInterpreter.SpecialCallResult.notChanged;
 import static org.apache.doris.sql.relation.ExpressionOptimizer.Level;
@@ -75,6 +78,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.doris.sql.relational.Expressions.call;
 import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
+import static org.apache.doris.sql.type.OperatorType.CAST;
 import static org.apache.doris.sql.type.OperatorType.EQUAL;
 
 public class RowExpressionInterpreter
@@ -84,7 +88,7 @@ public class RowExpressionInterpreter
     private final Metadata metadata;
     private final ConnectorSession session;
     private final Level optimizationLevel;
-    //private final InterpretedFunctionInvoker functionInvoker;
+    private final InterpretedFunctionInvoker functionInvoker;
     private final RowExpressionDeterminismEvaluator determinismEvaluator;
     private final FunctionManager functionManager;
     private final FunctionResolution resolution;
@@ -110,7 +114,7 @@ public class RowExpressionInterpreter
         this.metadata = requireNonNull(metadata, "metadata is null");
         this.session = requireNonNull(session, "session is null");
         this.optimizationLevel = optimizationLevel;
-        //this.functionInvoker = new InterpretedFunctionInvoker(metadata.getFunctionManager());
+        this.functionInvoker = new InterpretedFunctionInvoker(metadata.getFunctionManager());
         this.determinismEvaluator = new RowExpressionDeterminismEvaluator(metadata.getFunctionManager());
         this.resolution = new FunctionResolution(metadata.getFunctionManager());
         this.functionManager = metadata.getFunctionManager();
@@ -168,20 +172,130 @@ public class RowExpressionInterpreter
         @Override
         public Object visitCall(CallExpression node, Object context)
         {
-            if (node.getDisplayName().equalsIgnoreCase("casttovarchar(*)") &&
+
+            if (node.getDisplayName().equalsIgnoreCase(CAST.name()) &&
                 node.getArguments().get(0) instanceof SpecialFormExpression) {
                 SpecialFormExpression expression = (SpecialFormExpression) node.getArguments().get(0);
                 if (expression.getForm().equals(ROW_CONSTRUCTOR)) {
                     return expression.getArguments().get(0).toString();
                 }
             }
-            return node;
+
+            List<Type> argumentTypes = new ArrayList<>();
+            List<Object> argumentValues = new ArrayList<>();
+            for (RowExpression expression : node.getArguments()) {
+                Object value = expression.accept(this, context);
+                argumentValues.add(value);
+                argumentTypes.add(expression.getType());
+            }
+
+            FunctionHandle functionHandle = node.getFunctionHandle();
+            FunctionMetadata functionMetadata = metadata.getFunctionManager().getFunctionMetadata(node.getFunctionHandle());
+            /* FIXME
+            if (!functionMetadata.isCalledOnNullInput()) {
+                for (Object value : argumentValues) {
+                    if (value == null) {
+                        return null;
+                    }
+                }
+            }
+            */
+            // Special casing for cast
+            if (resolution.isCastFunction(functionHandle)) {
+                SpecialCallResult result = tryHandleCast(node, argumentValues);
+                if (result.isChanged()) {
+                    return result.getValue();
+                }
+            }
+
+            // Special casing for like
+            /*
+            if (resolution.isLikeFunction(functionHandle)) {
+                SpecialCallResult result = tryHandleLike(node, argumentValues, argumentTypes, context);
+                if (result.isChanged()) {
+                    return result.getValue();
+                }
+            }
+            */
+            if (functionMetadata.getFunctionKind() != FunctionHandle.FunctionKind.SCALAR) {
+                return call(node.getDisplayName(), functionHandle, node.getType(), toRowExpressions(argumentValues, node.getArguments()));
+            }
+
+            // do not optimize non-deterministic functions
+            if (optimizationLevel.ordinal() < EVALUATED.ordinal() &&
+                    (!functionMetadata.isDeterministic() || hasUnresolvedValue(argumentValues) || resolution.isFailFunction(functionHandle))) {
+                return call(node.getDisplayName(), functionHandle, node.getType(), toRowExpressions(argumentValues, node.getArguments()));
+            }
+
+            Object value;
+            value = functionInvoker.invoke(functionHandle, argumentValues);
+
+            if (optimizationLevel.ordinal() <= SERIALIZABLE.ordinal() && !isSerializable(value, node.getType())) {
+                return call(node.getDisplayName(), functionHandle, node.getType(), toRowExpressions(argumentValues, node.getArguments()));
+            }
+            return value;
         }
 
         @Override
-        public Object visitSpecialForm(SpecialFormExpression node, Object context)
-        {
+        public Object visitSpecialForm(SpecialFormExpression node, Object context) {
             switch (node.getForm()) {
+                case IF: {
+                    checkArgument(node.getArguments().size() == 3);
+                    Object condition = processWithExceptionHandling(node.getArguments().get(0), context);
+
+                    if (condition instanceof RowExpression) {
+                        return new SpecialFormExpression(
+                                IF,
+                                node.getType(),
+                                toRowExpression(condition, node.getArguments().get(0)),
+                                toRowExpression(processWithExceptionHandling(node.getArguments().get(1), context), node.getArguments().get(1)),
+                                toRowExpression(processWithExceptionHandling(node.getArguments().get(2), context), node.getArguments().get(2)));
+                    }
+                    else if (Boolean.TRUE.equals(condition)) {
+                        return processWithExceptionHandling(node.getArguments().get(1), context);
+                    }
+
+                    return processWithExceptionHandling(node.getArguments().get(2), context);
+                }
+                case NULL_IF: {
+                    checkArgument(node.getArguments().size() == 2);
+                    Object left = processWithExceptionHandling(node.getArguments().get(0), context);
+                    if (left == null) {
+                        return null;
+                    }
+
+                    Object right = processWithExceptionHandling(node.getArguments().get(1), context);
+                    if (right == null) {
+                        return left;
+                    }
+
+                    if (hasUnresolvedValue(left, right)) {
+                        return new SpecialFormExpression(
+                                NULL_IF,
+                                node.getType(),
+                                toRowExpression(left, node.getArguments().get(0)),
+                                toRowExpression(right, node.getArguments().get(1)));
+                    }
+
+                    Type leftType = node.getArguments().get(0).getType();
+                    Type rightType = node.getArguments().get(1).getType();
+                    Type commonType = metadata.getTypeManager().getCommonSuperType(leftType, rightType).get();
+                    FunctionHandle firstCast = metadata.getFunctionManager().lookupCast(leftType.getTypeSignature(), commonType.getTypeSignature());
+                    FunctionHandle secondCast = metadata.getFunctionManager().lookupCast(rightType.getTypeSignature(), commonType.getTypeSignature());
+
+                    // cast(first as <common type>) == cast(second as <common type>)
+                    boolean equal = Boolean.TRUE.equals(invokeOperator(
+                            EQUAL,
+                            ImmutableList.of(commonType, commonType),
+                            ImmutableList.of(
+                                    functionInvoker.invoke(firstCast, left),
+                                    functionInvoker.invoke(secondCast, right))));
+
+                    if (equal) {
+                        return null;
+                    }
+                    return left;
+                }
                 case IS_NULL: {
                     checkArgument(node.getArguments().size() == 1);
                     Object value = processWithExceptionHandling(node.getArguments().get(0), context);
@@ -265,7 +379,17 @@ public class RowExpressionInterpreter
                         return new SpecialFormExpression(ROW_CONSTRUCTOR, node.getType(), toRowExpressions(values, node.getArguments()));
                     }
                     else {
+                        //FIXME
                         return null;
+                        /*
+                        BlockBuilder blockBuilder = new RowBlockBuilder(parameterTypes, null, 1);
+                        BlockBuilder singleRowBlockWriter = blockBuilder.beginBlockEntry();
+                        for (int i = 0; i < cardinality; ++i) {
+                            writeNativeValue(parameterTypes.get(i), singleRowBlockWriter, values.get(i));
+                        }
+                        blockBuilder.closeEntry();
+                        return rowType.getObject(blockBuilder, 0);
+                         */
                     }
                 }
                 case COALESCE: {
@@ -312,7 +436,7 @@ public class RowExpressionInterpreter
                     // use toList to handle null values
                     List<RowExpression> valueExpressions = node.getArguments().subList(1, node.getArguments().size());
                     List<Object> values = valueExpressions.stream().map(value -> value.accept(this, context)).collect(toList());
-                    List<Type> valuesTypes = valueExpressions.stream().map(RowExpression::getType).collect(Collectors.toList());
+                    List<Type> valuesTypes = valueExpressions.stream().map(RowExpression::getType).collect(toImmutableList());
                     Object target = node.getArguments().get(0).accept(this, context);
                     Type targetType = node.getArguments().get(0).getType();
 
@@ -361,7 +485,7 @@ public class RowExpressionInterpreter
                                         Stream.of(toRowExpression(target, node.getArguments().get(0))),
                                         unresolvedValues.stream().filter(determinismEvaluator::isDeterministic).distinct()),
                                 unresolvedValues.stream().filter((expression -> !determinismEvaluator.isDeterministic(expression))))
-                                .collect(Collectors.toList());
+                                .collect(toImmutableList());
                         return new SpecialFormExpression(IN, node.getType(), simplifiedExpressionValues);
                     }
                     if (hasNullValue) {
@@ -373,7 +497,7 @@ public class RowExpressionInterpreter
                     List<Object> values = node.getArguments()
                             .stream()
                             .map(value -> value.accept(this, context))
-                            .collect(Collectors.toList());
+                            .collect(toImmutableList());
                     if (hasUnresolvedValue(values)) {
                         return new SpecialFormExpression(
                                 BIND,
@@ -475,9 +599,8 @@ public class RowExpressionInterpreter
 
         private Object invokeOperator(OperatorType operatorType, List<? extends Type> argumentTypes, List<Object> argumentValues)
         {
-            //FunctionHandle operatorHandle = metadata.getFunctionManager().resolveOperator(operatorType, fromTypes(argumentTypes));
-            //return functionInvoker.invoke(operatorHandle, session.getSqlFunctionProperties(), argumentValues);
-            return null;
+            FunctionHandle operatorHandle = metadata.getFunctionManager().resolveOperator(operatorType, fromTypes(argumentTypes));
+            return functionInvoker.invoke(operatorHandle, argumentValues);
         }
 
         private List<RowExpression> toRowExpressions(List<Object> values, List<RowExpression> unchangedValues)
@@ -508,7 +631,40 @@ public class RowExpressionInterpreter
         {
             // If value is already RowExpression, constant values contained inside should already have been made serializable. Otherwise, we make sure the object is small and serializable.
             //return value instanceof RowExpression || (isSupportedLiteralType(type) && estimatedSizeInBytes(value) <= MAX_SERIALIZABLE_OBJECT_SIZE);
-            return false;
+            return true;
+        }
+
+        private SpecialCallResult tryHandleCast(CallExpression callExpression, List<Object> argumentValues)
+        {
+            checkArgument(resolution.isCastFunction(callExpression.getFunctionHandle()));
+            checkArgument(callExpression.getArguments().size() == 1);
+            RowExpression source = callExpression.getArguments().get(0);
+            Type sourceType = source.getType();
+            Type targetType = callExpression.getType();
+
+            Object value = argumentValues.get(0);
+
+            if (value == null) {
+                return changed(null);
+            }
+
+            if (value instanceof RowExpression) {
+                if (sourceType.equals(targetType)) {
+                    return changed(value);
+                }
+                return changed(call(callExpression.getDisplayName(), callExpression.getFunctionHandle(), callExpression.getType(), toRowExpression(value, source)));
+            }
+
+            // TODO: still there is limitation for RowExpression. Example types could be Regex
+            if (optimizationLevel.ordinal() <= SERIALIZABLE.ordinal() && !isSupportedLiteralType(targetType)) {
+                // Otherwise, cast will be evaluated through invoke later and generates unserializable constant expression.
+                return changed(call(callExpression.getDisplayName(), callExpression.getFunctionHandle(), callExpression.getType(), toRowExpression(value, source)));
+            }
+
+            if (metadata.getTypeManager().isTypeOnlyCoercion(sourceType, targetType)) {
+                return changed(value);
+            }
+            return notChanged();
         }
     }
 

@@ -8,13 +8,13 @@ public class FunctionListBuilder {
 
     public FunctionListBuilder scalar(Class<?> clazz)
     {
-        functions.addAll(ScalarFromAnnotationsParser.parseFunctionDefinition(clazz));
+        //functions.addAll(ScalarFromAnnotationsParser.parseFunctionDefinition(clazz));
         return this;
     }
 
     public FunctionListBuilder scalars(Class<?> clazz)
     {
-        functions.addAll(ScalarFromAnnotationsParser.parseFunctionDefinitions(clazz));
+        //functions.addAll(ScalarFromAnnotationsParser.parseFunctionDefinitions(clazz));
         return this;
     }
 }

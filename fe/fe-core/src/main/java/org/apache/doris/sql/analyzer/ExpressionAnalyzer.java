@@ -385,6 +385,13 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitCharLiteral(CharLiteral node, StackableAstVisitorContext<Context> context)
+        {
+            CharType type = CharType.createCharType(node.getValue().length());
+            return setExpressionType(node, type);
+        }
+
+        @Override
         protected Type visitLongLiteral(LongLiteral node, StackableAstVisitorContext<Context> context)
         {
             //FIXME
@@ -420,7 +427,6 @@ public class ExpressionAnalyzer
         {
             Type type;
             try {
-                //type = typeManager.getType(parseTypeSignature(node.getType()));
                 type = typeManager.getType(new TypeSignature(node.getType()));
             }
             catch (IllegalArgumentException e) {
@@ -719,6 +725,7 @@ public class ExpressionAnalyzer
                     throw new SemanticException(TYPE_MISMATCH, node, "DISTINCT can only be applied to comparable types (actual: %s)", expectedType);
                 }
                 /*
+                //FIXME
                 if (argumentTypes.get(i).hasDependency()) {
                     FunctionType expectedFunctionType = (FunctionType) expectedType;
                     process(expression, new StackableAstVisitorContext<>(context.getContext().expectingLambda(expectedFunctionType.getArgumentTypes())));

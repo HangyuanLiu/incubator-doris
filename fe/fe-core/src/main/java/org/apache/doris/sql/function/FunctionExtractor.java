@@ -36,7 +36,7 @@ public final class FunctionExtractor
     public static List<? extends SqlFunction> extractFunctions(Class<?> clazz)
     {
         if (clazz.isAnnotationPresent(ScalarOperator.class)) {
-            return ScalarFromAnnotationsParser.parseFunctionDefinition(clazz);
+            //return ScalarFromAnnotationsParser.parseFunctionDefinition(clazz);
         }
         return null;
     }
