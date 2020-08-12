@@ -997,6 +997,8 @@ public class FunctionSet {
                     "_ZN5doris12HllFunctions12hll_finalizeEPN9doris_udf15FunctionContextERKNS1_9StringValE",
                     true, false, true));
 
+            //APPROX_COUNT_DISTINCT
+            //alias of ndv, compute approx count distinct use HyperLogLog
             addBuiltin(AggregateFunction.createBuiltin("approx_count_distinct",
                     Lists.newArrayList(t), Type.BIGINT, Type.VARCHAR,
                     "_ZN5doris12HllFunctions8hll_initEPN9doris_udf15FunctionContextEPNS1_9StringValE",

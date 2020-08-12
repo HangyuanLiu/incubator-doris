@@ -17,6 +17,7 @@
 
 package org.apache.doris.qe;
 
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.doris.analysis.Analyzer;
 import org.apache.doris.analysis.DescriptorTable;
 import org.apache.doris.catalog.Catalog;
@@ -1003,7 +1004,9 @@ public class Coordinator {
             }
 
             //for ColocateJoin fragment
-            if (bucketSeqToAddress.size() > 0 && isColocateJoin(fragment.getPlanRoot())) {
+            if (isColocateJoin(fragment.getPlanRoot()) && fragmentIdToSeqToAddressMap.containsKey(fragment.getFragmentId())
+                    && fragmentIdToSeqToAddressMap.get(fragment.getFragmentId()).size() > 0) {
+                Map<Integer, TNetworkAddress> bucketSeqToAddress = fragmentIdToSeqToAddressMap.get(fragment.getFragmentId());
                 for (Map.Entry<Integer, Map<Integer, List<TScanRangeParams>>> scanRanges : bucketSeqToScanRange.entrySet()) {
                     FInstanceExecParam instanceParam = new FInstanceExecParam(null, bucketSeqToAddress.get(scanRanges.getKey()), 0, params);
 
@@ -1153,11 +1156,16 @@ public class Coordinator {
             final OlapScanNode scanNode,
             FragmentScanRangeAssignment assignment) throws Exception {
 
+        if (!fragmentIdToSeqToAddressMap.containsKey(scanNode.getFragmentId())) {
+            fragmentIdToSeqToAddressMap.put(scanNode.getFragmentId(), new HashedMap());
+        }
+        Map<Integer, TNetworkAddress> bucketSeqToAddress = fragmentIdToSeqToAddressMap.get(scanNode.getFragmentId());
+
         for(Integer bucketSeq: scanNode.bucketSeq2locations.keySet()) {
             //fill scanRangeParamsList
             List<TScanRangeLocations> locations = scanNode.bucketSeq2locations.get(bucketSeq);
             if (!bucketSeqToAddress.containsKey(bucketSeq)) {
-                getExecHostPortForBucketSeq(locations.get(0), bucketSeq);
+                getExecHostPortForFragmentIDAndBucketSeq(locations.get(0), scanNode.getFragmentId(), bucketSeq);
             }
 
             for(TScanRangeLocations location: locations) {
@@ -1176,7 +1184,7 @@ public class Coordinator {
     }
 
     // randomly choose a backend from the TScanRangeLocations for a certain bucket sequence.
-    private void getExecHostPortForBucketSeq(TScanRangeLocations seqLocation, Integer bucketSeq) throws Exception {
+    private void getExecHostPortForFragmentIDAndBucketSeq(TScanRangeLocations seqLocation, PlanFragmentId fragmentId, Integer bucketSeq) throws Exception {
         int randomLocation = new Random().nextInt(seqLocation.locations.size());
         Reference<Long> backendIdRef = new Reference<Long>();
         TNetworkAddress execHostPort = SimpleScheduler.getHost(seqLocation.locations.get(randomLocation).backend_id, seqLocation.locations, this.idToBackend, backendIdRef);
@@ -1184,7 +1192,7 @@ public class Coordinator {
             throw new UserException("there is no scanNode Backend");
         }
         this.addressToBackendID.put(execHostPort, backendIdRef.getRef());
-        this.bucketSeqToAddress.put(bucketSeq, execHostPort);
+        this.fragmentIdToSeqToAddressMap.get(fragmentId).put(bucketSeq, execHostPort);
     }
 
     private void computeScanRangeAssignmentByScheduler(
@@ -1375,7 +1383,7 @@ public class Coordinator {
     }
 
     private BucketSeqToScanRange bucketSeqToScanRange = new BucketSeqToScanRange();
-    private Map<Integer, TNetworkAddress> bucketSeqToAddress = Maps.newHashMap();
+    private Map<PlanFragmentId, Map<Integer, TNetworkAddress>> fragmentIdToSeqToAddressMap = Maps.newHashMap();
     private Set<Integer> colocateFragmentIds = new HashSet<>();
 
     // record backend execute state
