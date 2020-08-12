@@ -165,7 +165,7 @@ public class FunctionManager
         Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
 
         return new FunctionHandle(funcOpName,
-                TypeSignature.create(fn.getReturnType()),
+                TypeSignature.create(arguments.get(0).toDorisType()),
                 null,
                 arguments, FunctionHandle.FunctionKind.SCALAR, fn);
     }

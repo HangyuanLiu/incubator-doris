@@ -172,7 +172,6 @@ public class RowExpressionInterpreter
         @Override
         public Object visitCall(CallExpression node, Object context)
         {
-
             if (node.getDisplayName().equalsIgnoreCase(CAST.name()) &&
                 node.getArguments().get(0) instanceof SpecialFormExpression) {
                 SpecialFormExpression expression = (SpecialFormExpression) node.getArguments().get(0);
@@ -229,6 +228,10 @@ public class RowExpressionInterpreter
 
             Object value;
             value = functionInvoker.invoke(functionHandle, argumentValues);
+            //FIXME
+            if (value == null) {
+                return call(node.getDisplayName(), functionHandle, node.getType(), toRowExpressions(argumentValues, node.getArguments()));
+            }
 
             if (optimizationLevel.ordinal() <= SERIALIZABLE.ordinal() && !isSerializable(value, node.getType())) {
                 return call(node.getDisplayName(), functionHandle, node.getType(), toRowExpressions(argumentValues, node.getArguments()));

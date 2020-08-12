@@ -7,6 +7,8 @@ import org.apache.doris.analysis.ExpressionFunctions;
 import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.sql.analyzer.Analysis;
+import org.apache.doris.sql.function.ScalarFunction;
+import org.apache.doris.sql.function.ScalarFunctions;
 import org.apache.doris.sql.function.ScalarOperator;
 import org.apache.doris.sql.function.SqlType;
 import org.apache.doris.sql.type.BigintOperators;
@@ -88,11 +90,40 @@ public enum FunctionInvoker {
         List<Class> operators = new ArrayList<>();
         operators.add(BigintOperators.class);
         operators.add(VarcharOperators.class);
+        //operators.add(ScalarFunctions.class);
         for (Class clazz : operators) {
             for (Method method : clazz.getDeclaredMethods()) {
                 ScalarOperator annotation = method.getAnnotation(ScalarOperator.class);
                 if (annotation != null) {
                     String name = annotation.value().name();
+
+                    TypeSignature returnType = new TypeSignature(method.getAnnotation(SqlType.class).value());
+
+                    List<TypeSignature> argumentTypes = new ArrayList<>();
+                    int i = 0;
+                    while (i < method.getParameterCount()) {
+                        Parameter parameter = method.getParameters()[i];
+                        Class<?> parameterType = parameter.getType();
+
+                        Annotation[] annotations = parameter.getAnnotations();
+
+                        SqlType type = Stream.of(annotations)
+                                .filter(SqlType.class::isInstance)
+                                .map(SqlType.class::cast)
+                                .findFirst()
+                                .orElseThrow(() -> new IllegalArgumentException(format("Method [%s] is missing @SqlType annotation for parameter", method)));
+                        TypeSignature typeSignature = new TypeSignature(type.value());
+                        argumentTypes.add(typeSignature);
+
+                        Signature signature = new Signature(name, argumentTypes, returnType);
+                        mapBuilder.put(name.toUpperCase(), new FEFunctionInvoker(method, signature));
+                        ++i;
+                    }
+                }
+
+                ScalarFunction annotation2 = method.getAnnotation(ScalarFunction.class);
+                if (annotation2 != null) {
+                    String name = annotation2.value();
 
                     TypeSignature returnType = new TypeSignature(method.getAnnotation(SqlType.class).value());
 
