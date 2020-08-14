@@ -200,12 +200,9 @@ public final class SqlToRowExpressionTranslator
         @Override
         protected RowExpression visitLongLiteral(LongLiteral node, Void context)
         {
-            //FIXME
-            /*
             if (node.getValue() >= Integer.MIN_VALUE && node.getValue() <= Integer.MAX_VALUE) {
                 return constant(node.getValue(), INTEGER);
             }
-             */
             return constant(node.getValue(), BIGINT);
         }
 

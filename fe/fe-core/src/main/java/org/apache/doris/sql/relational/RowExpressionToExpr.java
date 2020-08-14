@@ -183,6 +183,7 @@ public class RowExpressionToExpr {
             try {
                 switch (node.getType().getTypeSignature().getBase().toLowerCase()) {
                     case StandardTypes.INTEGER:
+                        return new IntLiteral((long) node.getValue(), Type.INT);
                     case INTERVAL_DAY_TO_SECOND:
                     case StandardTypes.BIGINT:
                         return new IntLiteral((long) node.getValue(), Type.BIGINT);

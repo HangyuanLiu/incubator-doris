@@ -20,6 +20,7 @@ import org.apache.doris.analysis.SlotRef;
 import org.apache.doris.analysis.SortInfo;
 import org.apache.doris.analysis.TupleDescriptor;
 import org.apache.doris.analysis.TupleId;
+import org.apache.doris.analysis.TupleIsNullPredicate;
 import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.ScalarType;
 import org.apache.doris.catalog.Table;
@@ -306,6 +307,22 @@ public class PlanFragmentBuilder {
 
                 //Right exchange
                 PlanFragment rightFragment = visitPlan(node.getRight(), context);
+                if (node.getRight() instanceof ProjectNode) {
+                    ProjectNode rightTupleProjectNode = (ProjectNode) node.getRight();
+
+                    for (Map.Entry<VariableReferenceExpression, RowExpression> entry : rightTupleProjectNode.getAssignments().getMap().entrySet()) {
+                        if (!(entry.getValue() instanceof VariableReferenceExpression)) {
+                            Expr expr = context.variableToSlotRef.get(entry.getKey());
+                            try {
+                                expr = TupleIsNullPredicate.wrapExpr(expr, rightFragment.getPlanRoot().getTupleIds(), null);
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
+                            context.variableToSlotRef.put(entry.getKey(), expr);
+                        }
+                    }
+                }
+
                 hashPartition = new ArrayList<>();
                 List<VariableReferenceExpression> rightHashVar =
                         node.getCriteria().stream().map(JoinNode.EquiJoinClause::getRight).collect(Collectors.toList());
@@ -391,6 +408,22 @@ public class PlanFragmentBuilder {
 
             //Right exchange
             PlanFragment rightFragment = visitPlan(node.getRight(), context);
+            if (node.getRight() instanceof ProjectNode) {
+                ProjectNode rightTupleProjectNode = (ProjectNode) node.getRight();
+
+                for (Map.Entry<VariableReferenceExpression, RowExpression> entry : rightTupleProjectNode.getAssignments().getMap().entrySet()) {
+                    if (!(entry.getValue() instanceof VariableReferenceExpression)) {
+                        Expr expr = context.variableToSlotRef.get(entry.getKey());
+                        try {
+                            expr = TupleIsNullPredicate.wrapExpr(expr, rightFragment.getPlanRoot().getTupleIds(), null);
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                        context.variableToSlotRef.put(entry.getKey(), expr);
+                    }
+                }
+            }
+
             hashPartition = new ArrayList<>();
             List<VariableReferenceExpression> rightHashVar =
                     node.getCriteria().stream().map(JoinNode.EquiJoinClause::getRight).collect(Collectors.toList());
@@ -807,9 +840,17 @@ public class PlanFragmentBuilder {
             inputFragment.setOutputExprs(outputExpr);
             tupleDescriptor.computeMemLayout();
              */
-
             for (Map.Entry<VariableReferenceExpression, RowExpression> entry : node.getAssignments().getMap().entrySet()) {
                 Expr expr = RowExpressionToExpr.formatRowExpression(entry.getValue(), new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                /*
+                if (entry.getKey().getName().equalsIgnoreCase("subquerytrue")) {
+                    try {
+                        expr = TupleIsNullPredicate.wrapExpr(expr, inputFragment.getPlanRoot().getTupleIds(), null);
+                    } catch (Exception ex ) {
+                        ex.printStackTrace();
+                    }
+                }
+                */
                 context.variableToSlotRef.put(entry.getKey(), expr);
             }
             return inputFragment;
@@ -829,7 +870,8 @@ public class PlanFragmentBuilder {
             if (inputFragment.getPlanRoot() instanceof HashJoinNode) {
                 Expr exprPredicate = RowExpressionToExpr.formatRowExpression(rowExpression, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
                 if (exprPredicate instanceof CompoundPredicate) {
-                    if (((CompoundPredicate) exprPredicate).getOp().equals(CompoundPredicate.Operator.NOT)) {
+                    if (((CompoundPredicate) exprPredicate).getOp().equals(CompoundPredicate.Operator.NOT)
+                            && ((CompoundPredicate) exprPredicate).getChildren().isEmpty()) {
                         HashJoinNode root = (HashJoinNode) inputFragment.getPlanRoot();
                         root.setJoinOp(JoinOperator.LEFT_ANTI_JOIN);
                         return inputFragment;

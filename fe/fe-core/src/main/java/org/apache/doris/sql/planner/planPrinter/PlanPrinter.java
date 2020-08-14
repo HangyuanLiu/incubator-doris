@@ -14,7 +14,9 @@ import org.apache.doris.sql.planner.cost.PlanNodeStatsEstimate;
 import org.apache.doris.sql.planner.cost.StatsAndCosts;
 import org.apache.doris.sql.planner.optimizations.JoinNodeUtils;
 import org.apache.doris.sql.planner.plan.AggregationNode;
+import org.apache.doris.sql.planner.plan.AssignUniqueId;
 import org.apache.doris.sql.planner.plan.Assignments;
+import org.apache.doris.sql.planner.plan.EnforceSingleRowNode;
 import org.apache.doris.sql.planner.plan.FilterNode;
 import org.apache.doris.sql.planner.plan.JoinNode;
 import org.apache.doris.sql.planner.plan.LimitNode;
@@ -370,6 +372,22 @@ public class PlanPrinter {
             addNode(node,
                     format("%sSort", node.isPartial() ? "Partial" : ""),
                     format("[%s]", Joiner.on(", ").join(keys)));
+
+            return processChildren(node, context);
+        }
+
+        @Override
+        public Void visitEnforceSingleRow(EnforceSingleRowNode node, Void context)
+        {
+            addNode(node, "EnforceSingleRow");
+
+            return processChildren(node, context);
+        }
+
+        @Override
+        public Void visitAssignUniqueId(AssignUniqueId node, Void context)
+        {
+            addNode(node, "AssignUniqueId");
 
             return processChildren(node, context);
         }

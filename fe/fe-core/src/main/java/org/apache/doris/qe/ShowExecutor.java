@@ -269,6 +269,7 @@ public class ShowExecutor {
 
     private void handleShowRollup() throws AnalysisException {
         // TODO: not implemented yet
+        /*
         ShowRollupStmt showRollupStmt = (ShowRollupStmt) stmt;
         String dbName = ((ShowRollupStmt) stmt).getDb();
         List<List<String>> rowSets = Lists.newArrayList();
@@ -309,6 +310,7 @@ public class ShowExecutor {
         }
 
         resultSet = new ShowResultSet(showRollupStmt.getMetaData(), rowSets);
+         */
     }
 
     // Handle show authors

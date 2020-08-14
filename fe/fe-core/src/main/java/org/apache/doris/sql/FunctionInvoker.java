@@ -12,6 +12,8 @@ import org.apache.doris.sql.function.ScalarFunctions;
 import org.apache.doris.sql.function.ScalarOperator;
 import org.apache.doris.sql.function.SqlType;
 import org.apache.doris.sql.type.BigintOperators;
+import org.apache.doris.sql.type.BooleanOperators;
+import org.apache.doris.sql.type.IntegerOperators;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.TypeSignature;
 import org.apache.doris.sql.type.VarcharOperators;
@@ -88,6 +90,9 @@ public enum FunctionInvoker {
         ImmutableMultimap.Builder<String, FEFunctionInvoker> mapBuilder =
                 new ImmutableMultimap.Builder<String, FEFunctionInvoker>();
         List<Class> operators = new ArrayList<>();
+
+        operators.add(BooleanOperators.class);
+        operators.add(IntegerOperators.class);
         operators.add(BigintOperators.class);
         operators.add(VarcharOperators.class);
         //operators.add(ScalarFunctions.class);
