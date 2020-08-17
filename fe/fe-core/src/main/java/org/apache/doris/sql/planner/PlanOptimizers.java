@@ -210,7 +210,7 @@ public class PlanOptimizers {
                                 new RemoveUnreferencedScalarLateralNodes(),
                                 new TransformUncorrelatedLateralToJoin(),
                                 new TransformUncorrelatedInPredicateSubqueryToSemiJoin(),
-                                new TransformCorrelatedScalarAggregationToJoin(metadata.getFunctionManager()),
+                                //new TransformCorrelatedScalarAggregationToJoin(metadata.getFunctionManager()),
                                 new TransformCorrelatedLateralJoinToJoin())),
                 new IterativeOptimizer(
                         ruleStats,
@@ -336,6 +336,15 @@ public class PlanOptimizers {
                         new CreatePartialTopN(),
                         new PushTopNThroughUnion())));
         */
+
+        builder.add(new IterativeOptimizer(
+                ruleStats,
+                statsCalculator,
+                estimatedExchangesCostCalculator,
+                ImmutableSet.<Rule<?>>builder()
+                        .add(new RemoveRedundantIdentityProjections())
+                        .add(new InlineProjections(metadata.getFunctionManager()))
+                        .build()));
 
         //判断JOIN类型
         builder.add((new IterativeOptimizer(

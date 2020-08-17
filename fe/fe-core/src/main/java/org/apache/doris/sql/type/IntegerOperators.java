@@ -24,20 +24,14 @@ import static org.apache.doris.sql.type.OperatorType.DIVIDE;
 import static org.apache.doris.sql.type.OperatorType.EQUAL;
 import static org.apache.doris.sql.type.OperatorType.GREATER_THAN;
 import static org.apache.doris.sql.type.OperatorType.GREATER_THAN_OR_EQUAL;
-import static org.apache.doris.sql.type.OperatorType.HASH_CODE;
-import static org.apache.doris.sql.type.OperatorType.INDETERMINATE;
-import static org.apache.doris.sql.type.OperatorType.IS_DISTINCT_FROM;
 import static org.apache.doris.sql.type.OperatorType.LESS_THAN;
 import static org.apache.doris.sql.type.OperatorType.LESS_THAN_OR_EQUAL;
 import static org.apache.doris.sql.type.OperatorType.MODULUS;
 import static org.apache.doris.sql.type.OperatorType.MULTIPLY;
 import static org.apache.doris.sql.type.OperatorType.NEGATION;
 import static org.apache.doris.sql.type.OperatorType.NOT_EQUAL;
-import static org.apache.doris.sql.type.OperatorType.SATURATED_FLOOR_CAST;
 import static org.apache.doris.sql.type.OperatorType.SUBTRACT;
-import static org.apache.doris.sql.type.OperatorType.XX_HASH_64;
 import static java.lang.Float.floatToRawIntBits;
-import static java.lang.String.format;
 
 public final class IntegerOperators
 {
@@ -151,6 +145,13 @@ public final class IntegerOperators
     public static double castToDouble(@SqlType(StandardTypes.INTEGER) long value)
     {
         return value;
+    }
+
+    @ScalarOperator(CAST)
+    @SqlType(StandardTypes.DECIMAL)
+    public static String castToDecimal(@SqlType(StandardTypes.INTEGER) long value)
+    {
+        return String.valueOf(value);
     }
 
     @ScalarOperator(CAST)

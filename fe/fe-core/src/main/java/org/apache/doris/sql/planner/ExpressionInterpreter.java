@@ -756,6 +756,11 @@ public class ExpressionInterpreter
                 argumentValues.add(value);
                 argumentTypes.add(type);
             }
+            //FIXME
+            if (!node.getName().toString().startsWith("cast")) {
+                return new FunctionCall(node.getName(), node.getWindow(), node.isDistinct(), node.isIgnoreNulls(), toExpressions(argumentValues, argumentTypes));
+            }
+
             FunctionHandle functionHandle = metadata.getFunctionManager().resolveFunction(node.getName(), fromTypes(argumentTypes));
             FunctionMetadata functionMetadata = metadata.getFunctionManager().getFunctionMetadata(functionHandle);
             /*

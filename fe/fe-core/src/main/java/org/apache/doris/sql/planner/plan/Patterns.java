@@ -74,6 +74,11 @@ public class Patterns
         return typeOf(LimitNode.class);
     }
 
+    public static Pattern<OutputNode> output()
+    {
+        return typeOf(OutputNode.class);
+    }
+
     public static Pattern<ProjectNode> project()
     {
         return typeOf(ProjectNode.class);

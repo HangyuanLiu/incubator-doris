@@ -12,7 +12,7 @@ public final class VarcharOperators {
 
     @ScalarOperator(CAST)
     @SqlType(StandardTypes.DATE)
-    public static String castToDate(@SqlType("varchar(x)") String value)
+    public static String castToDate(@SqlType("varchar") String value)
     {
         //FIXME
         return value;
@@ -20,9 +20,17 @@ public final class VarcharOperators {
 
     @ScalarOperator(CAST)
     @SqlType(StandardTypes.CHAR)
-    public static String castToChar(@SqlType("varchar(x)") String value)
+    public static String castToChar(@SqlType("varchar") String value)
     {
         //FIXME
         return value;
+    }
+
+    @ScalarOperator(CAST)
+    @SqlType(StandardTypes.BIGINT)
+    public static long castToBigint(@SqlType("varchar") String value)
+    {
+        //FIXME
+        return Long.parseLong(value);
     }
 }

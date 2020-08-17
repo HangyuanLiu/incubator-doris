@@ -110,8 +110,7 @@ public class PlanFragmentBuilder {
         //PlanNode root = SimplePlanRewriter.rewriteWith(physicalPlanTranslator, plan.getRoot());
         List<org.apache.doris.planner.ScanNode> scanNodes = new ArrayList<>();
         List<Expr> outputExprs = new ArrayList<>();
-        Map<LogicalPlanNode, TupleDescriptor> tupleDescriptorMap = new HashMap<>();
-        FragmentProperties fraPro = new FragmentProperties(descTbl, plannerContext, variableToSlotRef, scanNodes, outputExprs, tupleDescriptorMap);
+        FragmentProperties fraPro = new FragmentProperties(descTbl, plannerContext, variableToSlotRef, scanNodes, outputExprs);
         PlanFragment root = physicalPlanTranslator.visitPlan(plan.getRoot(), fraPro);
         return new PhysicalPlan(scanNodes, outputExprs, fraPro.fragments, typeManager);
     }
@@ -285,8 +284,7 @@ public class PlanFragmentBuilder {
 
          */
 
-        @Override
-        public PlanFragment visitJoin(JoinNode node, FragmentProperties context) {
+        public PlanFragment visitJoin2(JoinNode node, FragmentProperties context) {
             //BROADCOST
             System.out.println("type : " + node.getDistributionType());
             if (node.getDistributionType().get().equals(JoinNode.DistributionType.REPLICATED)) {
@@ -491,6 +489,143 @@ public class PlanFragmentBuilder {
             return exchangeFragment;
         }
 
+        public PlanFragment visitJoin(JoinNode node, FragmentProperties context) {
+            PlanFragment leftFragment;
+            PlanFragment rightFragment;
+            JoinOperator joinOperator;
+
+            //确认Join类型，right join会转成left join
+            LogicalPlanNode rightNodeToTupleIsNull;
+            if (node.getType().equals(JoinNode.Type.RIGHT)) {
+                leftFragment = visitPlan(node.getRight(), context);
+                rightFragment = visitPlan(node.getLeft(), context);
+                joinOperator = JoinOperator.LEFT_OUTER_JOIN;
+                rightNodeToTupleIsNull = node.getLeft();
+            } else if (node.getType().equals(JoinNode.Type.LEFT)){
+                leftFragment = visitPlan(node.getLeft(), context);
+                rightFragment = visitPlan(node.getRight(), context);
+                joinOperator = JoinOperator.LEFT_OUTER_JOIN;
+                rightNodeToTupleIsNull = node.getRight();
+            } else {
+                leftFragment = visitPlan(node.getLeft(), context);
+                rightFragment = visitPlan(node.getRight(), context);
+                joinOperator = JoinOperator.INNER_JOIN;
+                rightNodeToTupleIsNull = node.getRight();
+            }
+
+            //构建等值条件，在TupleIsNull构造之前
+            List<Expr> eqJoinConjuncts = new ArrayList<>();
+            List<Expr> otherjoinFilters = new ArrayList<>();
+            if (node.getCriteria().isEmpty()) {
+                joinOperator = JoinOperator.CROSS_JOIN;
+            } else {
+                for (JoinNode.EquiJoinClause equiJoinClause : node.getCriteria()) {
+                    Expr left = RowExpressionToExpr.formatRowExpression(equiJoinClause.getLeft(),
+                            new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                    Expr right = RowExpressionToExpr.formatRowExpression(equiJoinClause.getRight(),
+                            new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+                    BinaryPredicate binaryEq;
+                    if (node.getType().equals(JoinNode.Type.RIGHT)) {
+                        binaryEq = new BinaryPredicate(BinaryPredicate.Operator.EQ, right, left);
+                    } else {
+                        binaryEq = new BinaryPredicate(BinaryPredicate.Operator.EQ, left, right);
+                    }
+                    eqJoinConjuncts.add(binaryEq);
+                }
+
+                if (node.getFilter().isPresent()) {
+                    otherjoinFilters = Lists.newArrayList(RowExpressionToExpr.formatRowExpression(node.getFilter().get(),
+                                    new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef)));
+                }
+            }
+
+            //为右表添加TupleIsNull
+            if (rightNodeToTupleIsNull instanceof ProjectNode) {
+                ProjectNode rightTupleProjectNode = (ProjectNode) rightNodeToTupleIsNull;
+                for (Map.Entry<VariableReferenceExpression, RowExpression> entry : rightTupleProjectNode.getAssignments().getMap().entrySet()) {
+                    if (!(entry.getValue() instanceof VariableReferenceExpression)) {
+                        Expr expr = context.variableToSlotRef.get(entry.getKey());
+                        try {
+                            expr = TupleIsNullPredicate.wrapExpr(expr, rightFragment.getPlanRoot().getTupleIds(), null);
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                        context.variableToSlotRef.put(entry.getKey(), expr);
+                    }
+                }
+            }
+
+            PlanNode leftPlanNode;
+            PlanNode rightPlanNode;
+            HashJoinNode.DistributionMode distributionMode;
+            if (node.getDistributionType().get().equals(JoinNode.DistributionType.REPLICATED)) {
+                distributionMode = HashJoinNode.DistributionMode.BROADCAST;
+                leftPlanNode = leftFragment.getPlanRoot();
+                rightPlanNode = new org.apache.doris.planner.ExchangeNode(
+                        context.plannerContext.getNextNodeId(), rightFragment.getPlanRoot(), false);
+                rightPlanNode.setNumInstances(1);
+            } else {
+                distributionMode = HashJoinNode.DistributionMode.PARTITIONED;
+                leftPlanNode = new org.apache.doris.planner.ExchangeNode(
+                        context.plannerContext.getNextNodeId(), leftFragment.getPlanRoot(), false);
+                leftPlanNode.setNumInstances(1);
+
+                rightPlanNode = new org.apache.doris.planner.ExchangeNode(
+                        context.plannerContext.getNextNodeId(), rightFragment.getPlanRoot(), false);
+                rightPlanNode.setNumInstances(1);
+            }
+
+            org.apache.doris.planner.PlanNode joinNode;
+            if (joinOperator.isCrossJoin()) {
+                joinNode = new org.apache.doris.planner.CrossJoinNode(context.plannerContext.getNextNodeId(), leftPlanNode, rightPlanNode, null);
+            } else {
+                joinNode = new org.apache.doris.planner.HashJoinNode(
+                        context.plannerContext.getNextNodeId(),
+                        leftPlanNode, rightPlanNode,
+                        joinOperator,
+                        eqJoinConjuncts, otherjoinFilters);
+
+                ((HashJoinNode)joinNode).setDistributionMode(distributionMode);
+            }
+
+            if (node.getDistributionType().get().equals(JoinNode.DistributionType.REPLICATED)) {
+                leftFragment.setPlanRoot(joinNode);
+                context.fragments.remove(leftFragment);
+                context.fragments.add(leftFragment);
+                rightFragment.setDestination((org.apache.doris.planner.ExchangeNode) rightPlanNode);
+                return leftFragment;
+            } else {
+                List<Expr> leftHash = node.getCriteria().stream().map(JoinNode.EquiJoinClause::getLeft).map(
+                        var -> RowExpressionToExpr.formatRowExpression(
+                                var, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef)))
+                        .collect(Collectors.toList());
+
+                List<Expr> rightHash = node.getCriteria().stream().map(JoinNode.EquiJoinClause::getRight).map(
+                        var -> RowExpressionToExpr.formatRowExpression(
+                                var, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef)))
+                        .collect(Collectors.toList());
+
+                List<Expr> swap;
+                if (node.getType().equals(JoinNode.Type.RIGHT)) {
+                    swap = leftHash;
+                    leftHash = rightHash;
+                    rightHash = swap;
+                }
+
+                //join fragment
+                PlanFragment joinFragment = new PlanFragment(context.plannerContext.getNextFragmentId(), joinNode, DataPartition.hashPartitioned(leftHash));
+                //left fragment
+                leftFragment.setOutputPartition(leftHash.isEmpty() ? DataPartition.UNPARTITIONED : DataPartition.hashPartitioned(leftHash));
+                leftFragment.setDestination((org.apache.doris.planner.ExchangeNode) leftPlanNode);
+                //right fragment
+                rightFragment.setOutputPartition(rightHash.isEmpty() ? DataPartition.UNPARTITIONED : DataPartition.hashPartitioned(rightHash));
+                rightFragment.setDestination((org.apache.doris.planner.ExchangeNode) rightPlanNode);
+
+                context.fragments.add(joinFragment);
+                return joinFragment;
+            }
+        }
+
         @Override
         public PlanFragment visitSemiJoin(SemiJoinNode node, FragmentProperties context) {
             PlanFragment leftFragment = visitPlan(node.getSource(), context);
@@ -541,63 +676,6 @@ public class PlanFragmentBuilder {
             rightFragment.setDestination(rightExchangeNode);
             context.fragments.add(exchangeFragment);
             return exchangeFragment;
-
-            /*
-            List<Expr> eqJoinConjuncts = new ArrayList<>();
-            for (JoinNode.EquiJoinClause equiJoinClause : node.getCriteria()) {
-                Expr left = RowExpressionToExpr.formatRowExpression(equiJoinClause.getLeft(),
-                        new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-                Expr right = RowExpressionToExpr.formatRowExpression(equiJoinClause.getRight(),
-                        new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-                BinaryPredicate binaryEq = new BinaryPredicate(BinaryPredicate.Operator.EQ, left, right);
-                eqJoinConjuncts.add(binaryEq);
-            }
-            org.apache.doris.planner.HashJoinNode hashJoinNode =
-                    new org.apache.doris.planner.HashJoinNode(
-                            context.plannerContext.getNextNodeId(),
-                            leftExchangeNode, rightExchangeNode,
-                            JoinOperator.INNER_JOIN,
-                            eqJoinConjuncts,
-                            new ArrayList<>());
-            hashJoinNode.setDistributionMode(HashJoinNode.DistributionMode.PARTITIONED);
-
-            PlanFragment exchangeFragment = new PlanFragment(context.plannerContext.getNextFragmentId(), hashJoinNode, DataPartition.hashPartitioned(hashPartition));
-            leftFragment.setDestination(leftExchangeNode);
-            rightFragment.setDestination(rightExchangeNode);
-            context.fragments.add(exchangeFragment);
-            return exchangeFragment;
-
-
-
-
-            PlanFragment leftFragment = visitPlan(node.getSource(), context);
-            PlanFragment rightFragment = visitPlan(node.getFilteringSource(), context);
-
-            List<Expr> eqJoinConjuncts = new ArrayList<>();
-            Expr left = RowExpressionToExpr.formatRowExpression(node.getSourceJoinVariable(),
-                    new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-            Expr right = RowExpressionToExpr.formatRowExpression(node.getFilteringSourceJoinVariable(),
-                    new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-            BinaryPredicate binaryEq = new BinaryPredicate(BinaryPredicate.Operator.EQ, left, right);
-            eqJoinConjuncts.add(binaryEq);
-
-
-            org.apache.doris.planner.HashJoinNode hashJoinNode =
-                    new org.apache.doris.planner.HashJoinNode(
-                            context.plannerContext.getNextNodeId(),
-                            leftFragment.getPlanRoot(), rightFragment.getPlanRoot(),
-                            JoinOperator.LEFT_SEMI_JOIN,
-                            eqJoinConjuncts,
-                            new ArrayList<>());
-            hashJoinNode.setDistributionMode(HashJoinNode.DistributionMode.PARTITIONED);
-
-            context.fragments.remove(leftFragment);
-            context.fragments.remove(rightFragment);
-            leftFragment.setPlanRoot(hashJoinNode);
-            context.fragments.add(leftFragment);
-            return leftFragment;
-
-             */
         }
 
         @Override
@@ -822,35 +900,8 @@ public class PlanFragmentBuilder {
         @Override
         public PlanFragment visitProject(ProjectNode node, FragmentProperties context) {
             PlanFragment inputFragment = visitPlan(node.getSource(), context);
-            /*
-            ArrayList<TupleId> tupleIds = inputFragment.getPlanRoot().getTupleIds();
-            TupleDescriptor tupleDescriptor = context.descTbl.getTupleDesc(tupleIds.get(0));
-            ArrayList<Expr> outputExpr = new ArrayList<>();
             for (Map.Entry<VariableReferenceExpression, RowExpression> entry : node.getAssignments().getMap().entrySet()) {
                 Expr expr = RowExpressionToExpr.formatRowExpression(entry.getValue(), new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-
-                SlotDescriptor slotDesc =  context.descTbl.addSlotDescriptor(tupleDescriptor);
-                slotDesc.initFromExpr(expr);
-                slotDesc.setIsNullable(true);
-                //slotDesc.setIsMaterialized(true);
-
-                context.variableToSlotRef.put(entry.getKey(), new SlotRef(slotDesc));
-                outputExpr.add(expr);
-            }
-            inputFragment.setOutputExprs(outputExpr);
-            tupleDescriptor.computeMemLayout();
-             */
-            for (Map.Entry<VariableReferenceExpression, RowExpression> entry : node.getAssignments().getMap().entrySet()) {
-                Expr expr = RowExpressionToExpr.formatRowExpression(entry.getValue(), new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-                /*
-                if (entry.getKey().getName().equalsIgnoreCase("subquerytrue")) {
-                    try {
-                        expr = TupleIsNullPredicate.wrapExpr(expr, inputFragment.getPlanRoot().getTupleIds(), null);
-                    } catch (Exception ex ) {
-                        ex.printStackTrace();
-                    }
-                }
-                */
                 context.variableToSlotRef.put(entry.getKey(), expr);
             }
             return inputFragment;
@@ -867,15 +918,12 @@ public class PlanFragmentBuilder {
         public PlanFragment visitFilter(FilterNode node, FragmentProperties context) {
             PlanFragment inputFragment = visitPlan(node.getSource(), context);
             RowExpression rowExpression = node.getPredicate();
-            if (inputFragment.getPlanRoot() instanceof HashJoinNode) {
-                Expr exprPredicate = RowExpressionToExpr.formatRowExpression(rowExpression, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
-                if (exprPredicate instanceof CompoundPredicate) {
-                    if (((CompoundPredicate) exprPredicate).getOp().equals(CompoundPredicate.Operator.NOT)
-                            && ((CompoundPredicate) exprPredicate).getChildren().isEmpty()) {
-                        HashJoinNode root = (HashJoinNode) inputFragment.getPlanRoot();
-                        root.setJoinOp(JoinOperator.LEFT_ANTI_JOIN);
-                        return inputFragment;
-                    }
+            Expr exprPredicate = RowExpressionToExpr.formatRowExpression(rowExpression, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+            if (exprPredicate instanceof CompoundPredicate && node.getSource() instanceof SemiJoinNode) {
+                if (((CompoundPredicate) exprPredicate).getOp().equals(CompoundPredicate.Operator.NOT)) {
+                    HashJoinNode root = (HashJoinNode) inputFragment.getPlanRoot();
+                    root.setJoinOp(JoinOperator.LEFT_ANTI_JOIN);
+                    return inputFragment;
                 }
             }
 
@@ -918,7 +966,6 @@ public class PlanFragmentBuilder {
             context.descTbl.addReferencedTable(referenceTable);
 
             TupleDescriptor tupleDescriptor = context.descTbl.createTupleDescriptor();
-            context.tupleDescriptorMap.put(node, tupleDescriptor);
             tupleDescriptor.setTable(referenceTable);
 
             org.apache.doris.planner.OlapScanNode scanNode = new org.apache.doris.planner.OlapScanNode(context.plannerContext.getNextNodeId(), tupleDescriptor, "OlapScanNode");
@@ -973,18 +1020,15 @@ public class PlanFragmentBuilder {
         private final List<org.apache.doris.planner.ScanNode> scanNodes;
         public List<Expr> outputExprs;
 
-        private final Map<LogicalPlanNode, TupleDescriptor> tupleDescriptorMap;
-
         private final ArrayList<PlanFragment> fragments = new ArrayList<>();
 
         FragmentProperties (DescriptorTable descTbl, PlannerContext plannerContext, Map<VariableReferenceExpression, Expr> variableToSlotRef,
-                            List<org.apache.doris.planner.ScanNode> scanNodes, List<Expr> outputExprs, Map<LogicalPlanNode, TupleDescriptor> tupleDescriptorMap ) {
+                            List<org.apache.doris.planner.ScanNode> scanNodes, List<Expr> outputExprs) {
             this.descTbl = descTbl;
             this.plannerContext = plannerContext;
             this.variableToSlotRef = variableToSlotRef;
             this.scanNodes = scanNodes;
             this.outputExprs = outputExprs;
-            this.tupleDescriptorMap = tupleDescriptorMap;
         }
     }
 }
