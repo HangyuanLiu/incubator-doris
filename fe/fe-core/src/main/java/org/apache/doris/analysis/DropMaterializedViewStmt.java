@@ -30,7 +30,10 @@ import org.apache.doris.mysql.privilege.PrivPredicate;
 import org.apache.doris.qe.ConnectContext;
 
 import com.google.common.base.Strings;
+
 import java.util.List;
+
+import static org.apache.doris.system.SystemInfoService.DEFAULT_CLUSTER;
 
 /**
  * DROP MATERIALIZED VIEW [ IF EXISTS ] <mv_name> ON [db_name].<table_name>
@@ -43,91 +46,72 @@ import java.util.List;
  */
 public class DropMaterializedViewStmt extends DdlStmt {
 
+    private String mvName;
+    private String dbName;
+    private TableName tableName;
     private boolean ifExists;
-    private final TableName dbMvName;
-    private final TableName dbTblName;
 
-    public DropMaterializedViewStmt(boolean ifExists, TableName dbMvName, TableName dbTblName) {
+    public DropMaterializedViewStmt(boolean ifExists, String mvName, String dbName) {
+        this.mvName = mvName;
+        this.dbName = dbName;
         this.ifExists = ifExists;
-        this.dbMvName = dbMvName;
-        this.dbTblName = dbTblName;
-    }
-
-    public boolean isSetIfExists() {
-        return ifExists;
     }
 
     public String getMvName() {
-        return dbMvName.getTbl();
+        return mvName;
     }
 
-    public String getTblName() {
-        if (dbTblName != null) {
-            return dbTblName.getTbl();
-        } else {
-            return null;
-        }
+    public TableName getTableName() {
+        return tableName;
     }
 
     public String getDbName() {
-        if (dbTblName != null) {
-            return dbTblName.getDb();
-        } else {
-            return dbMvName.getDb();
-        }
+        return dbName;
+    }
+
+    public boolean isIfExists() {
+        return ifExists;
     }
 
     @Override
     public void analyze(Analyzer analyzer) throws UserException {
-        if (dbTblName != null && !Strings.isNullOrEmpty(dbMvName.getDb())) {
-            throw new AnalysisException("Syntax drop materialized view [mv-name] from db.name mush specify database name explicitly in `from`");
+        if (Strings.isNullOrEmpty(mvName)) {
+            throw new AnalysisException("The materialized name could not be empty or null.");
         }
-        if (dbTblName != null) {
-            if (!Strings.isNullOrEmpty(dbMvName.getDb())) {
-                throw new AnalysisException("If the database appears after the from statement, " +
-                        "the materialized view should not include the database name prefix");
-            }
+        dbName = DEFAULT_CLUSTER + ":" + dbName;
 
-            if (Strings.isNullOrEmpty(dbTblName.getDb())) {
-                throw new AnalysisException("Syntax drop materialized view [mv-name] from db.name mush specify database name explicitly in `from`");
-            }
-            dbTblName.analyze(analyzer);
-        }
+        Database db = Catalog.getCurrentCatalog().getDb(dbName);
+        boolean hasMv = false;
+        for (Table table : db.getTables()) {
+            if (table.getType() == Table.TableType.OLAP) {
+                OlapTable olapTable = (OlapTable) table;
+                List<MaterializedIndex> visibleMaterializedViews = olapTable.getVisibleIndex();
+                long baseIdx = olapTable.getBaseIndexId();
 
-        if (Strings.isNullOrEmpty(dbMvName.getDb())) {
-            dbMvName.setDb(analyzer.getDefaultDb());
-        }
-        dbMvName.analyze(analyzer);
-
-        Database db = Catalog.getCurrentCatalog().getDb(dbMvName.getDb());
-        if (dbTblName == null) {
-            boolean hasMv = false;
-            for (Table table : db.getTables()) {
-                if (table.getType() == Table.TableType.OLAP) {
-                    OlapTable olapTable = (OlapTable) table;
-                    List<MaterializedIndex> visibleMaterializedViews = olapTable.getVisibleIndex();
-                    long baseIdx = olapTable.getBaseIndexId();
-
-                    for (MaterializedIndex mvIdx : visibleMaterializedViews) {
-                        if (baseIdx == mvIdx.getId()) {
-                            continue;
-                        }
-                        if (olapTable.getIndexNameById(mvIdx.getId()).equals(dbMvName.getTbl())) {
-                            if (hasMv) {
-                                throw new AnalysisException("There are multiple materialized views called " + dbMvName.getTbl() +
-                                        ". Use the syntax [drop materialized view db.mv_name on table] to drop materialized view");
-                            }
-                            hasMv = true;
-                        }
+                for (MaterializedIndex mvIdx : visibleMaterializedViews) {
+                    if (baseIdx == mvIdx.getId()) {
+                        continue;
+                    }
+                    if (olapTable.getIndexNameById(mvIdx.getId()).equals(mvName)) {
+                        tableName = new TableName(dbName, olapTable.getName());
+                        hasMv = true;
+                        break;
                     }
                 }
-            }
-            if (!hasMv) {
-                throw new AnalysisException("The materialized " + dbMvName.getTbl() + " is not exist");
+                if (hasMv) {
+                    break;
+                }
             }
         }
+        if (!hasMv) {
+            throw new AnalysisException("The materialized " + mvName + " is not exist");
+        }
 
-        if (!Catalog.getCurrentCatalog().getAuth().checkDbPriv(ConnectContext.get(), getDbName(), PrivPredicate.DROP)) {
+        tableName.analyze(analyzer);
+
+        // check access
+        if (!Catalog.getCurrentCatalog().getAuth().checkTblPriv(ConnectContext.get(), tableName.getDb(),
+                tableName.getTbl(), PrivPredicate.DROP)) {
             ErrorReport.reportAnalysisException(ErrorCode.ERR_SPECIFIC_ACCESS_DENIED_ERROR, "DROP");
         }
     }
@@ -139,8 +123,8 @@ public class DropMaterializedViewStmt extends DdlStmt {
         if (ifExists) {
             stringBuilder.append("IF EXISTS ");
         }
-        stringBuilder.append("`").append(dbMvName.getDb()).append("` ");
-        stringBuilder.append("ON ").append(dbMvName.getTbl());
+        stringBuilder.append("`").append(mvName).append("` ");
+        stringBuilder.append("ON ").append(dbName);
         return stringBuilder.toString();
     }
 }

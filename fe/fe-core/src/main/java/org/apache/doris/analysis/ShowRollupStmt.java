@@ -17,11 +17,9 @@
 
 package org.apache.doris.analysis;
 
-import com.google.common.base.Strings;
 import org.apache.doris.catalog.Catalog;
 import org.apache.doris.catalog.Column;
 import org.apache.doris.catalog.ScalarType;
-import org.apache.doris.cluster.ClusterNamespace;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.ErrorCode;
 import org.apache.doris.common.ErrorReport;
@@ -29,11 +27,13 @@ import org.apache.doris.mysql.privilege.PrivPredicate;
 import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.qe.ShowResultSetMetaData;
 
+import static org.apache.doris.system.SystemInfoService.DEFAULT_CLUSTER;
+
 // Show rollup statement, used to show rollup information of one table.
 //
 // Syntax:
-//      SHOW MATERIALIZED VIEW { FROM | IN } db
-public class ShowMaterializedView extends ShowStmt {
+//      SHOW ROLLUP { FROM | IN } table [ FROM db ]
+public class ShowRollupStmt extends ShowStmt {
     private static final ShowResultSetMetaData META_DATA =
             ShowResultSetMetaData.builder()
                     .addColumn(new Column("id", ScalarType.createVarchar(50)))
@@ -42,11 +42,10 @@ public class ShowMaterializedView extends ShowStmt {
                     .addColumn(new Column("text", ScalarType.createVarchar(1024)))
                     .addColumn(new Column("rows", ScalarType.createVarchar(50)))
                     .build();
-
     private String db;
 
-    public ShowMaterializedView(String db) {
-        this.db = db;
+    public ShowRollupStmt(String db) {
+        this.db = DEFAULT_CLUSTER + ":" + db;
     }
 
     public String getDb() {
@@ -55,17 +54,20 @@ public class ShowMaterializedView extends ShowStmt {
 
     @Override
     public void analyze(Analyzer analyzer) throws AnalysisException {
-        if (Strings.isNullOrEmpty(db)) {
-            db = analyzer.getDefaultDb();
-            if (Strings.isNullOrEmpty(db)) {
-                ErrorReport.reportAnalysisException(ErrorCode.ERR_NO_DB_ERROR);
-            }
-        } else {
-            if (Strings.isNullOrEmpty(analyzer.getClusterName())) {
-                ErrorReport.reportAnalysisException(ErrorCode.ERR_CLUSTER_NAME_NULL);
-            }
-            db = ClusterNamespace.getFullName(analyzer.getClusterName(), db);
+        // if both `db` and `table` have database have database info, use `db` information.
+        // 1. use `db` database info
+        // 2. use `table` database info
+        // 3. use default database info in analyzer.
+        /*
+        if (tbl == null) {
+            ErrorReport.reportAnalysisException(ErrorCode.ERR_NO_TABLES_USED);
         }
+        if (!Strings.isNullOrEmpty(db)) {
+            // overwrite database in tbl.
+            tbl.setDb(db);
+        }
+        tbl.analyze(analyzer);
+        */
 
         if (!Catalog.getCurrentCatalog().getAuth().checkDbPriv(ConnectContext.get(), db, PrivPredicate.SHOW)) {
             ErrorReport.reportAnalysisException(ErrorCode.ERR_DB_ACCESS_DENIED, "SHOW MATERIALIZED VIEW",
@@ -78,7 +80,7 @@ public class ShowMaterializedView extends ShowStmt {
     @Override
     public String toSql() {
         StringBuilder sb = new StringBuilder();
-        sb.append("SHOW MATERIALIZED VIEW FROM ").append(db);
+        sb.append("SHOW MATERIALIZED VIEW ON ").append(db);
         return sb.toString();
     }
 
@@ -91,7 +93,7 @@ public class ShowMaterializedView extends ShowStmt {
     public ShowResultSetMetaData getMetaData() {
         return META_DATA;
     }
-
+    
     @Override
     public RedirectStatus getRedirectStatus() {
         return RedirectStatus.FORWARD_NO_SYNC;
