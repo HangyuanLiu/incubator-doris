@@ -212,7 +212,7 @@ public class FunctionManager
         Function fn = Catalog.getCurrentCatalog().getFunction(searchDesc, Function.CompareMode.IS_NONSTRICT_SUPERTYPE_OF);
 
         return new FunctionHandle(OperatorType.CAST.name(),
-                TypeSignature.create(fn.getReturnType()),
+                toType,
                 null,
                 Lists.newArrayList(fromType), FunctionHandle.FunctionKind.SCALAR, fn);
     }

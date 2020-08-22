@@ -114,6 +114,7 @@ import static org.apache.doris.sql.planner.iterative.rule.CanonicalizeExpression
 import static org.apache.doris.sql.relational.Expressions.variable;
 import static org.apache.doris.sql.type.IntegerType.INTEGER;
 import static org.apache.doris.sql.type.OperatorType.CAST;
+import static org.apache.doris.sql.type.TypeSignature.parseTypeSignature;
 
 @Deprecated
 public class ExpressionInterpreter
@@ -888,7 +889,7 @@ public class ExpressionInterpreter
         public Object visitCast(Cast node, Object context)
         {
             Object value = process(node.getExpression(), context);
-            Type targetType = metadata.getTypeManager().getType(new TypeSignature(node.getType()));
+            Type targetType = metadata.getTypeManager().getType(parseTypeSignature(node.getType()));
             if (targetType == null) {
                 throw new IllegalArgumentException("Unsupported type: " + node.getType());
             }

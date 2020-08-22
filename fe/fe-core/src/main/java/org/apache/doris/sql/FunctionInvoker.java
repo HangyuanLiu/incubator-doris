@@ -43,6 +43,10 @@ public enum FunctionInvoker {
     public Object invoke(Signature signature, List<Object> arg) throws AnalysisException{
 
         if (signature.getName().startsWith("cast") || signature.getName().equalsIgnoreCase("cast")) {
+            //FIXME
+            if (signature.getArgTypes().get(0).equals(signature.getReturnType())) {
+                return arg.get(0);
+            }
             Signature newSig = new Signature(OperatorType.CAST.name(), signature.getArgTypes(), signature.getReturnType());
             FEFunctionInvoker invoker = getFunction(newSig);
             return invoker.invoke(arg);
@@ -62,8 +66,8 @@ public enum FunctionInvoker {
 
         if (signature.getName().equalsIgnoreCase(OperatorType.CAST.name())) {
             for (FEFunctionInvoker invoker : functionInvokers) {
-                if (signature.getReturnType().equals(invoker.getSignature().getReturnType()) &&
-                    signature.getArgTypes().get(0).equals(invoker.getSignature().getArgTypes().get(0))
+                if (signature.getReturnType().getBase().equals(invoker.getSignature().getReturnType().getBase()) &&
+                    signature.getArgTypes().get(0).getBase().equals(invoker.getSignature().getArgTypes().get(0).getBase())
                 ) {
                     return invoker;
                 }

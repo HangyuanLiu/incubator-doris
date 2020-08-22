@@ -60,6 +60,7 @@ import static org.apache.doris.sql.type.IntegerType.INTEGER;
 import static org.apache.doris.sql.type.IntervalDayTimeType.INTERVAL_DAY_TIME;
 import static org.apache.doris.sql.type.IntervalYearMonthType.INTERVAL_YEAR_MONTH;
 import static org.apache.doris.sql.type.TimestampType.TIMESTAMP;
+import static org.apache.doris.sql.type.TypeSignature.parseTypeSignature;
 import static org.apache.doris.sql.type.VarcharType.VARCHAR;
 import static org.apache.doris.sql.type.DoubleType.DOUBLE;
 import static org.apache.doris.sql.type.UnknownType.UNKNOWN;
@@ -517,7 +518,7 @@ public class ExpressionAnalyzer
         {
             Type type;
             try {
-                type = typeManager.getType(new TypeSignature(node.getType()));
+                type = typeManager.getType(parseTypeSignature(node.getType()));
             }
             catch (IllegalArgumentException e) {
                 throw new SemanticException(TYPE_MISMATCH, node, "Unknown type: " + node.getType());

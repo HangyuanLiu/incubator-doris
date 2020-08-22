@@ -258,7 +258,7 @@ public class ConnectProcessor {
                 TaskCountEstimator taskCountEstimator = new TaskCountEstimator();
                 CostCalculatorUsingExchanges costCalculator = new CostCalculatorUsingExchanges(taskCountEstimator);
                 PlanOptimizers optimizers = new PlanOptimizers(
-                        metadata, parser, statsCalculator,new CostCalculatorWithEstimatedExchanges(costCalculator, taskCountEstimator), new CostComparator(), taskCountEstimator);
+                        metadata, parser, statsCalculator, new CostCalculatorWithEstimatedExchanges(costCalculator, taskCountEstimator), new CostComparator(), taskCountEstimator);
 
                 //analyzer
                 ArrayList<Expression> parameters = new ArrayList<>();

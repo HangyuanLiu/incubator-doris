@@ -210,7 +210,7 @@ public class PlanOptimizers {
                                 new RemoveUnreferencedScalarLateralNodes(),
                                 new TransformUncorrelatedLateralToJoin(),
                                 new TransformUncorrelatedInPredicateSubqueryToSemiJoin(),
-                                //new TransformCorrelatedScalarAggregationToJoin(metadata.getFunctionManager()),
+                                new TransformCorrelatedScalarAggregationToJoin(metadata.getFunctionManager()),
                                 new TransformCorrelatedLateralJoinToJoin())),
                 new IterativeOptimizer(
                         ruleStats,

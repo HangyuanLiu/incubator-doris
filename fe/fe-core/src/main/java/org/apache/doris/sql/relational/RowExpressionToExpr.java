@@ -39,6 +39,8 @@ import org.apache.doris.sql.relation.RowExpressionVisitor;
 import org.apache.doris.sql.relation.SpecialFormExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.tree.DoubleLiteral;
+import org.apache.doris.sql.type.DecimalType;
+import org.apache.doris.sql.type.Decimals;
 import org.apache.doris.sql.type.OperatorType;
 import org.apache.doris.sql.type.StandardTypes;
 import org.apache.doris.sql.type.TypeSignature;
@@ -205,7 +207,9 @@ public class RowExpressionToExpr {
                     case TIMESTAMP:
                         return new DateLiteral((String) node.getValue(), Type.DATETIME);
                     case DECIMAL:
-                        return new DecimalLiteral(node.getValue().toString());
+                        String decimalString =
+                                Decimals.toString(node.getValue().toString(), ((DecimalType)node.getType()).getScale());
+                        return new DecimalLiteral(decimalString);
                     default:
                         throw new UnsupportedOperationException("not yet implemented type : " + node.getType().getTypeSignature().getBase() + "," + node.getValue());
                 }

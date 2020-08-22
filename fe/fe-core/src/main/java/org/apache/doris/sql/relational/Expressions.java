@@ -156,6 +156,50 @@ public final class Expressions
         return builder.build();
     }
 
+    public static List<RowExpression> extractAnd(RowExpression expression)
+    {
+        final ImmutableList.Builder<RowExpression> builder = ImmutableList.builder();
+        expression.accept(new RowExpressionVisitor<Void, Void>() {
+            @Override
+            public Void visitCall(CallExpression call, Void context) {
+                builder.add(call);
+                return null;
+            }
+
+            @Override
+            public Void visitInputReference(InputReferenceExpression reference, Void context) {
+                builder.add(reference);
+                return null;
+            }
+
+            @Override
+            public Void visitConstant(ConstantExpression literal, Void context) {
+                builder.add(literal);
+                return null;
+            }
+
+            @Override
+            public Void visitVariableReference(VariableReferenceExpression reference, Void context) {
+                builder.add(reference);
+                return null;
+            }
+
+            @Override
+            public Void visitSpecialForm(SpecialFormExpression specialForm, Void context) {
+                if (specialForm.getForm().equals(SpecialFormExpression.Form.AND)) {
+                    for (RowExpression argument : specialForm.getArguments()) {
+                        argument.accept(this, context);
+                    }
+                } else {
+                    builder.add(specialForm);
+                }
+                return null;
+            }
+        }, null);
+
+        return builder.build();
+    }
+
     public static VariableReferenceExpression variable(String name, Type type)
     {
         return new VariableReferenceExpression(name, type);

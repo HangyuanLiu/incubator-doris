@@ -135,11 +135,13 @@ public final class LiteralEncoder {
                 String string = Decimals.toString(((BigDecimal) object).toString(), ((DecimalType) type).getScale());
                 return new DecimalLiteral(string);
             } else {
-                return new DecimalLiteral(String.valueOf(object));
+                //return new DecimalLiteral(String.valueOf(object));
+                String string = Decimals.toString(String.valueOf(object), ((DecimalType) type).getScale());
+                return new Cast(new DecimalLiteral(string), type.getDisplayName());
             }
         }
 
-
+        //FIXME
         /*
         if (type instanceof DecimalType) {
             String string;
@@ -151,9 +153,7 @@ public final class LiteralEncoder {
             }
             return new Cast(new DecimalLiteral(string), type.getDisplayName());
         }
-
-         */
-
+        */
         if (type instanceof VarcharType) {
             VarcharType varcharType = (VarcharType) type;
             StringLiteral stringLiteral = new StringLiteral((String) object);

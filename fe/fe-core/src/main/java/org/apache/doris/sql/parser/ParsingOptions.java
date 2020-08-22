@@ -38,8 +38,7 @@ public class ParsingOptions
     public ParsingOptions()
     {
         //FIXME
-        //this(DecimalLiteralTreatment.REJECT);
-        this(DecimalLiteralTreatment.AS_DOUBLE);
+        this(DecimalLiteralTreatment.AS_DECIMAL);
     }
 
     /**

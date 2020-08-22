@@ -25,6 +25,7 @@ import org.apache.doris.sql.type.DateType;
 import org.apache.doris.sql.type.DecimalType;
 import org.apache.doris.sql.type.Decimals;
 import org.apache.doris.sql.type.DoubleType;
+import org.apache.doris.sql.type.IntegerOperators;
 import org.apache.doris.sql.type.IntegerType;
 import org.apache.doris.sql.type.SmallintType;
 import org.apache.doris.sql.type.TimestampType;
@@ -94,8 +95,11 @@ public final class LiteralInterpreter
         if (type instanceof DecimalType) {
             DecimalType decimalType = (DecimalType) type;
 
-            checkState(node.getValue() instanceof Long);
-            return decodeDecimal(BigInteger.valueOf((long) node.getValue()), decimalType);
+            if (node.getValue() instanceof Long) {
+                return decodeDecimal(BigInteger.valueOf((long) node.getValue()), decimalType);
+            } else {
+                return decodeDecimal(BigInteger.valueOf(Integer.parseInt((String)node.getValue())), decimalType);
+            }
         }
                 /*
         if (type instanceof VarbinaryType) {

@@ -67,9 +67,6 @@ final class StatsUtil
 
     private static boolean convertibleToDoubleWithCast(Type type)
     {
-        //FIXME
-        return false;
-        /*
         return type instanceof DecimalType
                 || DoubleType.DOUBLE.equals(type)
                 || BigintType.BIGINT.equals(type)
@@ -77,8 +74,6 @@ final class StatsUtil
                 || SmallintType.SMALLINT.equals(type)
                 || TinyintType.TINYINT.equals(type)
                 || BooleanType.BOOLEAN.equals(type);
-
-         */
     }
 
     public static VariableStatsEstimate toVariableStatsEstimate(TableStatistics tableStatistics, ColumnStatistics columnStatistics)

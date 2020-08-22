@@ -783,7 +783,6 @@ public class PredicatePushDown
         // Temporary implementation for joins because the SimplifyExpressions optimizers can not run properly on join clauses
         private Expression simplifyExpression(Expression expression)
         {
-            /*
             Map<NodeRef<Expression>, Type> expressionTypes = getExpressionTypes(
                     session,
                     metadata,
@@ -794,9 +793,6 @@ public class PredicatePushDown
                     WarningCollector.NOOP);
             ExpressionInterpreter optimizer = ExpressionInterpreter.expressionOptimizer(expression, metadata, session, expressionTypes);
             return literalEncoder.toExpression(optimizer.optimize(NoOpVariableResolver.INSTANCE), expressionTypes.get(NodeRef.of(expression)));
-            */
-            //FIXME
-            return expression;
         }
 
         private boolean areExpressionsEquivalent(Expression leftExpression, Expression rightExpression)
@@ -820,13 +816,9 @@ public class PredicatePushDown
                     expression,
                     emptyList(), /* parameters have already been replaced */
                     WarningCollector.NOOP);
-            //FIXME
-            //return Boolean.FALSE;
 
-            //return ExpressionInterpreter.expressionOptimizer(expression, metadata, session, expressionTypes)
-            //        .optimize(variable -> nullVariableNames.contains(variable.getName()) ? null : new Symbol(variable.getName()).toSymbolReference());
-
-            return expression;
+            return ExpressionInterpreter.expressionOptimizer(expression, metadata, session, expressionTypes)
+                   .optimize(variable -> nullVariableNames.contains(variable.getName()) ? null : new Symbol(variable.getName()).toSymbolReference());
         }
 
         private Predicate<Expression> joinEqualityExpression(final Collection<VariableReferenceExpression> leftVariables)
