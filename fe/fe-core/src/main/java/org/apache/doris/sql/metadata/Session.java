@@ -79,7 +79,8 @@ public final class Session
     }
 
     public static JoinDistributionType getJoinDistributionType(Session session) {
-        return JoinDistributionType.AUTOMATIC;
+        //return JoinDistributionType.AUTOMATIC;
+        return JoinDistributionType.BROADCAST;
     }
 
     public static Optional<DataSize> getJoinMaxBroadcastTableSize(Session session)

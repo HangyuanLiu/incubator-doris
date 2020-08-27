@@ -50,7 +50,6 @@ class RelationPlanner
         this.metadata = metadata;
         this.session = session;
         this.subqueryPlanner = new SubqueryPlanner(analysis, variableAllocator, idAllocator, metadata, session);
-
     }
 
     @Override

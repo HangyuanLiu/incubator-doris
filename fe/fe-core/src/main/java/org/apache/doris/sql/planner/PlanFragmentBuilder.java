@@ -60,24 +60,18 @@ import org.apache.doris.sql.planner.plan.TableScanNode;
 import org.apache.doris.sql.planner.plan.TopNNode;
 import org.apache.doris.sql.planner.plan.ValuesNode;
 import org.apache.doris.sql.relation.CallExpression;
-import org.apache.doris.sql.relation.ConstantExpression;
 import org.apache.doris.sql.relation.RowExpression;
 import org.apache.doris.sql.relation.VariableReferenceExpression;
 import org.apache.doris.sql.relational.Expressions;
 import org.apache.doris.sql.relational.RowExpressionToExpr;
 import org.apache.doris.sql.type.Type;
 import org.apache.doris.sql.type.TypeManager;
-import org.apache.doris.sql.type.TypeSignature;
-import org.apache.hadoop.yarn.webapp.hamlet.Hamlet;
-import org.apache.spark.sql.Row;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static org.apache.doris.sql.planner.plan.ExchangeNode.Type.GATHER;
 
 public class PlanFragmentBuilder {
     public class PhysicalPlan {
@@ -275,6 +269,9 @@ public class PlanFragmentBuilder {
                         leftPlanNode, rightPlanNode,
                         joinOperator,
                         eqJoinConjuncts, otherjoinFilters);
+                if (joinOperator.equals(JoinOperator.INNER_JOIN) && distributionMode.equals(HashJoinNode.DistributionMode.BROADCAST)) {
+                    ((HashJoinNode) joinNode).setIsPushDown(true);
+                }
 
                 ((HashJoinNode)joinNode).setDistributionMode(distributionMode);
             }
@@ -320,6 +317,80 @@ public class PlanFragmentBuilder {
         @Override
         public PlanFragment visitSemiJoin(SemiJoinNode node, FragmentProperties context) {
             PlanFragment leftFragment = visitPlan(node.getSource(), context);
+            PlanFragment rightFragment = visitPlan(node.getFilteringSource(), context);
+
+            List<Expr> eqJoinConjuncts = new ArrayList<>();
+            Expr left = RowExpressionToExpr.formatRowExpression(node.getSourceJoinVariable(),
+                    new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+            Expr right = RowExpressionToExpr.formatRowExpression(node.getFilteringSourceJoinVariable(),
+                    new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef));
+            BinaryPredicate binaryEq = new BinaryPredicate(BinaryPredicate.Operator.EQ, left, right);
+            binaryEq.setType(org.apache.doris.catalog.Type.BOOLEAN);
+            eqJoinConjuncts.add(binaryEq);
+            context.variableToSlotRef.put(node.getSemiJoinOutput(), binaryEq);
+
+            PlanNode leftPlanNode;
+            PlanNode rightPlanNode;
+            HashJoinNode.DistributionMode distributionMode;
+            if (node.getDistributionType().get().equals(SemiJoinNode.DistributionType.REPLICATED)) {
+                distributionMode = HashJoinNode.DistributionMode.BROADCAST;
+                leftPlanNode = leftFragment.getPlanRoot();
+                rightPlanNode = new org.apache.doris.planner.ExchangeNode(
+                        context.plannerContext.getNextNodeId(), rightFragment.getPlanRoot(), false);
+                rightPlanNode.setNumInstances(rightFragment.getPlanRoot().getNumInstances());
+            } else {
+                distributionMode = HashJoinNode.DistributionMode.PARTITIONED;
+                leftPlanNode = new org.apache.doris.planner.ExchangeNode(
+                        context.plannerContext.getNextNodeId(), leftFragment.getPlanRoot(), false);
+                leftPlanNode.setNumInstances(leftFragment.getPlanRoot().getNumInstances());
+
+                rightPlanNode = new org.apache.doris.planner.ExchangeNode(
+                        context.plannerContext.getNextNodeId(), rightFragment.getPlanRoot(), false);
+                rightPlanNode.setNumInstances(rightFragment.getPlanRoot().getNumInstances());
+            }
+
+            org.apache.doris.planner.HashJoinNode joinNode = new org.apache.doris.planner.HashJoinNode(
+                    context.plannerContext.getNextNodeId(),
+                    leftPlanNode, rightPlanNode,
+                    JoinOperator.LEFT_SEMI_JOIN,
+                    eqJoinConjuncts, new ArrayList<>());
+            joinNode.setIsPushDown(true);
+            joinNode.setDistributionMode(distributionMode);
+
+            if (node.getDistributionType().get().equals(SemiJoinNode.DistributionType.REPLICATED)) {
+                leftFragment.setPlanRoot(joinNode);
+                context.fragments.remove(leftFragment);
+                context.fragments.add(leftFragment);
+                rightFragment.setDestination((org.apache.doris.planner.ExchangeNode) rightPlanNode);
+                return leftFragment;
+            } else {
+                List<Expr> leftHash = Lists.newArrayList(node.getSourceJoinVariable()).stream().map(
+                        var -> RowExpressionToExpr.formatRowExpression(
+                                var, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef)))
+                        .collect(Collectors.toList());
+
+                List<Expr> rightHash = Lists.newArrayList(node.getFilteringSourceJoinVariable()).stream().map(
+                        var -> RowExpressionToExpr.formatRowExpression(
+                                var, new RowExpressionToExpr.FormatterContext(context.descTbl, context.variableToSlotRef)))
+                        .collect(Collectors.toList());
+
+                //join fragment
+                PlanFragment joinFragment = new PlanFragment(context.plannerContext.getNextFragmentId(), joinNode, DataPartition.hashPartitioned(leftHash));
+                //left fragment
+                leftFragment.setOutputPartition(leftHash.isEmpty() ? DataPartition.UNPARTITIONED : DataPartition.hashPartitioned(leftHash));
+                leftFragment.setDestination((org.apache.doris.planner.ExchangeNode) leftPlanNode);
+                //right fragment
+                rightFragment.setOutputPartition(rightHash.isEmpty() ? DataPartition.UNPARTITIONED : DataPartition.hashPartitioned(rightHash));
+                rightFragment.setDestination((org.apache.doris.planner.ExchangeNode) rightPlanNode);
+
+                context.fragments.add(joinFragment);
+                return joinFragment;
+            }
+        }
+
+
+        public PlanFragment visitSemiJoin2(SemiJoinNode node, FragmentProperties context) {
+            PlanFragment leftFragment = visitPlan(node.getSource(), context);
             ArrayList<Expr> hashPartition = new ArrayList<>();
             List<VariableReferenceExpression> leftHashVar = Lists.newArrayList(node.getSourceJoinVariable());
             for (VariableReferenceExpression var : leftHashVar) {
@@ -329,8 +400,7 @@ public class PlanFragmentBuilder {
             leftFragment.setOutputPartition(DataPartition.hashPartitioned(hashPartition));
             org.apache.doris.planner.ExchangeNode leftExchangeNode =
                     new org.apache.doris.planner.ExchangeNode(context.plannerContext.getNextNodeId(), leftFragment.getPlanRoot(), false);
-            leftExchangeNode.setNumInstances(1);
-
+            leftExchangeNode.setNumInstances(leftFragment.getPlanRoot().getNumInstances());
 
             PlanFragment rightFragment = visitPlan(node.getFilteringSource(), context);
             hashPartition = new ArrayList<>();
@@ -342,7 +412,7 @@ public class PlanFragmentBuilder {
             rightFragment.setOutputPartition(DataPartition.hashPartitioned(hashPartition));
             org.apache.doris.planner.ExchangeNode rightExchangeNode =
                     new org.apache.doris.planner.ExchangeNode(context.plannerContext.getNextNodeId(), rightFragment.getPlanRoot(), false);
-            rightExchangeNode.setNumInstances(1);
+            rightExchangeNode.setNumInstances(rightFragment.getPlanRoot().getNumInstances());
 
             List<Expr> eqJoinConjuncts = new ArrayList<>();
             Expr left = RowExpressionToExpr.formatRowExpression(node.getSourceJoinVariable(),

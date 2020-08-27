@@ -99,7 +99,7 @@ import static org.apache.doris.sql.type.BooleanType.BOOLEAN;
 
 public class FilterStatsCalculator
 {
-    static final double UNKNOWN_FILTER_COEFFICIENT = 0.9;
+    static final double UNKNOWN_FILTER_COEFFICIENT = 0.1;
 
     private final Metadata metadata;
     private final ScalarStatsCalculator scalarStatsCalculator;

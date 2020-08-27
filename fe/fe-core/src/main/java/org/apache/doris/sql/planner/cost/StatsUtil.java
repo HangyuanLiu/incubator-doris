@@ -13,6 +13,7 @@
  */
 package org.apache.doris.sql.planner.cost;
 
+import org.apache.doris.analysis.DateLiteral;
 import org.apache.doris.sql.InterpretedFunctionInvoker;
 import org.apache.doris.sql.metadata.ConnectorSession;
 import org.apache.doris.sql.metadata.FunctionHandle;
@@ -57,11 +58,16 @@ final class StatsUtil
             return OptionalDouble.of((double) functionInvoker.invoke(cast, singletonList(value)));
         }
         //FIXME
-        /*
         if (DateType.DATE.equals(type)) {
-            return OptionalDouble.of(((Long) value).doubleValue());
+            try {
+                DateLiteral dateLiteral = new DateLiteral((String) value, org.apache.doris.catalog.Type.DATE);
+                return OptionalDouble.of(dateLiteral.getLongValue() / 1000000);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                return OptionalDouble.empty();
+            }
         }
-        */
+
         return OptionalDouble.empty();
     }
 
